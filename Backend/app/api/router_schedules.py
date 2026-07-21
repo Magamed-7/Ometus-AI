@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +12,7 @@ from app.schemas.schema_schedule import (
     ScheduleCreateIn,
     ScheduleOut,
     ScheduleUpdateIn,
+    SlotOut,
 )
 from app.services import crud_department, crud_doctor, crud_schedule
 
@@ -140,3 +143,23 @@ async def delete_my_schedule(
 
     await crud_schedule.delete_schedule(schedule, db)
     return {"message": "Расписание удалено"}
+
+
+@schedules_router.get("/doctors/{doctor_id}", response_model=list[ScheduleOut])
+async def get_doctor_schedule(doctor_id: int, db: AsyncSession = Depends(get_db)):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    return await crud_schedule.get_schedules(doctor_id, db)
+
+
+@schedules_router.get("/doctors/{doctor_id}/slots", response_model=list[SlotOut])
+async def get_doctor_slots(doctor_id: int, day: date, db: AsyncSession = Depends(get_db)):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    return await crud_schedule.get_available_slots(doctor_id, day, db)
