@@ -6,7 +6,7 @@ from app.core.security import create_access_token, create_refresh_token, verify_
 from app.db.database import get_db
 from app.schemas.schema_auth import LoginIn, RegisterIn, TokenPair, VerifyEmailIn
 from app.schemas.schema_user import UserOut
-from app.services import crud_user
+from app.services import crud_patient, crud_user
 
 auth_router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
@@ -19,6 +19,10 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
         raise AppError(code="EMAIL_ALREADY_EXISTS", message="Email уже занят", status_code=409)
 
     user = await crud_user.create_user(data, db)
+
+    if user.role == "patient":
+        await crud_patient.create_patient(user, db)
+
     await crud_user.create_verification_code(user, db)
     return user
 
