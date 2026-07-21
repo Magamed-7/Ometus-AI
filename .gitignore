@@ -1,2 +1,10 @@
-AI_Medical_Assistant_TZ.md
 .venv
+.env
+__pycache__
+*.py[cod]
+
+.vscode/
+.idea/
+
+.DS_Store
+Thumbs.db
