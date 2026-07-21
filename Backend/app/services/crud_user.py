@@ -8,6 +8,7 @@ from app.core.security import hash_password
 from app.models.model_user import User
 from app.models.model_verification import EmailVerificationCode
 from app.schemas.schema_auth import RegisterIn
+from app.schemas.schema_user import UserUpdateIn
 from app.services.email import generate_code, send_verification_code
 
 
@@ -35,6 +36,16 @@ async def get_by_email(email: str, db: AsyncSession):
 async def get_by_id(user_id: int, db: AsyncSession):
     result = await db.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
+
+
+async def update_user(user: User, data: UserUpdateIn, db: AsyncSession):
+    user.first_name = data.first_name or user.first_name
+    user.last_name = data.last_name or user.last_name
+    user.phone = data.phone or user.phone
+
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 
 async def create_verification_code(user: User, db: AsyncSession):
