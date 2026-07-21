@@ -19,6 +19,7 @@ from app.models import (  # noqa: E402, F401
     model_doctor_department,
     model_filial,
     model_patient,
+    model_schedule,
     model_user,
     model_verification,
 )
