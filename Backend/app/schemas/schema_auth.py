@@ -17,6 +17,11 @@ class LoginIn(BaseModel):
     password: str
 
 
+class VerifyEmailIn(BaseModel):
+    email: str
+    code: str
+
+
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
