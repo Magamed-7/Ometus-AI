@@ -16,6 +16,7 @@ from app.db.database import Base  # noqa: E402
 from app.models import (  # noqa: E402, F401
     model_department,
     model_doctor,
+    model_doctor_department,
     model_filial,
     model_user,
     model_verification,
