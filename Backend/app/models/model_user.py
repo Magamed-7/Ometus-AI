@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -18,6 +18,7 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
 
     role: Mapped[str] = mapped_column(String, nullable=False, default="patient")
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
