@@ -14,6 +14,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.core.config import settings  # noqa: E402
 from app.db.database import Base  # noqa: E402
 from app.models import (  # noqa: E402, F401
+    model_absence,
     model_department,
     model_doctor,
     model_doctor_department,
