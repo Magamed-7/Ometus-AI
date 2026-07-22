@@ -4,10 +4,11 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.emergency_guard import EMERGENCY_MESSAGE, is_emergency
-from app.ai.mcp_tools import book_appointment, find_doctors, get_available_time
+from app.ai.mcp_tools import book_appointment, find_doctors, get_available_time, tool_error
 from app.ai.specialization_map import match_specializations
 from app.core.config import settings
 from app.schemas.schema_ai import AskIn
+from app.services import crud_ai_log
 
 SYSTEM_PROMPT = (
     "Ты — ассистент регистратуры клиники Ometus. Твоя единственная задача — помочь пациенту "
@@ -62,17 +63,28 @@ def describe_slots(slots: list):
     return ", ".join(f"{slot['date']} {slot['time'][:5]}" for slot in slots[:10])
 
 
+async def log_call(current_patient, tool_name: str, params: dict, result: dict, db: AsyncSession):
+    await crud_ai_log.log_tool_call(current_patient.user_id, tool_name, params, result, db)
+
+
 async def ask(data: AskIn, current_patient, db: AsyncSession):
     if is_emergency(data.message):
+        await log_call(
+            current_patient,
+            "emergency_guard",
+            {"message": data.message},
+            tool_error("EMERGENCY", EMERGENCY_MESSAGE),
+            db,
+        )
         return {"action": "emergency", "reply": EMERGENCY_MESSAGE}
 
     if data.confirm:
         return await confirm_booking(data, current_patient, db)
 
     if data.doctor_id:
-        return await show_slots(data, db)
+        return await show_slots(data, current_patient, db)
 
-    return await suggest_doctors(data, db)
+    return await suggest_doctors(data, current_patient, db)
 
 
 async def confirm_booking(data: AskIn, current_patient, db: AsyncSession):
@@ -84,6 +96,18 @@ async def confirm_booking(data: AskIn, current_patient, db: AsyncSession):
 
     result = await book_appointment(
         db, current_patient, data.doctor_id, current_patient.id, data.day, data.slot_time
+    )
+    await log_call(
+        current_patient,
+        "book_appointment",
+        {
+            "doctor_id": data.doctor_id,
+            "patient_id": current_patient.id,
+            "date": str(data.day),
+            "time": str(data.slot_time),
+        },
+        result,
+        db,
     )
 
     if not result["ok"]:
@@ -108,8 +132,15 @@ async def confirm_booking(data: AskIn, current_patient, db: AsyncSession):
     }
 
 
-async def show_slots(data: AskIn, db: AsyncSession):
+async def show_slots(data: AskIn, current_patient, db: AsyncSession):
     result = await get_available_time(db, data.doctor_id, data.day)
+    await log_call(
+        current_patient,
+        "get_available_time",
+        {"doctor_id": data.doctor_id, "date": str(data.day) if data.day else None},
+        result,
+        db,
+    )
 
     if not result["ok"]:
         return {
@@ -131,7 +162,7 @@ async def show_slots(data: AskIn, db: AsyncSession):
     }
 
 
-async def suggest_doctors(data: AskIn, db: AsyncSession):
+async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession):
     specializations = match_specializations(data.message)
 
     if not specializations:
@@ -151,6 +182,9 @@ async def suggest_doctors(data: AskIn, db: AsyncSession):
 
     specialization = specializations[0]
     result = await find_doctors(db, specialization)
+    await log_call(
+        current_patient, "find_doctors", {"specialization": specialization}, result, db
+    )
 
     if not result["ok"]:
         return {
