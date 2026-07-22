@@ -20,34 +20,81 @@ SYSTEM_PROMPT = (
 )
 
 
-async def ask_llm(message: str, context: dict):
+def build_user_prompt(message: str, context: dict):
+    return (
+        f"Запрос пациента: {message}\n\n"
+        f"Данные системы: {json.dumps(context, ensure_ascii=False)}"
+    )
+
+
+def read_gemini_text(data: dict):
+    parts = data["candidates"][0]["content"]["parts"]
+    return "\n".join(part["text"] for part in parts if part.get("text")).strip()
+
+
+async def ask_groq(message: str, context: dict):
     if not settings.GROQ_API_KEY:
         return None
 
+    for model in settings.GROQ_MODELS:
+        payload = {
+            "model": model,
+            "temperature": 0.2,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": build_user_prompt(message, context)},
+            ],
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                response = await client.post(
+                    settings.GROQ_URL,
+                    headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                reply = response.json()["choices"][0]["message"]["content"].strip()
+
+                if reply:
+                    return reply
+        except Exception:
+            continue
+
+    return None
+
+
+async def ask_gemini(message: str, context: dict):
+    if not settings.GEMINI_API_KEY:
+        return None
+
     payload = {
-        "model": settings.GROQ_MODELS[0],
-        "temperature": 0.2,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": f"Запрос пациента: {message}\n\n"
-                f"Данные системы: {json.dumps(context, ensure_ascii=False)}",
-            },
-        ],
+        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": [{"parts": [{"text": build_user_prompt(message, context)}]}],
+        "generationConfig": {"temperature": 0.2},
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            response = await client.post(
-                settings.GROQ_URL,
-                headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
-                json=payload,
-            )
-            response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"].strip()
-    except Exception:
-        return None
+    for model in settings.GEMINI_MODELS:
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                response = await client.post(
+                    f"{settings.GEMINI_URL}/{model}:generateContent",
+                    headers={"x-goog-api-key": settings.GEMINI_API_KEY},
+                    json=payload,
+                )
+                response.raise_for_status()
+                reply = read_gemini_text(response.json())
+
+                if reply:
+                    return reply
+        except Exception:
+            continue
+
+    return None
+
+
+async def ask_llm(message: str, context: dict):
+    return await ask_groq(message, context) or await ask_gemini(message, context)
 
 
 async def build_reply(message: str, fallback: str, context: dict):
