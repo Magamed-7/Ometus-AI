@@ -28,6 +28,12 @@ class Settings:
         "GROQ_URL", "https://api.groq.com/openai/v1/chat/completions"
     )
 
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_URL: str = os.getenv(
+        "GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta/models"
+    )
+
     CORS_ORIGINS: list[str] = os.getenv(
         "CORS_ORIGINS", "http://localhost:5173,http://localhost:8000"
     ).split(",")
