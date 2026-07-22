@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.model_absence import DoctorAbsence
 from app.models.model_schedule import DoctorSchedule
 from app.schemas.schema_schedule import AbsenceCreateIn, ScheduleCreateIn, ScheduleUpdateIn
+from app.services import crud_appointment
 
 
 async def create_schedule(doctor_id: int, data: ScheduleCreateIn, db: AsyncSession):
@@ -113,6 +114,7 @@ async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
         return []
 
     schedules = await get_schedule_by_weekday(doctor_id, day.weekday(), db)
+    taken = await crud_appointment.get_taken_times(doctor_id, day, db)
     slots = []
 
     for schedule in schedules:
@@ -121,13 +123,24 @@ async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
         step = timedelta(minutes=schedule.slot_duration)
 
         while current + step <= end:
-            slots.append(
-                {
-                    "date": day,
-                    "time": current.time(),
-                    "department_id": schedule.department_id,
-                }
-            )
+            if current.time() not in taken:
+                slots.append(
+                    {
+                        "date": day,
+                        "time": current.time(),
+                        "department_id": schedule.department_id,
+                    }
+                )
             current = current + step
 
     return slots
+
+
+async def find_slot(doctor_id: int, day: date, slot_time: time, db: AsyncSession):
+    slots = await get_available_slots(doctor_id, day, db)
+
+    for slot in slots:
+        if slot["time"] == slot_time:
+            return slot
+
+    return None
