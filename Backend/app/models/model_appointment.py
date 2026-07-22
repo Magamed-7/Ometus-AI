@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Time, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Time, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -9,7 +9,15 @@ from app.db.database import Base
 class Appointment(Base):
     __tablename__ = "appointments"
     __table_args__ = (
-        UniqueConstraint("doctor_id", "date", "time", name="uq_appointment_slot"),
+        Index(
+            "uq_appointment_slot",
+            "doctor_id",
+            "date",
+            "time",
+            unique=True,
+            postgresql_where=text("status <> 'cancelled'"),
+            sqlite_where=text("status <> 'cancelled'"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
