@@ -23,13 +23,17 @@ class Settings:
     EMAIL_CODE_TTL_MINUTES: int = int(os.getenv("EMAIL_CODE_TTL_MINUTES", "10"))
 
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    GROQ_MODELS: list[str] = os.getenv(
+        "GROQ_MODELS", "llama-3.3-70b-versatile,llama-3.1-8b-instant,openai/gpt-oss-120b"
+    ).split(",")
     GROQ_URL: str = os.getenv(
         "GROQ_URL", "https://api.groq.com/openai/v1/chat/completions"
     )
 
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODELS: list[str] = os.getenv(
+        "GEMINI_MODELS", "gemini-3.5-flash,gemini-flash-latest,gemini-3.1-flash-lite"
+    ).split(",")
     GEMINI_URL: str = os.getenv(
         "GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta/models"
     )

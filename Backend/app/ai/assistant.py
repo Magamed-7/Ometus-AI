@@ -25,7 +25,7 @@ async def ask_llm(message: str, context: dict):
         return None
 
     payload = {
-        "model": settings.GROQ_MODEL,
+        "model": settings.GROQ_MODELS[0],
         "temperature": 0.2,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
