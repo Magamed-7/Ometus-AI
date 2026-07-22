@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +13,8 @@ from app.schemas.schema_department import (
 )
 from app.schemas.schema_doctor import DoctorCreateIn, DoctorDepartmentIn, DoctorOut, DoctorUpdateIn
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
-from app.services import crud_department, crud_doctor, crud_filial, crud_user
+from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
+from app.services import crud_department, crud_doctor, crud_filial, crud_report, crud_user
 
 admin_router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
@@ -185,3 +188,46 @@ async def remove_doctor_department(
         )
 
     return {"message": "Врач снят с отделения"}
+
+
+@admin_router.get("/reports/workload", response_model=list[DoctorWorkloadOut])
+async def get_workload_report(
+    date_from: date,
+    date_to: date,
+    department_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала должна быть раньше даты окончания",
+            status_code=400,
+        )
+
+    if department_id:
+        department = await crud_department.get_by_id(department_id, db)
+
+        if department is None:
+            raise AppError(
+                code="DEPARTMENT_NOT_FOUND", message="Отделение не найдено", status_code=404
+            )
+
+    return await crud_report.get_doctor_workload(db, date_from, date_to, department_id)
+
+
+@admin_router.get("/reports/summary", response_model=AppointmentsSummaryOut)
+async def get_summary_report(
+    date_from: date,
+    date_to: date,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала должна быть раньше даты окончания",
+            status_code=400,
+        )
+
+    return await crud_report.get_appointments_summary(db, date_from, date_to)
