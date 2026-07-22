@@ -1,5 +1,6 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -13,6 +14,11 @@ test_engine = create_async_engine(
     poolclass=StaticPool,
 )
 TestSessionLocal = async_sessionmaker(bind=test_engine, expire_on_commit=False)
+
+
+@event.listens_for(test_engine.sync_engine, "connect")
+def register_unicode_lower(dbapi_connection, connection_record):
+    dbapi_connection.driver_connection._conn.create_function("lower", 1, str.lower)
 
 
 async def override_get_db():
