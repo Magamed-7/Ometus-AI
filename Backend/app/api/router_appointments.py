@@ -1,19 +1,36 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.permissions import get_current_patient
+from app.api.permissions import get_current_doctor, get_current_patient
 from app.core.errors import AppError
 from app.db.database import get_db
 from app.schemas.schema_appointment import (
     AppointmentCreateIn,
     AppointmentOut,
     AppointmentRescheduleIn,
+    DoctorAppointmentOut,
 )
 from app.services import crud_appointment, crud_doctor, crud_schedule
 
 appointments_router = APIRouter(prefix="/api/appointments", tags=["Appointments"])
+
+
+async def get_doctor_appointment(appointment_id: int, doctor, db: AsyncSession):
+    appointment = await crud_appointment.get_by_id(appointment_id, db)
+
+    if appointment is None or appointment.doctor_id != doctor.id:
+        raise AppError(
+            code="APPOINTMENT_NOT_FOUND", message="Запись не найдена", status_code=404
+        )
+
+    if appointment.status != "booked":
+        raise AppError(
+            code="APPOINTMENT_NOT_ACTIVE", message="Запись уже закрыта", status_code=400
+        )
+
+    return appointment
 
 
 @appointments_router.get("/me", response_model=list[AppointmentOut])
@@ -69,6 +86,43 @@ async def book_appointment(
         )
 
     return appointment
+
+
+@appointments_router.get("/doctor/me", response_model=list[DoctorAppointmentOut])
+async def get_doctor_appointments(
+    day: date | None = None,
+    status: str | None = None,
+    doctor=Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    return await crud_appointment.get_doctor_appointments(doctor.id, db, day, status)
+
+
+@appointments_router.get("/doctor/me/today", response_model=list[DoctorAppointmentOut])
+async def get_doctor_appointments_today(
+    doctor=Depends(get_current_doctor), db: AsyncSession = Depends(get_db)
+):
+    return await crud_appointment.get_doctor_appointments(doctor.id, db, date.today(), "booked")
+
+
+@appointments_router.put("/doctor/me/{appointment_id}/complete", response_model=AppointmentOut)
+async def complete_appointment(
+    appointment_id: int,
+    doctor=Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    appointment = await get_doctor_appointment(appointment_id, doctor, db)
+    return await crud_appointment.set_status(appointment, "completed", db)
+
+
+@appointments_router.put("/doctor/me/{appointment_id}/no-show", response_model=AppointmentOut)
+async def mark_appointment_no_show(
+    appointment_id: int,
+    doctor=Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    appointment = await get_doctor_appointment(appointment_id, doctor, db)
+    return await crud_appointment.set_status(appointment, "no_show", db)
 
 
 @appointments_router.get("/{appointment_id}", response_model=AppointmentOut)
