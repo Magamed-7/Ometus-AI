@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import get_current_user
 from app.core.errors import AppError
 from app.db.database import get_db
-from app.services import crud_doctor
+from app.services import crud_doctor, crud_patient
 
 
 def require_role(role: str):
@@ -25,3 +25,16 @@ async def get_current_doctor(
         raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
 
     return doctor
+
+
+async def get_current_patient(
+    current_user=Depends(require_role("patient")), db: AsyncSession = Depends(get_db)
+):
+    patient = await crud_patient.get_by_user_id(current_user.id, db)
+
+    if patient is None:
+        raise AppError(
+            code="PATIENT_NOT_FOUND", message="Профиль пациента не найден", status_code=404
+        )
+
+    return patient
