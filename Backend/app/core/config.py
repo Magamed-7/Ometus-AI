@@ -22,6 +22,12 @@ class Settings:
     BASE_URL: str = os.getenv("BASE_URL", "http://127.0.0.1:8000")
     EMAIL_CODE_TTL_MINUTES: int = int(os.getenv("EMAIL_CODE_TTL_MINUTES", "10"))
 
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    GROQ_URL: str = os.getenv(
+        "GROQ_URL", "https://api.groq.com/openai/v1/chat/completions"
+    )
+
     CORS_ORIGINS: list[str] = os.getenv(
         "CORS_ORIGINS", "http://localhost:5173,http://localhost:8000"
     ).split(",")
