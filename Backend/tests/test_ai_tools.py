@@ -380,6 +380,207 @@ async def test_emergency_is_logged(client, db):
     assert log.status == "error"
 
 
+async def book(client, headers, doctor_id, slot="09:00:00"):
+    response = await ask(
+        client,
+        headers,
+        "запиши меня",
+        doctor_id=doctor_id,
+        date=str(next_workday()),
+        time=slot,
+        confirm=True,
+    )
+    return response.json()["appointment"]["appointment_id"]
+
+
+async def test_my_appointments_lists_bookings(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    await book(client, headers, doctor_id)
+
+    response = await ask(client, headers, "мои записи", intent="my_appointments")
+
+    body = response.json()
+    assert body["action"] == "my_appointments"
+    assert len(body["appointments"]) == 1
+    assert body["appointments"][0]["doctor_id"] == doctor_id
+
+
+async def test_my_appointments_empty(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "мои записи", intent="my_appointments")
+
+    body = response.json()
+    assert body["action"] == "my_appointments"
+    assert body["appointments"] == []
+    assert "нет записей" in body["reply"]
+
+
+async def test_cancel_appointment_via_ai(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    appointment_id = await book(client, headers, doctor_id)
+
+    response = await ask(client, headers, "отмени запись", intent="cancel", appointment_id=appointment_id)
+
+    assert response.json()["action"] == "cancelled"
+
+    listed = await client.get("/api/appointments/me", headers=headers)
+    assert listed.json()[0]["status"] == "cancelled"
+
+
+async def test_cancel_frees_the_slot(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    appointment_id = await book(client, headers, doctor_id)
+
+    await ask(client, headers, "отмени запись", intent="cancel", appointment_id=appointment_id)
+    slots = await ask(client, headers, "когда можно прийти", doctor_id=doctor_id)
+
+    times = [slot["time"] for slot in slots.json()["slots"]]
+    assert "09:00:00" in times
+
+
+async def test_cancel_unknown_appointment(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "отмени запись", intent="cancel", appointment_id=999)
+
+    assert response.json()["error_code"] == "APPOINTMENT_NOT_FOUND"
+
+
+async def test_cancel_requires_appointment_id(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "отмени запись", intent="cancel")
+
+    assert response.json()["action"] == "clarify"
+
+
+async def test_cancel_refuses_other_patient_appointment(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    owner_id, owner_headers = await setup_patient(client)
+    other_id, other_headers = await setup_patient(client, "patient2@ometus.test")
+    appointment_id = await book(client, owner_headers, doctor_id)
+
+    response = await ask(
+        client, other_headers, "отмени запись", intent="cancel", appointment_id=appointment_id
+    )
+
+    assert response.json()["error_code"] == "APPOINTMENT_NOT_FOUND"
+
+
+async def test_reschedule_appointment_via_ai(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    appointment_id = await book(client, headers, doctor_id)
+
+    response = await ask(
+        client,
+        headers,
+        "перенеси на 09:20",
+        intent="reschedule",
+        appointment_id=appointment_id,
+        date=str(next_workday()),
+        time="09:20:00",
+    )
+
+    body = response.json()
+    assert body["action"] == "rescheduled"
+    assert body["appointment"]["time"] == "09:20:00"
+
+
+async def test_reschedule_requires_details(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    appointment_id = await book(client, headers, doctor_id)
+
+    response = await ask(
+        client, headers, "перенеси запись", intent="reschedule", appointment_id=appointment_id
+    )
+
+    assert response.json()["action"] == "clarify"
+
+
+async def test_reschedule_to_taken_slot(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    owner_id, owner_headers = await setup_patient(client)
+    other_id, other_headers = await setup_patient(client, "patient2@ometus.test")
+    appointment_id = await book(client, owner_headers, doctor_id, slot="09:00:00")
+    await book(client, other_headers, doctor_id, slot="09:20:00")
+
+    response = await ask(
+        client,
+        owner_headers,
+        "перенеси на 09:20",
+        intent="reschedule",
+        appointment_id=appointment_id,
+        date=str(next_workday()),
+        time="09:20:00",
+    )
+
+    assert response.json()["error_code"] == "SLOT_NOT_AVAILABLE"
+
+
+async def test_doctor_schedule_via_ai(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(
+        client, headers, "покажи расписание врача", intent="doctor_schedule", doctor_id=doctor_id
+    )
+
+    body = response.json()
+    assert body["action"] == "doctor_schedule"
+    assert body["schedule"][0]["weekday"] == 0
+
+
+async def test_doctor_schedule_without_schedule(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db, with_schedule=False)
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(
+        client, headers, "покажи расписание врача", intent="doctor_schedule", doctor_id=doctor_id
+    )
+
+    assert response.json()["error_code"] == "NO_SCHEDULE"
+
+
+async def test_doctor_schedule_requires_doctor(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "покажи расписание", intent="doctor_schedule")
+
+    assert response.json()["action"] == "clarify"
+
+
+async def test_tool_refuses_to_list_other_patient(client, db):
+    patient_id, headers = await setup_patient(client)
+    other_id, other_headers = await setup_patient(client, "patient2@ometus.test")
+
+    from app.services import crud_patient
+
+    patient = await crud_patient.get_by_id(patient_id, db)
+    result = await mcp_tools.get_patient_appointments(db, patient, other_id)
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "PERMISSION_DENIED"
+
+
+async def test_new_tool_calls_are_logged(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    appointment_id = await book(client, headers, doctor_id)
+
+    await ask(client, headers, "отмени запись", intent="cancel", appointment_id=appointment_id)
+
+    result = await db.execute(select(AiQueryLog).order_by(AiQueryLog.id))
+    tools = [log.tool_name for log in result.scalars().all()]
+
+    assert tools == ["book_appointment", "cancel_appointment"]
+
+
 async def test_llm_reply_replaces_template(client, db, monkeypatch):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
