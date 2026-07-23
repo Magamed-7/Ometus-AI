@@ -33,6 +33,11 @@ export default function TopNav() {
     navigate(value ? `/doctors?specialization=${encodeURIComponent(value)}` : "/doctors");
   };
 
+  const onLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   const linkClass = ({ isActive }) =>
     `text-label-md font-semibold transition-colors ${
       isActive
@@ -76,7 +81,7 @@ export default function TopNav() {
           {user ? (
             <button
               type="button"
-              onClick={logout}
+              onClick={onLogout}
               className="flex h-11 items-center gap-1 rounded-full bg-primary px-md text-label-md font-semibold text-on-primary transition-all hover:bg-primary-container active:scale-95"
             >
               <span className="material-symbols-outlined text-lg">logout</span>
