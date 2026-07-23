@@ -2,9 +2,21 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.core.security import create_access_token, create_refresh_token, verify_password
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    verify_password,
+)
 from app.db.database import get_db
-from app.schemas.schema_auth import LoginIn, RegisterIn, TokenPair, VerifyEmailIn
+from app.schemas.schema_auth import (
+    AccessToken,
+    LoginIn,
+    RefreshIn,
+    RegisterIn,
+    TokenPair,
+    VerifyEmailIn,
+)
 from app.schemas.schema_user import UserOut
 from app.services import crud_patient, crud_user
 
@@ -40,6 +52,23 @@ async def login(data: LoginIn, db: AsyncSession = Depends(get_db)):
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
     )
+
+
+@auth_router.post("/refresh", response_model=AccessToken)
+async def refresh_token(data: RefreshIn, db: AsyncSession = Depends(get_db)):
+    payload = decode_token(data.refresh_token)
+
+    if payload is None or payload.get("type") != "refresh":
+        raise AppError(code="INVALID_TOKEN", message="Неверный refresh токен", status_code=401)
+
+    user = await crud_user.get_by_id(int(payload["sub"]), db)
+
+    if user is None:
+        raise AppError(code="USER_NOT_FOUND", message="Пользователь не найден", status_code=404)
+
+    token_data = {"sub": str(user.id), "email": user.email, "role": user.role}
+
+    return AccessToken(access_token=create_access_token(token_data))
 
 
 @auth_router.post("/verify-email", response_model=UserOut)
