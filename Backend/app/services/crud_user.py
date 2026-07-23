@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,7 +53,7 @@ async def create_verification_code(user: User, db: AsyncSession):
     verification = EmailVerificationCode(
         user_id=user.id,
         code=code,
-        expires_at=datetime.utcnow() + timedelta(minutes=settings.EMAIL_CODE_TTL_MINUTES),
+        expires_at=datetime.now(UTC) + timedelta(minutes=settings.EMAIL_CODE_TTL_MINUTES),
     )
 
     db.add(verification)
@@ -68,7 +68,7 @@ async def verify_code(user: User, code: str, db: AsyncSession):
         select(EmailVerificationCode)
         .where(EmailVerificationCode.user_id == user.id)
         .where(EmailVerificationCode.code == code)
-        .where(EmailVerificationCode.expires_at > datetime.utcnow())
+        .where(EmailVerificationCode.expires_at > datetime.now(UTC))
     )
     verification = result.scalar_one_or_none()
 
