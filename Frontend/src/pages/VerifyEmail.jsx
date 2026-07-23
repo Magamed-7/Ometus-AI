@@ -93,6 +93,14 @@ export default function VerifyEmail() {
               {t("auth.verify")}
             </Button>
           </form>
+
+          <button
+            type="button"
+            onClick={() => toast.info(t("auth.resendStub"))}
+            className="mt-md w-full text-center text-body-md font-semibold text-primary hover:underline"
+          >
+            {t("auth.resend")}
+          </button>
         </div>
       </div>
     </div>
