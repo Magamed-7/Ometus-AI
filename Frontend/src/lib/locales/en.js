@@ -237,6 +237,12 @@ export const en = {
     patientsUnique: "Unique patients",
     build: "Build",
   },
+  status: {
+    booked: "Booked",
+    completed: "Seen",
+    cancelled: "Cancelled",
+    no_show: "No-show",
+  },
   weekdays: {
     full: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
     short: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
