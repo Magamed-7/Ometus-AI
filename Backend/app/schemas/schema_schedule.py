@@ -34,6 +34,28 @@ class ScheduleUpdateIn(BaseModel):
     buffer_duration: int | None = Field(default=None, ge=0, le=120)
 
 
+class DateScheduleOut(BaseModel):
+    id: int
+    doctor_id: int
+    department_id: int
+    date: date
+    start_time: time
+    end_time: time
+    slot_duration: int
+    buffer_duration: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DateScheduleCreateIn(BaseModel):
+    department_id: int
+    date: date
+    start_time: time
+    end_time: time
+    slot_duration: int = Field(default=20, ge=5, le=240)
+    buffer_duration: int = Field(default=0, ge=0, le=120)
+
+
 class AbsenceOut(BaseModel):
     id: int
     doctor_id: int

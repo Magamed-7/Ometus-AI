@@ -4,8 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.model_absence import DoctorAbsence
+from app.models.model_date_schedule import DoctorDateSchedule
 from app.models.model_schedule import DoctorSchedule
-from app.schemas.schema_schedule import AbsenceCreateIn, ScheduleCreateIn, ScheduleUpdateIn
+from app.schemas.schema_schedule import (
+    AbsenceCreateIn,
+    DateScheduleCreateIn,
+    ScheduleCreateIn,
+    ScheduleUpdateIn,
+)
 from app.services import crud_appointment
 
 
@@ -103,6 +109,54 @@ async def delete_absence(absence: DoctorAbsence, db: AsyncSession):
     await db.commit()
 
 
+async def create_date_schedule(doctor_id: int, data: DateScheduleCreateIn, db: AsyncSession):
+    schedule = DoctorDateSchedule(
+        doctor_id=doctor_id,
+        department_id=data.department_id,
+        date=data.date,
+        start_time=data.start_time,
+        end_time=data.end_time,
+        slot_duration=data.slot_duration,
+        buffer_duration=data.buffer_duration,
+    )
+
+    db.add(schedule)
+    await db.commit()
+    await db.refresh(schedule)
+    return schedule
+
+
+async def get_date_schedules(doctor_id: int, db: AsyncSession):
+    result = await db.execute(
+        select(DoctorDateSchedule)
+        .where(DoctorDateSchedule.doctor_id == doctor_id)
+        .order_by(DoctorDateSchedule.date, DoctorDateSchedule.start_time)
+    )
+    return result.scalars().all()
+
+
+async def get_date_schedules_on(doctor_id: int, day: date, db: AsyncSession):
+    result = await db.execute(
+        select(DoctorDateSchedule)
+        .where(DoctorDateSchedule.doctor_id == doctor_id)
+        .where(DoctorDateSchedule.date == day)
+        .order_by(DoctorDateSchedule.start_time)
+    )
+    return result.scalars().all()
+
+
+async def get_date_schedule_by_id(schedule_id: int, db: AsyncSession):
+    result = await db.execute(
+        select(DoctorDateSchedule).where(DoctorDateSchedule.id == schedule_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def delete_date_schedule(schedule: DoctorDateSchedule, db: AsyncSession):
+    await db.delete(schedule)
+    await db.commit()
+
+
 async def is_absent(doctor_id: int, day: date, db: AsyncSession):
     result = await db.execute(
         select(DoctorAbsence)
@@ -140,7 +194,8 @@ async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
     if await is_absent(doctor_id, day, db):
         return []
 
-    schedules = await get_schedule_by_weekday(doctor_id, day.weekday(), db)
+    overrides = await get_date_schedules_on(doctor_id, day, db)
+    schedules = overrides or await get_schedule_by_weekday(doctor_id, day.weekday(), db)
     taken = await crud_appointment.get_taken_times(doctor_id, day, db)
     return slice_slots(day, schedules, taken)
 
