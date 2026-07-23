@@ -21,6 +21,7 @@ class DoctorSchedule(Base):
     start_time: Mapped[time] = mapped_column(Time, nullable=False)
     end_time: Mapped[time] = mapped_column(Time, nullable=False)
     slot_duration: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    buffer_duration: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
