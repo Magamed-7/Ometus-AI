@@ -358,3 +358,129 @@ async def test_list_appointments_forbidden_for_patient(client, db):
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def schedules_url(doctor_id):
+    return f"/api/admin/doctors/{doctor_id}/schedules"
+
+
+async def create_schedule(client, clinic, department_id=None, weekday=0, start="09:00", end="13:00"):
+    return await client.post(
+        schedules_url(clinic["first_doctor"]),
+        json={
+            "department_id": department_id or clinic["cardiology_id"],
+            "weekday": weekday,
+            "start_time": start,
+            "end_time": end,
+        },
+        headers=clinic["admin"],
+    )
+
+
+async def test_admin_creates_doctor_schedule(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await create_schedule(client, clinic)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["doctor_id"] == clinic["first_doctor"]
+    assert body["weekday"] == 0
+    assert body["slot_duration"] == 20
+
+    listing = await client.get(schedules_url(clinic["first_doctor"]), headers=clinic["admin"])
+    assert len(listing.json()) == 1
+
+
+async def test_admin_schedule_rejects_department_doctor_not_in(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await create_schedule(client, clinic, department_id=clinic["neurology_id"])
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "DOCTOR_NOT_IN_DEPARTMENT"
+
+
+async def test_admin_schedule_rejects_duplicate_weekday(client, db):
+    clinic = await setup_clinic(client, db)
+    await create_schedule(client, clinic)
+
+    response = await create_schedule(client, clinic)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "SCHEDULE_ALREADY_EXISTS"
+
+
+async def test_admin_schedule_rejects_invalid_time_range(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await create_schedule(client, clinic, start="13:00", end="09:00")
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_TIME_RANGE"
+
+
+async def test_admin_schedule_unknown_doctor(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.post(
+        schedules_url(999),
+        json={"department_id": clinic["cardiology_id"], "weekday": 0,
+              "start_time": "09:00", "end_time": "13:00"},
+        headers=clinic["admin"],
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "DOCTOR_NOT_FOUND"
+
+
+async def test_admin_updates_doctor_schedule(client, db):
+    clinic = await setup_clinic(client, db)
+    schedule_id = (await create_schedule(client, clinic)).json()["id"]
+
+    response = await client.put(
+        f"{schedules_url(clinic['first_doctor'])}/{schedule_id}",
+        json={"end_time": "15:00"},
+        headers=clinic["admin"],
+    )
+
+    assert response.status_code == 200
+    assert response.json()["end_time"] == "15:00:00"
+
+
+async def test_admin_deletes_doctor_schedule(client, db):
+    clinic = await setup_clinic(client, db)
+    schedule_id = (await create_schedule(client, clinic)).json()["id"]
+
+    response = await client.delete(
+        f"{schedules_url(clinic['first_doctor'])}/{schedule_id}", headers=clinic["admin"]
+    )
+
+    assert response.status_code == 200
+    listing = await client.get(schedules_url(clinic["first_doctor"]), headers=clinic["admin"])
+    assert listing.json() == []
+
+
+async def test_admin_update_schedule_wrong_doctor(client, db):
+    clinic = await setup_clinic(client, db)
+    schedule_id = (await create_schedule(client, clinic)).json()["id"]
+
+    response = await client.put(
+        f"{schedules_url(clinic['second_doctor'])}/{schedule_id}",
+        json={"end_time": "15:00"},
+        headers=clinic["admin"],
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "SCHEDULE_NOT_FOUND"
+
+
+async def test_admin_schedule_forbidden_for_patient(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.get(
+        schedules_url(clinic["first_doctor"]), headers=clinic["patient_headers"]
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
