@@ -22,7 +22,9 @@ export function AuthProvider({ children }) {
     }
 
     refreshUser()
-      .catch(() => clearTokens())
+      .catch((err) => {
+        if (err && err.status === 401) clearTokens();
+      })
       .finally(() => setLoading(false));
   }, [refreshUser]);
 
