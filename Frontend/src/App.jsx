@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import DocumentTitle from "./components/DocumentTitle.jsx";
 import Layout from "./components/Layout.jsx";
+import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
@@ -15,7 +16,7 @@ export default function App() {
       <DocumentTitle />
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<Placeholder name="Home" />} />
+          <Route path="/" element={<Home />} />
           <Route path="/doctors" element={<Placeholder name="Doctors" />} />
           <Route path="/doctors/:id" element={<Placeholder name="DoctorDetail" />} />
           <Route path="/booking" element={<Placeholder name="Booking" />} />

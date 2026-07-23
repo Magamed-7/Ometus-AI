@@ -1,0 +1,47 @@
+import { useT } from "../lib/i18n.jsx";
+
+export default function Home() {
+  const t = useT();
+
+  return (
+    <div>
+      <section className="relative overflow-hidden bg-surface-container-lowest py-xl md:py-32">
+        <div className="hero-pattern pointer-events-none absolute inset-0" />
+        <div className="relative z-10 mx-auto max-w-7xl px-lg">
+          <div className="flex flex-col items-center gap-lg md:flex-row">
+            <div className="flex-1 text-center md:text-left">
+              <span className="mb-md inline-block rounded-full bg-secondary-container px-4 py-1 text-label-md font-semibold text-on-secondary-container">
+                {t("home.badge")}
+              </span>
+              <h1 className="mb-sm text-headline-lg-mobile leading-tight text-on-surface md:text-headline-xl">
+                {t("home.title")}
+              </h1>
+              <p className="mb-xl max-w-xl text-body-lg text-on-surface-variant">
+                {t("home.subtitle")}
+              </p>
+            </div>
+
+            <div className="relative hidden flex-1 md:block">
+              <div className="relative h-[460px] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary-container shadow-2xl">
+                <div className="absolute inset-0 grid place-items-center">
+                  <span className="material-symbols-outlined text-[160px] text-on-primary/90">
+                    health_and_safety
+                  </span>
+                </div>
+              </div>
+              <div className="animate-bounce-slow absolute -bottom-6 -left-6 flex items-center gap-sm rounded-2xl border border-outline-variant bg-surface-container-lowest p-md shadow-xl">
+                <div className="grid h-12 w-12 place-items-center rounded-full bg-primary-container text-on-primary-container">
+                  <span className="material-symbols-outlined">verified</span>
+                </div>
+                <div>
+                  <p className="font-bold text-on-surface">{t("home.badgeSpecialists")}</p>
+                  <p className="text-label-md text-on-surface-variant">{t("home.badgeCategory")}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
