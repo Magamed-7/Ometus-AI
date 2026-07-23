@@ -11,6 +11,7 @@ class ScheduleOut(BaseModel):
     start_time: time
     end_time: time
     slot_duration: int
+    buffer_duration: int
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,6 +22,7 @@ class ScheduleCreateIn(BaseModel):
     start_time: time
     end_time: time
     slot_duration: int = Field(default=20, ge=5, le=240)
+    buffer_duration: int = Field(default=0, ge=0, le=120)
 
 
 class ScheduleUpdateIn(BaseModel):
@@ -29,6 +31,7 @@ class ScheduleUpdateIn(BaseModel):
     start_time: time | None = None
     end_time: time | None = None
     slot_duration: int | None = Field(default=None, ge=5, le=240)
+    buffer_duration: int | None = Field(default=None, ge=0, le=120)
 
 
 class AbsenceOut(BaseModel):

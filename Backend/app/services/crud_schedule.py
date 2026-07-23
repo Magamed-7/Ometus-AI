@@ -17,6 +17,7 @@ async def create_schedule(doctor_id: int, data: ScheduleCreateIn, db: AsyncSessi
         start_time=data.start_time,
         end_time=data.end_time,
         slot_duration=data.slot_duration,
+        buffer_duration=data.buffer_duration,
     )
 
     db.add(schedule)
@@ -55,6 +56,9 @@ async def update_schedule(schedule: DoctorSchedule, data: ScheduleUpdateIn, db: 
     schedule.start_time = data.start_time or schedule.start_time
     schedule.end_time = data.end_time or schedule.end_time
     schedule.slot_duration = data.slot_duration or schedule.slot_duration
+    schedule.buffer_duration = (
+        schedule.buffer_duration if data.buffer_duration is None else data.buffer_duration
+    )
 
     await db.commit()
     await db.refresh(schedule)
@@ -109,20 +113,16 @@ async def is_absent(doctor_id: int, day: date, db: AsyncSession):
     return result.scalars().first() is not None
 
 
-async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
-    if await is_absent(doctor_id, day, db):
-        return []
-
-    schedules = await get_schedule_by_weekday(doctor_id, day.weekday(), db)
-    taken = await crud_appointment.get_taken_times(doctor_id, day, db)
+def slice_slots(day: date, schedules, taken):
     slots = []
 
     for schedule in schedules:
         current = datetime.combine(day, schedule.start_time)
         end = datetime.combine(day, schedule.end_time)
-        step = timedelta(minutes=schedule.slot_duration)
+        length = timedelta(minutes=schedule.slot_duration)
+        stride = timedelta(minutes=schedule.slot_duration + schedule.buffer_duration)
 
-        while current + step <= end:
+        while current + length <= end:
             if current.time() not in taken:
                 slots.append(
                     {
@@ -131,9 +131,18 @@ async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
                         "department_id": schedule.department_id,
                     }
                 )
-            current = current + step
+            current = current + stride
 
     return slots
+
+
+async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
+    if await is_absent(doctor_id, day, db):
+        return []
+
+    schedules = await get_schedule_by_weekday(doctor_id, day.weekday(), db)
+    taken = await crud_appointment.get_taken_times(doctor_id, day, db)
+    return slice_slots(day, schedules, taken)
 
 
 async def find_slot(doctor_id: int, day: date, slot_time: time, db: AsyncSession):
