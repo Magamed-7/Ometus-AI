@@ -16,16 +16,30 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  const validate = () => {
+    const next = {};
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) next.email = t("errors.INVALID_CREDENTIALS");
+    if (!password) next.password = t("common.required");
+    return next;
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    const found = validate();
+    setErrors(found);
+    if (Object.keys(found).length) return;
+
     setSubmitting(true);
     try {
       await login(email, password);
       navigate("/account");
     } catch (err) {
-      toast.error(errorText(t, err));
+      const message = errorText(t, err);
+      setErrors({ form: message });
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -52,12 +66,19 @@ export default function Login() {
             {t("auth.loginSubtitle")}
           </p>
 
-          <form onSubmit={onSubmit} className="flex flex-col gap-md">
+          {errors.form && (
+            <div className="mb-md rounded-xl border border-error/40 bg-error-container px-4 py-3 text-body-md text-on-error-container">
+              {errors.form}
+            </div>
+          )}
+
+          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-md">
             <Field
               label={t("auth.email")}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              error={errors.email}
               required
               autoComplete="email"
             />
@@ -66,6 +87,7 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
               required
               autoComplete="current-password"
             />
