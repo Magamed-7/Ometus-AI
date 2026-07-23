@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import * as authApi from "../api/auth.js";
-import { client } from "../api/client.js";
+import * as usersApi from "../api/users.js";
 import { clearTokens, hasSession, onTokensCleared, setTokens } from "./tokens.js";
 
 const AuthContext = createContext(null);
@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(hasSession());
 
   const refreshUser = useCallback(async () => {
-    const me = await client.get("/api/users/me");
+    const me = await usersApi.getMe();
     setUser(me);
     return me;
   }, []);
