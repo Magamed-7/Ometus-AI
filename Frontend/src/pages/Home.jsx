@@ -1,7 +1,32 @@
+import { useState } from "react";
 import { useT } from "../lib/i18n.jsx";
+
+const SPECIALIZATIONS = [
+  "Кардиолог",
+  "Невролог",
+  "Педиатр",
+  "Терапевт",
+  "Хирург",
+  "Офтальмолог",
+  "ЛОР",
+  "Гастроэнтеролог",
+  "Эндокринолог",
+  "Дерматолог",
+  "Уролог",
+  "Гинеколог",
+  "Ортопед",
+];
 
 export default function Home() {
   const t = useT();
+  const [filials, setFilials] = useState([]);
+  const [spec, setSpec] = useState("");
+  const [filialId, setFilialId] = useState("");
+  const [date, setDate] = useState("");
+
+  const onSearch = (e) => {
+    e.preventDefault();
+  };
 
   return (
     <div>
@@ -19,6 +44,69 @@ export default function Home() {
               <p className="mb-xl max-w-xl text-body-lg text-on-surface-variant">
                 {t("home.subtitle")}
               </p>
+
+              <form
+                onSubmit={onSearch}
+                className="flex flex-col items-stretch gap-xs rounded-xl border border-outline-variant bg-surface-container-lowest p-xs shadow-lg md:flex-row md:items-center md:p-sm"
+              >
+                <div className="grid flex-1 grid-cols-1 gap-xs md:grid-cols-3">
+                  <div className="relative">
+                    <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
+                      stethoscope
+                    </span>
+                    <select
+                      value={spec}
+                      onChange={(e) => setSpec(e.target.value)}
+                      aria-label={t("home.specialty")}
+                      className="w-full appearance-none rounded-lg bg-surface-container-low py-3 pl-10 pr-4 text-body-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">{t("home.specialty")}</option>
+                      {SPECIALIZATIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="relative">
+                    <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
+                      location_on
+                    </span>
+                    <select
+                      value={filialId}
+                      onChange={(e) => setFilialId(e.target.value)}
+                      aria-label={t("home.filial")}
+                      className="w-full appearance-none rounded-lg bg-surface-container-low py-3 pl-10 pr-4 text-body-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">{t("home.filial")}</option>
+                      {filials.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="relative">
+                    <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
+                      calendar_month
+                    </span>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      aria-label={t("home.date")}
+                      className="w-full rounded-lg bg-surface-container-low py-3 pl-10 pr-4 text-body-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-primary px-lg py-3 font-bold text-on-primary transition-colors hover:bg-primary-container md:py-4"
+                >
+                  <span className="material-symbols-outlined">search</span>
+                  {t("home.find")}
+                </button>
+              </form>
             </div>
 
             <div className="relative hidden flex-1 md:block">
