@@ -82,6 +82,7 @@ export const en = {
     toRegister: "Sign up",
     toLogin: "Sign in",
     passwordMismatch: "Passwords do not match",
+    passwordMin: "Password must be at least 8 characters",
     verifySent: "The code was sent to your email during registration",
     resendStub: "If the email didn't arrive, register again or contact the clinic.",
   },

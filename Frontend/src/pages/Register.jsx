@@ -28,8 +28,21 @@ export default function Register() {
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  const validate = () => {
+    const next = {};
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) next.email = t("errors.VALIDATION_ERROR");
+    if (form.password.length < 8) next.password = t("auth.passwordMin");
+    if (form.passwordConfirm !== form.password) next.passwordConfirm = t("auth.passwordMismatch");
+    if (form.phone && form.phone.replace(/\D/g, "").length < 9) next.phone = t("errors.VALIDATION_ERROR");
+    return next;
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
+    const found = validate();
+    setErrors(found);
+    if (Object.keys(found).length) return;
+
     setSubmitting(true);
     try {
       await authApi.register({
