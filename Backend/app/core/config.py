@@ -7,6 +7,7 @@ load_dotenv()
 
 class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL")
+    SQL_ECHO: bool = os.getenv("SQL_ECHO", "False") == "True"
 
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-me")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
