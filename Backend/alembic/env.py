@@ -17,6 +17,7 @@ from app.models import (  # noqa: E402, F401
     model_absence,
     model_ai_log,
     model_appointment,
+    model_date_schedule,
     model_department,
     model_doctor,
     model_doctor_department,
