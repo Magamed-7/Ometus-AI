@@ -38,6 +38,24 @@ async def get_by_id(user_id: int, db: AsyncSession):
     return result.scalar_one_or_none()
 
 
+async def get_all_users(db: AsyncSession, role: str | None = None):
+    query = select(User)
+
+    if role:
+        query = query.where(User.role == role)
+
+    result = await db.execute(query.order_by(User.id))
+    return result.scalars().all()
+
+
+async def set_role(user: User, role: str, db: AsyncSession):
+    user.role = role
+
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 async def update_user(user: User, data: UserUpdateIn, db: AsyncSession):
     user.first_name = data.first_name or user.first_name
     user.last_name = data.last_name or user.last_name
