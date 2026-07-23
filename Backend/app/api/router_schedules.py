@@ -9,6 +9,8 @@ from app.db.database import get_db
 from app.schemas.schema_schedule import (
     AbsenceCreateIn,
     AbsenceOut,
+    DateScheduleCreateIn,
+    DateScheduleOut,
     ScheduleCreateIn,
     ScheduleOut,
     ScheduleUpdateIn,
@@ -103,6 +105,71 @@ async def delete_my_absence(
 
     await crud_schedule.delete_absence(absence, db)
     return {"message": "Отсутствие удалено"}
+
+
+@schedules_router.get("/me/dates", response_model=list[DateScheduleOut])
+async def get_my_date_schedules(
+    doctor=Depends(get_current_doctor), db: AsyncSession = Depends(get_db)
+):
+    return await crud_schedule.get_date_schedules(doctor.id, db)
+
+
+@schedules_router.post("/me/dates", response_model=DateScheduleOut)
+async def create_my_date_schedule(
+    data: DateScheduleCreateIn,
+    doctor=Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    if data.start_time >= data.end_time:
+        raise AppError(
+            code="INVALID_TIME_RANGE",
+            message="Начало работы должно быть раньше окончания",
+            status_code=400,
+        )
+
+    department = await crud_department.get_by_id(data.department_id, db)
+
+    if department is None:
+        raise AppError(
+            code="DEPARTMENT_NOT_FOUND", message="Отделение не найдено", status_code=404
+        )
+
+    departments = await crud_doctor.get_departments(doctor.id, db)
+
+    if data.department_id not in [item.id for item in departments]:
+        raise AppError(
+            code="DOCTOR_NOT_IN_DEPARTMENT",
+            message="Врач не работает в этом отделении",
+            status_code=400,
+        )
+
+    existing = await crud_schedule.get_date_schedules_on(doctor.id, data.date, db)
+
+    if data.department_id in [item.department_id for item in existing]:
+        raise AppError(
+            code="DATE_SCHEDULE_ALREADY_EXISTS",
+            message="Разовая смена на эту дату уже есть",
+            status_code=409,
+        )
+
+    return await crud_schedule.create_date_schedule(doctor.id, data, db)
+
+
+@schedules_router.delete("/me/dates/{schedule_id}")
+async def delete_my_date_schedule(
+    schedule_id: int,
+    doctor=Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    schedule = await crud_schedule.get_date_schedule_by_id(schedule_id, db)
+
+    if schedule is None or schedule.doctor_id != doctor.id:
+        raise AppError(
+            code="DATE_SCHEDULE_NOT_FOUND", message="Разовая смена не найдена", status_code=404
+        )
+
+    await crud_schedule.delete_date_schedule(schedule, db)
+    return {"message": "Разовая смена удалена"}
 
 
 @schedules_router.put("/me/{schedule_id}", response_model=ScheduleOut)
