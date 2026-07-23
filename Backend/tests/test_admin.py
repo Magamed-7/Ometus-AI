@@ -10,6 +10,7 @@ ADMIN_DEPARTMENTS_URL = "/api/admin/departments"
 ADMIN_DOCTORS_URL = "/api/admin/doctors"
 WORKLOAD_URL = "/api/admin/reports/workload"
 SUMMARY_URL = "/api/admin/reports/summary"
+APPOINTMENTS_URL = "/api/admin/appointments"
 
 FILIAL_DATA = {"name": "Ometus Центр", "city": "Душанбе", "address": "ул. Рудаки 100"}
 
@@ -279,6 +280,81 @@ async def test_summary_report_forbidden_for_doctor(client, db):
     doctor_headers = await auth_headers(client, "doctor@ometus.test")
 
     response = await client.get(SUMMARY_URL, params=PERIOD, headers=doctor_headers)
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def test_list_all_appointments_returns_every_record(client, db):
+    clinic = await setup_clinic(client, db)
+    await fill_appointments(db, clinic)
+
+    response = await client.get(APPOINTMENTS_URL, headers=clinic["admin"])
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 5
+    assert body[0]["doctor_name"] == "Иванова Мария"
+    assert body[0]["patient_id"] == clinic["patient_id"]
+    assert body[0]["specialization"] == "Кардиолог"
+
+
+async def test_list_appointments_filtered_by_doctor(client, db):
+    clinic = await setup_clinic(client, db)
+    await fill_appointments(db, clinic)
+    await add_appointment(
+        db, clinic, date(2026, 3, 9), time(9, 0), "booked", clinic["second_doctor"]
+    )
+
+    response = await client.get(
+        APPOINTMENTS_URL, params={"doctor_id": clinic["second_doctor"]}, headers=clinic["admin"]
+    )
+
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["doctor_id"] == clinic["second_doctor"]
+
+
+async def test_list_appointments_filtered_by_status(client, db):
+    clinic = await setup_clinic(client, db)
+    await fill_appointments(db, clinic)
+
+    response = await client.get(
+        APPOINTMENTS_URL, params={"status": "cancelled"}, headers=clinic["admin"]
+    )
+
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["status"] == "cancelled"
+
+
+async def test_list_appointments_filtered_by_period(client, db):
+    clinic = await setup_clinic(client, db)
+    await fill_appointments(db, clinic)
+
+    response = await client.get(APPOINTMENTS_URL, params=PERIOD, headers=clinic["admin"])
+
+    body = response.json()
+    assert len(body) == 4
+
+
+async def test_list_appointments_invalid_period(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.get(
+        APPOINTMENTS_URL,
+        params={"date_from": "2026-03-31", "date_to": "2026-03-01"},
+        headers=clinic["admin"],
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_DATE_RANGE"
+
+
+async def test_list_appointments_forbidden_for_patient(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.get(APPOINTMENTS_URL, headers=clinic["patient_headers"])
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
