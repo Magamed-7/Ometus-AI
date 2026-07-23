@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.schema_appointment import AppointmentCreateIn
+from app.schemas.schema_appointment import AppointmentCreateIn, AppointmentRescheduleIn
 from app.services import crud_appointment, crud_department, crud_doctor, crud_schedule
 
 SEARCH_DAYS_AHEAD = 14
@@ -135,4 +135,114 @@ async def book_appointment(
             "time": str(appointment.time),
             "status": appointment.status,
         }
+    )
+
+
+async def get_own_appointment(db: AsyncSession, current_patient, appointment_id: int):
+    appointment = await crud_appointment.get_by_id(appointment_id, db)
+
+    if appointment is None or appointment.patient_id != current_patient.id:
+        return None
+
+    return appointment
+
+
+async def cancel_appointment(db: AsyncSession, current_patient, appointment_id: int):
+    appointment = await get_own_appointment(db, current_patient, appointment_id)
+
+    if appointment is None:
+        return tool_error("APPOINTMENT_NOT_FOUND", "Запись не найдена")
+
+    if appointment.status != "booked":
+        return tool_error("APPOINTMENT_NOT_ACTIVE", "Запись уже закрыта")
+
+    await crud_appointment.set_status(appointment, "cancelled", db)
+
+    return tool_result({"appointment_id": appointment.id, "status": "cancelled"})
+
+
+async def reschedule_appointment(
+    db: AsyncSession, current_patient, appointment_id: int, day: date, slot_time: time
+):
+    appointment = await get_own_appointment(db, current_patient, appointment_id)
+
+    if appointment is None:
+        return tool_error("APPOINTMENT_NOT_FOUND", "Запись не найдена")
+
+    if appointment.status != "booked":
+        return tool_error("APPOINTMENT_NOT_ACTIVE", "Запись уже закрыта")
+
+    if not is_future(day, slot_time):
+        return tool_error("SLOT_IN_PAST", "Нельзя записаться на прошедшее время")
+
+    slot = await crud_schedule.find_slot(appointment.doctor_id, day, slot_time, db)
+
+    if slot is None:
+        return tool_error("SLOT_NOT_AVAILABLE", "Это время недоступно для записи")
+
+    data = AppointmentRescheduleIn(date=day, time=slot_time)
+    updated = await crud_appointment.reschedule_appointment(
+        appointment, slot["department_id"], data, db
+    )
+
+    if updated is None:
+        return tool_error("SLOT_TAKEN", "Это время только что заняли")
+
+    return tool_result(
+        {
+            "appointment_id": updated.id,
+            "date": str(updated.date),
+            "time": str(updated.time),
+            "status": updated.status,
+        }
+    )
+
+
+async def get_patient_appointments(
+    db: AsyncSession, current_patient, patient_id: int, status: str | None = None
+):
+    if current_patient.id != patient_id:
+        return tool_error(
+            "PERMISSION_DENIED", "Смотреть можно только свои записи, не чужие"
+        )
+
+    appointments = await crud_appointment.get_patient_appointments(patient_id, db, status)
+
+    return tool_result(
+        [
+            {
+                "appointment_id": appointment.id,
+                "doctor_id": appointment.doctor_id,
+                "department_id": appointment.department_id,
+                "date": str(appointment.date),
+                "time": str(appointment.time),
+                "status": appointment.status,
+            }
+            for appointment in appointments
+        ]
+    )
+
+
+async def get_doctor_schedule(db: AsyncSession, doctor_id: int):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        return tool_error("DOCTOR_NOT_FOUND", "Врач не найден")
+
+    schedules = await crud_schedule.get_schedules(doctor_id, db)
+
+    if not schedules:
+        return tool_error("NO_SCHEDULE", f"У врача {doctor.full_name} ещё нет расписания")
+
+    return tool_result(
+        [
+            {
+                "weekday": schedule.weekday,
+                "department_id": schedule.department_id,
+                "start_time": str(schedule.start_time),
+                "end_time": str(schedule.end_time),
+                "slot_duration": schedule.slot_duration,
+            }
+            for schedule in schedules
+        ]
     )
