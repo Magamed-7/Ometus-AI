@@ -15,12 +15,14 @@ from app.schemas.schema_appointment import AdminAppointmentOut
 from app.schemas.schema_doctor import DoctorCreateIn, DoctorDepartmentIn, DoctorOut, DoctorUpdateIn
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
 from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
+from app.schemas.schema_schedule import ScheduleCreateIn, ScheduleOut, ScheduleUpdateIn
 from app.services import (
     crud_appointment,
     crud_department,
     crud_doctor,
     crud_filial,
     crud_report,
+    crud_schedule,
     crud_user,
 )
 
@@ -222,6 +224,109 @@ async def get_workload_report(
             )
 
     return await crud_report.get_doctor_workload(db, date_from, date_to, department_id)
+
+
+@admin_router.get("/doctors/{doctor_id}/schedules", response_model=list[ScheduleOut])
+async def list_doctor_schedules(
+    doctor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    return await crud_schedule.get_schedules(doctor_id, db)
+
+
+@admin_router.post("/doctors/{doctor_id}/schedules", response_model=ScheduleOut)
+async def create_doctor_schedule(
+    doctor_id: int,
+    data: ScheduleCreateIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    if data.start_time >= data.end_time:
+        raise AppError(
+            code="INVALID_TIME_RANGE",
+            message="Начало работы должно быть раньше окончания",
+            status_code=400,
+        )
+
+    department = await crud_department.get_by_id(data.department_id, db)
+
+    if department is None:
+        raise AppError(
+            code="DEPARTMENT_NOT_FOUND", message="Отделение не найдено", status_code=404
+        )
+
+    departments = await crud_doctor.get_departments(doctor_id, db)
+
+    if data.department_id not in [item.id for item in departments]:
+        raise AppError(
+            code="DOCTOR_NOT_IN_DEPARTMENT",
+            message="Врач не работает в этом отделении",
+            status_code=400,
+        )
+
+    existing = await crud_schedule.get_schedule_by_weekday(doctor_id, data.weekday, db)
+
+    if data.department_id in [item.department_id for item in existing]:
+        raise AppError(
+            code="SCHEDULE_ALREADY_EXISTS",
+            message="Расписание на этот день уже есть",
+            status_code=409,
+        )
+
+    return await crud_schedule.create_schedule(doctor_id, data, db)
+
+
+@admin_router.put("/doctors/{doctor_id}/schedules/{schedule_id}", response_model=ScheduleOut)
+async def update_doctor_schedule(
+    doctor_id: int,
+    schedule_id: int,
+    data: ScheduleUpdateIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    schedule = await crud_schedule.get_schedule_by_id(schedule_id, db)
+
+    if schedule is None or schedule.doctor_id != doctor_id:
+        raise AppError(code="SCHEDULE_NOT_FOUND", message="Расписание не найдено", status_code=404)
+
+    start_time = data.start_time or schedule.start_time
+    end_time = data.end_time or schedule.end_time
+
+    if start_time >= end_time:
+        raise AppError(
+            code="INVALID_TIME_RANGE",
+            message="Начало работы должно быть раньше окончания",
+            status_code=400,
+        )
+
+    return await crud_schedule.update_schedule(schedule, data, db)
+
+
+@admin_router.delete("/doctors/{doctor_id}/schedules/{schedule_id}")
+async def delete_doctor_schedule(
+    doctor_id: int,
+    schedule_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    schedule = await crud_schedule.get_schedule_by_id(schedule_id, db)
+
+    if schedule is None or schedule.doctor_id != doctor_id:
+        raise AppError(code="SCHEDULE_NOT_FOUND", message="Расписание не найдено", status_code=404)
+
+    await crud_schedule.delete_schedule(schedule, db)
+    return {"message": "Расписание удалено"}
 
 
 @admin_router.get("/appointments", response_model=list[AdminAppointmentOut])
