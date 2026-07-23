@@ -1,6 +1,7 @@
 REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
 VERIFY_EMAIL_URL = "/api/auth/verify-email"
+REFRESH_URL = "/api/auth/refresh"
 
 
 async def register(client, email="patient@ometus.test", password="patient1234"):
@@ -107,3 +108,42 @@ async def test_verify_email_unknown_email(client):
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "USER_NOT_FOUND"
+
+
+async def login(client, email="patient@ometus.test", password="patient1234"):
+    return await client.post(LOGIN_URL, json={"email": email, "password": password})
+
+
+async def test_refresh_returns_new_access_token(client):
+    await register(client)
+    tokens = (await login(client)).json()
+
+    response = await client.post(REFRESH_URL, json={"refresh_token": tokens["refresh_token"]})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["access_token"]
+    assert body["token_type"] == "bearer"
+
+    me = await client.get(
+        "/api/users/me", headers={"Authorization": f"Bearer {body['access_token']}"}
+    )
+    assert me.status_code == 200
+    assert me.json()["email"] == "patient@ometus.test"
+
+
+async def test_refresh_rejects_access_token(client):
+    await register(client)
+    tokens = (await login(client)).json()
+
+    response = await client.post(REFRESH_URL, json={"refresh_token": tokens["access_token"]})
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_TOKEN"
+
+
+async def test_refresh_rejects_garbage_token(client):
+    response = await client.post(REFRESH_URL, json={"refresh_token": "not-a-token"})
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_TOKEN"
