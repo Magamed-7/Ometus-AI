@@ -7,6 +7,11 @@ function readTheme() {
     const saved = localStorage.getItem("ometus-theme");
     if (saved === "dark" || saved === "light") return saved;
   } catch (e) {}
+
+  try {
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+  } catch (e) {}
+
   return "light";
 }
 
