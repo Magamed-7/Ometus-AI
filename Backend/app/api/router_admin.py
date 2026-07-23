@@ -11,10 +11,18 @@ from app.schemas.schema_department import (
     DepartmentOut,
     DepartmentUpdateIn,
 )
+from app.schemas.schema_appointment import AdminAppointmentOut
 from app.schemas.schema_doctor import DoctorCreateIn, DoctorDepartmentIn, DoctorOut, DoctorUpdateIn
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
 from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
-from app.services import crud_department, crud_doctor, crud_filial, crud_report, crud_user
+from app.services import (
+    crud_appointment,
+    crud_department,
+    crud_doctor,
+    crud_filial,
+    crud_report,
+    crud_user,
+)
 
 admin_router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
@@ -214,6 +222,34 @@ async def get_workload_report(
             )
 
     return await crud_report.get_doctor_workload(db, date_from, date_to, department_id)
+
+
+@admin_router.get("/appointments", response_model=list[AdminAppointmentOut])
+async def list_all_appointments(
+    doctor_id: int | None = None,
+    patient_id: int | None = None,
+    status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if date_from and date_to and date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала должна быть раньше даты окончания",
+            status_code=400,
+        )
+
+    if doctor_id:
+        doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+        if doctor is None:
+            raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    return await crud_appointment.get_all_appointments(
+        db, doctor_id, patient_id, status, date_from, date_to
+    )
 
 
 @admin_router.get("/reports/summary", response_model=AppointmentsSummaryOut)
