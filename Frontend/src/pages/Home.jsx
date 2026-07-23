@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useT } from "../lib/i18n.jsx";
 
 const SPECIALIZATIONS = [
@@ -19,6 +20,7 @@ const SPECIALIZATIONS = [
 
 export default function Home() {
   const t = useT();
+  const navigate = useNavigate();
   const [filials, setFilials] = useState([]);
   const [spec, setSpec] = useState("");
   const [filialId, setFilialId] = useState("");
@@ -26,6 +28,12 @@ export default function Home() {
 
   const onSearch = (e) => {
     e.preventDefault();
+    const params = new URLSearchParams();
+    if (spec) params.set("specialization", spec);
+    if (filialId) params.set("filial_id", filialId);
+    if (date) params.set("date", date);
+    const qs = params.toString();
+    navigate(qs ? `/doctors?${qs}` : "/doctors");
   };
 
   return (
