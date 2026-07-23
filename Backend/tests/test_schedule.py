@@ -3,6 +3,7 @@ LOGIN_URL = "/api/auth/login"
 SCHEDULES_URL = "/api/schedules"
 MY_SCHEDULE_URL = "/api/schedules/me"
 MY_ABSENCES_URL = "/api/schedules/me/absences"
+MY_DATES_URL = "/api/schedules/me/dates"
 ADMIN_FILIALS_URL = "/api/admin/filials"
 ADMIN_DEPARTMENTS_URL = "/api/admin/departments"
 ADMIN_DOCTORS_URL = "/api/admin/doctors"
@@ -303,6 +304,157 @@ async def test_buffer_widens_gap_between_slots(client, db):
 
     assert response.status_code == 200
     assert [slot["time"] for slot in response.json()] == ["09:00:00", "09:40:00"]
+
+
+async def test_date_schedule_opens_a_day_off(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+
+    response = await client.post(
+        MY_DATES_URL,
+        json={
+            "department_id": department_id,
+            "date": "2026-07-28",
+            "start_time": "11:00:00",
+            "end_time": "12:00:00",
+            "slot_duration": 30,
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["date"] == "2026-07-28"
+
+    slots = await client.get(
+        f"{SCHEDULES_URL}/doctors/{doctor_id}/slots", params={"day": "2026-07-28"}
+    )
+    assert [slot["time"] for slot in slots.json()] == ["11:00:00", "11:30:00"]
+
+
+async def test_date_schedule_overrides_weekday_grid(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    await client.post(
+        MY_DATES_URL,
+        json={
+            "department_id": department_id,
+            "date": "2026-07-27",
+            "start_time": "14:00:00",
+            "end_time": "15:00:00",
+            "slot_duration": 30,
+        },
+        headers=headers,
+    )
+
+    slots = await client.get(
+        f"{SCHEDULES_URL}/doctors/{doctor_id}/slots", params={"day": "2026-07-27"}
+    )
+
+    assert [slot["time"] for slot in slots.json()] == ["14:00:00", "14:30:00"]
+
+
+async def test_date_schedule_yields_to_absence(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_DATES_URL,
+        json={
+            "department_id": department_id,
+            "date": "2026-07-28",
+            "start_time": "11:00:00",
+            "end_time": "12:00:00",
+        },
+        headers=headers,
+    )
+    await client.post(
+        MY_ABSENCES_URL,
+        json={"date_from": "2026-07-28", "date_to": "2026-07-28"},
+        headers=headers,
+    )
+
+    slots = await client.get(
+        f"{SCHEDULES_URL}/doctors/{doctor_id}/slots", params={"day": "2026-07-28"}
+    )
+
+    assert slots.json() == []
+
+
+async def test_date_schedule_duplicate(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    body = {
+        "department_id": department_id,
+        "date": "2026-07-28",
+        "start_time": "11:00:00",
+        "end_time": "12:00:00",
+    }
+    await client.post(MY_DATES_URL, json=body, headers=headers)
+
+    response = await client.post(MY_DATES_URL, json=body, headers=headers)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "DATE_SCHEDULE_ALREADY_EXISTS"
+
+
+async def test_date_schedule_in_foreign_department(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db, assign=False)
+
+    response = await client.post(
+        MY_DATES_URL,
+        json={
+            "department_id": department_id,
+            "date": "2026-07-28",
+            "start_time": "11:00:00",
+            "end_time": "12:00:00",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "DOCTOR_NOT_IN_DEPARTMENT"
+
+
+async def test_delete_date_schedule(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    created = await client.post(
+        MY_DATES_URL,
+        json={
+            "department_id": department_id,
+            "date": "2026-07-28",
+            "start_time": "11:00:00",
+            "end_time": "12:00:00",
+        },
+        headers=headers,
+    )
+
+    response = await client.delete(
+        f"{MY_DATES_URL}/{created.json()['id']}", headers=headers
+    )
+
+    assert response.status_code == 200
+    listed = await client.get(MY_DATES_URL, headers=headers)
+    assert listed.json() == []
+
+
+async def test_delete_foreign_date_schedule(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    created = await client.post(
+        MY_DATES_URL,
+        json={
+            "department_id": department_id,
+            "date": "2026-07-28",
+            "start_time": "11:00:00",
+            "end_time": "12:00:00",
+        },
+        headers=headers,
+    )
+    _, _, other_headers = await setup_doctor(client, db, "doctor2@ometus.test")
+
+    response = await client.delete(
+        f"{MY_DATES_URL}/{created.json()['id']}", headers=other_headers
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "DATE_SCHEDULE_NOT_FOUND"
 
 
 async def test_public_doctor_schedule(client, db):
