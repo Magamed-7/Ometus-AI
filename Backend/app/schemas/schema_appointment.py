@@ -36,3 +36,18 @@ class DoctorAppointmentOut(BaseModel):
     date: date
     time: time
     status: str
+
+
+class AdminAppointmentOut(BaseModel):
+    id: int
+    patient_id: int
+    patient_name: str | None = None
+    patient_phone: str | None = None
+    doctor_id: int
+    doctor_name: str
+    specialization: str
+    department_id: int
+    date: date
+    time: time
+    status: str
+    created_at: datetime

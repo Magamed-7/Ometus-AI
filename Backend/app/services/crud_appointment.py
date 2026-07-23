@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.model_appointment import Appointment
+from app.models.model_doctor import Doctor
 from app.models.model_patient import Patient
 from app.schemas.schema_appointment import AppointmentCreateIn, AppointmentRescheduleIn
 
@@ -81,6 +82,56 @@ async def get_doctor_appointments(
             "status": appointment.status,
         }
         for appointment, patient in result.all()
+    ]
+
+
+async def get_all_appointments(
+    db: AsyncSession,
+    doctor_id: int | None = None,
+    patient_id: int | None = None,
+    status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+):
+    query = (
+        select(Appointment, Patient, Doctor)
+        .join(Patient, Patient.id == Appointment.patient_id)
+        .join(Doctor, Doctor.id == Appointment.doctor_id)
+    )
+
+    if doctor_id:
+        query = query.where(Appointment.doctor_id == doctor_id)
+
+    if patient_id:
+        query = query.where(Appointment.patient_id == patient_id)
+
+    if status:
+        query = query.where(Appointment.status == status)
+
+    if date_from:
+        query = query.where(Appointment.date >= date_from)
+
+    if date_to:
+        query = query.where(Appointment.date <= date_to)
+
+    result = await db.execute(query.order_by(Appointment.date.desc(), Appointment.time.desc()))
+
+    return [
+        {
+            "id": appointment.id,
+            "patient_id": patient.id,
+            "patient_name": patient.full_name,
+            "patient_phone": patient.phone,
+            "doctor_id": doctor.id,
+            "doctor_name": doctor.full_name,
+            "specialization": doctor.specialization,
+            "department_id": appointment.department_id,
+            "date": appointment.date,
+            "time": appointment.time,
+            "status": appointment.status,
+            "created_at": appointment.created_at,
+        }
+        for appointment, patient, doctor in result.all()
     ]
 
 
