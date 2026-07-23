@@ -11,6 +11,7 @@ ADMIN_DOCTORS_URL = "/api/admin/doctors"
 WORKLOAD_URL = "/api/admin/reports/workload"
 SUMMARY_URL = "/api/admin/reports/summary"
 APPOINTMENTS_URL = "/api/admin/appointments"
+USERS_URL = "/api/admin/users"
 
 FILIAL_DATA = {"name": "Ometus Центр", "city": "Душанбе", "address": "ул. Рудаки 100"}
 
@@ -481,6 +482,92 @@ async def test_admin_schedule_forbidden_for_patient(client, db):
     response = await client.get(
         schedules_url(clinic["first_doctor"]), headers=clinic["patient_headers"]
     )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def user_id_by_email(client, admin, email):
+    users = await client.get(USERS_URL, headers=admin)
+    return next(user["id"] for user in users.json() if user["email"] == email)
+
+
+async def test_admin_lists_all_users(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.get(USERS_URL, headers=clinic["admin"])
+
+    assert response.status_code == 200
+    emails = {user["email"] for user in response.json()}
+    assert emails == {
+        "admin@ometus.test",
+        "doctor@ometus.test",
+        "doctor2@ometus.test",
+        "patient@ometus.test",
+    }
+
+
+async def test_admin_lists_users_filtered_by_role(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.get(USERS_URL, params={"role": "doctor"}, headers=clinic["admin"])
+
+    body = response.json()
+    assert len(body) == 2
+    assert all(user["role"] == "doctor" for user in body)
+
+
+async def test_admin_grants_admin_role(client, db):
+    clinic = await setup_clinic(client, db)
+    patient_user = await user_id_by_email(client, clinic["admin"], "patient@ometus.test")
+
+    response = await client.put(
+        f"{USERS_URL}/{patient_user}/role", json={"role": "admin"}, headers=clinic["admin"]
+    )
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "admin"
+
+
+async def test_admin_change_role_to_doctor_requires_card(client, db):
+    clinic = await setup_clinic(client, db)
+    patient_user = await user_id_by_email(client, clinic["admin"], "patient@ometus.test")
+
+    response = await client.put(
+        f"{USERS_URL}/{patient_user}/role", json={"role": "doctor"}, headers=clinic["admin"]
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "DOCTOR_CARD_REQUIRED"
+
+
+async def test_admin_cannot_change_own_role(client, db):
+    clinic = await setup_clinic(client, db)
+    admin_user = await user_id_by_email(client, clinic["admin"], "admin@ometus.test")
+
+    response = await client.put(
+        f"{USERS_URL}/{admin_user}/role", json={"role": "patient"}, headers=clinic["admin"]
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "SELF_ROLE_CHANGE"
+
+
+async def test_admin_change_role_unknown_user(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.put(
+        f"{USERS_URL}/999/role", json={"role": "admin"}, headers=clinic["admin"]
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "USER_NOT_FOUND"
+
+
+async def test_admin_users_forbidden_for_patient(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.get(USERS_URL, headers=clinic["patient_headers"])
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
