@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import DocumentTitle from "./components/DocumentTitle.jsx";
 
 function Placeholder({ name }) {
   return <div className="p-lg text-on-surface-variant">{name}</div>;
@@ -6,7 +7,9 @@ function Placeholder({ name }) {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <DocumentTitle />
+      <Routes>
       <Route path="/" element={<Placeholder name="Home" />} />
       <Route path="/doctors" element={<Placeholder name="Doctors" />} />
       <Route path="/doctors/:id" element={<Placeholder name="DoctorDetail" />} />
@@ -23,7 +26,8 @@ export default function App() {
       <Route path="/admin/departments" element={<Placeholder name="AdminDepartments" />} />
       <Route path="/admin/doctors" element={<Placeholder name="AdminDoctors" />} />
       <Route path="/admin/reports" element={<Placeholder name="AdminReports" />} />
-      <Route path="*" element={<Placeholder name="NotFound" />} />
-    </Routes>
+        <Route path="*" element={<Placeholder name="NotFound" />} />
+      </Routes>
+    </>
   );
 }
