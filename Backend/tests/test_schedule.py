@@ -279,6 +279,32 @@ async def test_delete_absence(client, db):
     assert listed.json() == []
 
 
+async def test_create_schedule_defaults_buffer_to_zero(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+
+    response = await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+
+    assert response.json()["buffer_duration"] == 0
+
+
+async def test_buffer_widens_gap_between_slots(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL,
+        json={**WORKDAY, "department_id": department_id, "buffer_duration": 20},
+        headers=headers,
+    )
+
+    response = await client.get(
+        f"{SCHEDULES_URL}/doctors/{doctor_id}/slots", params={"day": "2026-07-27"}
+    )
+
+    assert response.status_code == 200
+    assert [slot["time"] for slot in response.json()] == ["09:00:00", "09:40:00"]
+
+
 async def test_public_doctor_schedule(client, db):
     doctor_id, department_id, headers = await setup_doctor(client, db)
     await client.post(
