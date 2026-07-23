@@ -16,11 +16,13 @@ from app.schemas.schema_doctor import DoctorCreateIn, DoctorDepartmentIn, Doctor
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
 from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
 from app.schemas.schema_schedule import ScheduleCreateIn, ScheduleOut, ScheduleUpdateIn
+from app.schemas.schema_user import RoleUpdateIn, UserOut
 from app.services import (
     crud_appointment,
     crud_department,
     crud_doctor,
     crud_filial,
+    crud_patient,
     crud_report,
     crud_schedule,
     crud_user,
@@ -372,3 +374,44 @@ async def get_summary_report(
         )
 
     return await crud_report.get_appointments_summary(db, date_from, date_to)
+
+
+@admin_router.get("/users", response_model=list[UserOut])
+async def list_users(
+    role: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    return await crud_user.get_all_users(db, role)
+
+
+@admin_router.put("/users/{user_id}/role", response_model=UserOut)
+async def change_user_role(
+    user_id: int,
+    data: RoleUpdateIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if user_id == current_user.id:
+        raise AppError(
+            code="SELF_ROLE_CHANGE",
+            message="Нельзя менять собственную роль",
+            status_code=400,
+        )
+
+    user = await crud_user.get_by_id(user_id, db)
+
+    if user is None:
+        raise AppError(code="USER_NOT_FOUND", message="Пользователь не найден", status_code=404)
+
+    if data.role == "doctor" and await crud_doctor.get_by_user_id(user_id, db) is None:
+        raise AppError(
+            code="DOCTOR_CARD_REQUIRED",
+            message="Сначала заведите карточку врача через создание врача",
+            status_code=400,
+        )
+
+    if data.role == "patient" and await crud_patient.get_by_user_id(user_id, db) is None:
+        await crud_patient.create_patient(user, db)
+
+    return await crud_user.set_role(user, data.role, db)
