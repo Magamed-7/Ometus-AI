@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import DocumentTitle from "./components/DocumentTitle.jsx";
 import Layout from "./components/Layout.jsx";
+import Login from "./pages/Login.jsx";
 
 function Placeholder({ name }) {
   return <div className="p-lg text-on-surface-variant">{name}</div>;
@@ -27,7 +28,7 @@ export default function App() {
           <Route path="/admin/reports" element={<Placeholder name="AdminReports" />} />
           <Route path="*" element={<Placeholder name="NotFound" />} />
         </Route>
-        <Route path="/login" element={<Placeholder name="Login" />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Placeholder name="Register" />} />
         <Route path="/verify-email" element={<Placeholder name="VerifyEmail" />} />
       </Routes>
