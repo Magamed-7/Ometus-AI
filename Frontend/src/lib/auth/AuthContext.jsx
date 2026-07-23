@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import * as authApi from "../api/auth.js";
 import { client } from "../api/client.js";
 import { clearTokens, hasSession, onTokensCleared, setTokens } from "./tokens.js";
 
@@ -29,7 +30,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(
     async (email, password) => {
-      const tokens = await client.post("/api/auth/login", { email, password }, { auth: false });
+      const tokens = await authApi.login(email, password);
       setTokens(tokens);
       return refreshUser();
     },
