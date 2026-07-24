@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getFilials } from "../lib/api/filials.js";
+import { searchDoctors } from "../lib/api/doctors.js";
 import { workingHours } from "../lib/mocks/filials.js";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
@@ -10,6 +11,15 @@ const mapsUrl = (f) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     `${f.name} ${f.city} ${f.address}`
   )}`;
+
+const initials = (name) =>
+  (name || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
 const SPECIALIZATIONS = [
   "Кардиолог",
@@ -32,6 +42,8 @@ export default function Home() {
   const navigate = useNavigate();
   const [filials, setFilials] = useState([]);
   const [filialsLoading, setFilialsLoading] = useState(true);
+  const [doctors, setDoctors] = useState([]);
+  const [doctorsLoading, setDoctorsLoading] = useState(true);
   const [spec, setSpec] = useState("");
   const [filialId, setFilialId] = useState("");
   const [date, setDate] = useState("");
@@ -42,6 +54,10 @@ export default function Home() {
       .then((data) => active && setFilials(data))
       .catch(() => {})
       .finally(() => active && setFilialsLoading(false));
+    searchDoctors()
+      .then((data) => active && setDoctors(data.slice(0, 6)))
+      .catch(() => {})
+      .finally(() => active && setDoctorsLoading(false));
     return () => {
       active = false;
     };
@@ -211,6 +227,48 @@ export default function Home() {
                   </div>
                 </Card>
               ))}
+        </div>
+      </section>
+
+      <section className="bg-surface-container-low py-xl">
+        <div className="mx-auto max-w-7xl px-lg">
+          <div className="mb-lg flex flex-col justify-between gap-sm md:flex-row md:items-end">
+            <div>
+              <h2 className="mb-xs text-headline-lg-mobile text-on-surface md:text-headline-lg">
+                {t("home.doctorsTitle")}
+              </h2>
+              <p className="text-body-md text-on-surface-variant">{t("home.doctorsSubtitle")}</p>
+            </div>
+            <Link
+              to="/doctors"
+              className="self-start rounded-full border border-outline bg-surface px-md py-2 text-label-md font-semibold text-on-surface transition-colors hover:bg-surface-variant md:self-auto"
+            >
+              {t("home.allDoctors")}
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-md sm:grid-cols-2 md:grid-cols-3">
+            {doctorsLoading
+              ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
+              : doctors.map((d) => (
+                  <Card key={d.id} className="flex flex-col items-center p-md text-center">
+                    <div className="mb-md grid h-28 w-28 place-items-center rounded-full border-4 border-surface-container bg-primary-container text-on-primary-container">
+                      <span className="text-headline-lg font-bold">{initials(d.full_name)}</span>
+                    </div>
+                    <h4 className="mb-base text-headline-md font-semibold text-on-surface">
+                      {d.full_name}
+                    </h4>
+                    <p className="mb-lg text-label-md font-bold uppercase tracking-wider text-primary">
+                      {d.specialization}
+                    </p>
+                    <Link
+                      to={`/booking/${d.id}`}
+                      className="mt-auto w-full rounded-xl bg-primary py-3 font-bold text-on-primary transition-all hover:bg-primary-container hover:shadow-lg"
+                    >
+                      {t("home.book")}
+                    </Link>
+                  </Card>
+                ))}
+          </div>
         </div>
       </section>
     </div>
