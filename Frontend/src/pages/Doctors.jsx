@@ -4,6 +4,7 @@ import { searchDoctors } from "../lib/api/doctors.js";
 import { getFilials } from "../lib/api/filials.js";
 import { useT } from "../lib/i18n.jsx";
 import DoctorCard from "../components/DoctorCard.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
@@ -150,11 +151,19 @@ export default function Doctors() {
         <div className="flex-grow">
           {error ? (
             <ErrorState onRetry={load} />
+          ) : loading ? (
+            <div className="grid grid-cols-1 gap-md sm:grid-cols-2 xl:grid-cols-3">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-64" />
+              ))}
+            </div>
+          ) : doctors.length === 0 ? (
+            <EmptyState icon="search_off" title={t("doctors.empty")} />
           ) : (
             <div className="grid grid-cols-1 gap-md sm:grid-cols-2 xl:grid-cols-3">
-              {loading
-                ? [0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-64" />)
-                : doctors.map((d) => <DoctorCard key={d.id} doctor={d} />)}
+              {doctors.map((d) => (
+                <DoctorCard key={d.id} doctor={d} />
+              ))}
             </div>
           )}
         </div>
