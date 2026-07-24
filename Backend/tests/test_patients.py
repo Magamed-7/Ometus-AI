@@ -119,3 +119,52 @@ async def test_patients_are_isolated(client):
     assert first.json()["full_name"] == "Aziz"
     assert second.json()["full_name"] == "Farrukh"
     assert first.json()["id"] != second.json()["id"]
+
+
+DEPENDENTS_URL = "/api/users/me/dependents"
+
+
+async def test_create_dependent(client):
+    await register(client, first_name="Aziz")
+    headers = await auth_headers(client)
+
+    response = await client.post(
+        DEPENDENTS_URL,
+        json={"full_name": "Малыш Негматов", "date_of_birth": "2020-01-01"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["full_name"] == "Малыш Негматов"
+    assert body["user_id"] is None
+    assert body["guardian_user_id"] is not None
+
+
+async def test_list_dependents(client):
+    await register(client, first_name="Aziz")
+    headers = await auth_headers(client)
+
+    await client.post(DEPENDENTS_URL, json={"full_name": "Малыш"}, headers=headers)
+    await client.post(DEPENDENTS_URL, json={"full_name": "Бабушка"}, headers=headers)
+
+    response = await client.get(DEPENDENTS_URL, headers=headers)
+
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+
+async def test_dependents_isolated_between_guardians(client):
+    await register(client, first_name="Aziz")
+    await register(client, "other@ometus.test", first_name="Farrukh")
+
+    await client.post(
+        DEPENDENTS_URL, json={"full_name": "Малыш"}, headers=await auth_headers(client)
+    )
+
+    response = await client.get(
+        DEPENDENTS_URL, headers=await auth_headers(client, "other@ometus.test")
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []

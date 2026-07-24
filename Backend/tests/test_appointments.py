@@ -547,3 +547,53 @@ async def test_double_emergency_same_time_conflicts(client, db):
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "SLOT_TAKEN"
+
+
+DEPENDENTS_URL = "/api/users/me/dependents"
+
+
+async def test_book_for_own_dependent(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    dependent = await client.post(
+        DEPENDENTS_URL, json={"full_name": "Малыш"}, headers=headers
+    )
+    dependent_id = dependent.json()["id"]
+
+    response = await client.post(
+        APPOINTMENTS_URL,
+        json={
+            "doctor_id": doctor_id,
+            "date": str(next_workday()),
+            "time": "09:00:00",
+            "patient_id": dependent_id,
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["patient_id"] == dependent_id
+
+
+async def test_cannot_book_for_others_dependent(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    owner_id, owner_headers = await setup_patient(client)
+    dependent = await client.post(
+        DEPENDENTS_URL, json={"full_name": "Малыш"}, headers=owner_headers
+    )
+    dependent_id = dependent.json()["id"]
+    stranger_id, stranger_headers = await setup_patient(client, "stranger@ometus.test")
+
+    response = await client.post(
+        APPOINTMENTS_URL,
+        json={
+            "doctor_id": doctor_id,
+            "date": str(next_workday()),
+            "time": "09:00:00",
+            "patient_id": dependent_id,
+        },
+        headers=stranger_headers,
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "PERMISSION_DENIED"
