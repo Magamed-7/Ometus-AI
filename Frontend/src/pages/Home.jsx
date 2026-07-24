@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getFilials } from "../lib/api/filials.js";
 import { searchDoctors } from "../lib/api/doctors.js";
 import { workingHours } from "../lib/mocks/filials.js";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
+import ErrorState from "../components/ErrorState.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
 const mapsUrl = (f) =>
@@ -42,26 +43,36 @@ export default function Home() {
   const navigate = useNavigate();
   const [filials, setFilials] = useState([]);
   const [filialsLoading, setFilialsLoading] = useState(true);
+  const [filialsError, setFilialsError] = useState(false);
   const [doctors, setDoctors] = useState([]);
   const [doctorsLoading, setDoctorsLoading] = useState(true);
+  const [doctorsError, setDoctorsError] = useState(false);
   const [spec, setSpec] = useState("");
   const [filialId, setFilialId] = useState("");
   const [date, setDate] = useState("");
 
-  useEffect(() => {
-    let active = true;
-    getFilials()
-      .then((data) => active && setFilials(data))
-      .catch(() => {})
-      .finally(() => active && setFilialsLoading(false));
-    searchDoctors()
-      .then((data) => active && setDoctors(data.slice(0, 6)))
-      .catch(() => {})
-      .finally(() => active && setDoctorsLoading(false));
-    return () => {
-      active = false;
-    };
+  const loadFilials = useCallback(() => {
+    setFilialsLoading(true);
+    setFilialsError(false);
+    return getFilials()
+      .then(setFilials)
+      .catch(() => setFilialsError(true))
+      .finally(() => setFilialsLoading(false));
   }, []);
+
+  const loadDoctors = useCallback(() => {
+    setDoctorsLoading(true);
+    setDoctorsError(false);
+    return searchDoctors()
+      .then((data) => setDoctors(data.slice(0, 6)))
+      .catch(() => setDoctorsError(true))
+      .finally(() => setDoctorsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadFilials();
+    loadDoctors();
+  }, [loadFilials, loadDoctors]);
 
   const onSearch = (e) => {
     e.preventDefault();
@@ -185,6 +196,9 @@ export default function Home() {
             <p className="text-body-md text-on-surface-variant">{t("home.branchesSubtitle")}</p>
           </div>
         </div>
+        {filialsError ? (
+          <ErrorState onRetry={loadFilials} />
+        ) : (
         <div className="grid grid-cols-1 gap-md md:grid-cols-3">
           {filialsLoading
             ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
@@ -228,6 +242,7 @@ export default function Home() {
                 </Card>
               ))}
         </div>
+        )}
       </section>
 
       <section className="bg-surface-container-low py-xl">
@@ -246,6 +261,9 @@ export default function Home() {
               {t("home.allDoctors")}
             </Link>
           </div>
+          {doctorsError ? (
+            <ErrorState onRetry={loadDoctors} />
+          ) : (
           <div className="grid grid-cols-1 gap-md sm:grid-cols-2 md:grid-cols-3">
             {doctorsLoading
               ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
@@ -269,6 +287,7 @@ export default function Home() {
                   </Card>
                 ))}
           </div>
+          )}
         </div>
       </section>
     </div>
