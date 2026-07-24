@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { searchDoctors } from "../lib/api/doctors.js";
 import { useT } from "../lib/i18n.jsx";
-import Card from "../components/Card.jsx";
+import DoctorCard from "../components/DoctorCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
@@ -49,20 +49,7 @@ export default function Doctors() {
         <div className="grid grid-cols-1 gap-md sm:grid-cols-2 xl:grid-cols-3">
           {loading
             ? [0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-64" />)
-            : doctors.map((d) => (
-                <Card key={d.id} className="flex flex-col p-md">
-                  <h3 className="text-headline-md font-semibold text-on-surface">{d.full_name}</h3>
-                  <p className="mt-base text-label-md font-bold uppercase tracking-wider text-primary">
-                    {d.specialization}
-                  </p>
-                  <Link
-                    to={`/booking/${d.id}`}
-                    className="mt-md rounded-xl bg-primary py-3 text-center font-bold text-on-primary transition-all hover:opacity-90 active:scale-95"
-                  >
-                    {t("doctors.book")}
-                  </Link>
-                </Card>
-              ))}
+            : doctors.map((d) => <DoctorCard key={d.id} doctor={d} />)}
         </div>
       )}
     </div>
