@@ -16,9 +16,13 @@ test_engine = create_async_engine(
 TestSessionLocal = async_sessionmaker(bind=test_engine, expire_on_commit=False)
 
 
+def unicode_lower(value):
+    return value.lower() if value is not None else None
+
+
 @event.listens_for(test_engine.sync_engine, "connect")
 def register_unicode_lower(dbapi_connection, connection_record):
-    dbapi_connection.driver_connection._conn.create_function("lower", 1, str.lower)
+    dbapi_connection.driver_connection._conn.create_function("lower", 1, unicode_lower)
 
 
 async def override_get_db():

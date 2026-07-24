@@ -250,3 +250,104 @@ async def test_get_doctor_not_found(client):
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "DOCTOR_NOT_FOUND"
+
+
+async def test_add_specialization(client, db):
+    headers = await admin_headers(client, db)
+    doctor = await create_doctor(client, headers)
+
+    response = await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor['id']}/specializations",
+        json={"name": "Терапевт"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    specializations = await client.get(f"{DOCTORS_URL}/{doctor['id']}/specializations")
+    assert len(specializations.json()) == 1
+    assert specializations.json()[0]["name"] == "Терапевт"
+
+
+async def test_add_specialization_duplicate(client, db):
+    headers = await admin_headers(client, db)
+    doctor = await create_doctor(client, headers)
+
+    await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor['id']}/specializations",
+        json={"name": "Терапевт"},
+        headers=headers,
+    )
+    response = await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor['id']}/specializations",
+        json={"name": "Терапевт"},
+        headers=headers,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "SPECIALIZATION_ALREADY_EXISTS"
+
+
+async def test_add_specialization_forbidden_for_patient(client, db):
+    headers = await admin_headers(client, db)
+    doctor = await create_doctor(client, headers)
+    await register(client, "patient@ometus.test")
+    patient_headers = await auth_headers(client, "patient@ometus.test")
+
+    response = await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor['id']}/specializations",
+        json={"name": "Терапевт"},
+        headers=patient_headers,
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def test_remove_specialization(client, db):
+    headers = await admin_headers(client, db)
+    doctor = await create_doctor(client, headers)
+
+    await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor['id']}/specializations",
+        json={"name": "Терапевт"},
+        headers=headers,
+    )
+    response = await client.delete(
+        f"{ADMIN_DOCTORS_URL}/{doctor['id']}/specializations/Терапевт", headers=headers
+    )
+
+    assert response.status_code == 200
+
+    specializations = await client.get(f"{DOCTORS_URL}/{doctor['id']}/specializations")
+    assert specializations.json() == []
+
+
+async def test_remove_specialization_not_found(client, db):
+    headers = await admin_headers(client, db)
+    doctor = await create_doctor(client, headers)
+
+    response = await client.delete(
+        f"{ADMIN_DOCTORS_URL}/{doctor['id']}/specializations/Терапевт", headers=headers
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "SPECIALIZATION_NOT_FOUND"
+
+
+async def test_search_doctors_by_additional_specialization(client, db):
+    headers = await admin_headers(client, db)
+    doctor = await create_doctor(client, headers)
+
+    await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor['id']}/specializations",
+        json={"name": "Терапевт"},
+        headers=headers,
+    )
+
+    response = await client.get(DOCTORS_URL, params={"specialization": "Терапевт"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["id"] == doctor["id"]
