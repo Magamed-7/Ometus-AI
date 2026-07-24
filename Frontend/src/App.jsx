@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import DocumentTitle from "./components/DocumentTitle.jsx";
 import Layout from "./components/Layout.jsx";
+import Booking from "./pages/Booking.jsx";
 import DoctorDetail from "./pages/DoctorDetail.jsx";
 import Doctors from "./pages/Doctors.jsx";
 import Home from "./pages/Home.jsx";
@@ -21,8 +22,8 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/doctors" element={<Doctors />} />
           <Route path="/doctors/:id" element={<DoctorDetail />} />
-          <Route path="/booking" element={<Placeholder name="Booking" />} />
-          <Route path="/booking/:doctorId" element={<Placeholder name="Booking" />} />
+          <Route path="/booking" element={<Booking />} />
+          <Route path="/booking/:doctorId" element={<Booking />} />
           <Route path="/assistant" element={<Placeholder name="Assistant" />} />
           <Route path="/account" element={<Placeholder name="Account" />} />
           <Route path="/doctor/today" element={<Placeholder name="DoctorToday" />} />
