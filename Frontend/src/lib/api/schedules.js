@@ -4,6 +4,9 @@ import { client } from "./client.js";
 export const getSlots = (doctorId, day) =>
   client.get(`/api/schedules/doctors/${doctorId}/slots?day=${day}`, { auth: false });
 
+export const getDoctorSchedule = (doctorId) =>
+  client.get(`/api/schedules/doctors/${doctorId}`, { auth: false });
+
 export async function findNearestSlot(doctorId, days = 14) {
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(
