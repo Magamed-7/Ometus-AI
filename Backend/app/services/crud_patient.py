@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.model_patient import Patient
 from app.models.model_user import User
-from app.schemas.schema_patient import PatientUpdateIn
+from app.schemas.schema_patient import DependentCreateIn, PatientUpdateIn
 
 
 async def create_patient(user: User, db: AsyncSession):
@@ -39,3 +39,36 @@ async def update_patient(patient: Patient, data: PatientUpdateIn, db: AsyncSessi
     await db.commit()
     await db.refresh(patient)
     return patient
+
+
+async def create_dependent(guardian: User, data: DependentCreateIn, db: AsyncSession):
+    patient = Patient(
+        user_id=None,
+        guardian_user_id=guardian.id,
+        full_name=data.full_name,
+        date_of_birth=data.date_of_birth,
+        phone=data.phone,
+    )
+
+    db.add(patient)
+    await db.commit()
+    await db.refresh(patient)
+    return patient
+
+
+async def get_dependents(guardian_user_id: int, db: AsyncSession):
+    result = await db.execute(
+        select(Patient)
+        .where(Patient.guardian_user_id == guardian_user_id)
+        .order_by(Patient.id)
+    )
+    return result.scalars().all()
+
+
+async def is_bookable_by(patient_id: int, user_id: int, db: AsyncSession):
+    patient = await get_by_id(patient_id, db)
+
+    if patient is None:
+        return False
+
+    return patient.user_id == user_id or patient.guardian_user_id == user_id
