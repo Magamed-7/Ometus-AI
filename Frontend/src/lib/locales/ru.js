@@ -25,6 +25,7 @@ export const ru = {
     retry: "Повторить",
     save: "Сохранить",
     saving: "Сохранение…",
+    saved: "Сохранено",
     cancel: "Отмена",
     delete: "Удалить",
     edit: "Изменить",

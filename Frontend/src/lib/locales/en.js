@@ -25,6 +25,7 @@ export const en = {
     retry: "Retry",
     save: "Save",
     saving: "Saving…",
+    saved: "Saved",
     cancel: "Cancel",
     delete: "Delete",
     edit: "Edit",
