@@ -455,3 +455,95 @@ async def test_completed_slot_stays_taken(client, db):
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "SLOT_NOT_AVAILABLE"
+
+
+EMERGENCY_URL = "/api/appointments/emergency"
+
+
+async def registrar_headers(client, db):
+    from sqlalchemy import select
+
+    from app.models.model_user import User
+
+    await register(client, "registrar@ometus.test")
+
+    result = await db.execute(select(User).where(User.email == "registrar@ometus.test"))
+    user = result.scalar_one()
+    user.role = "registrar"
+    await db.commit()
+
+    return await auth_headers(client, "registrar@ometus.test")
+
+
+async def book_emergency(
+    client, headers, patient_id, doctor_id, department_id, slot_time="08:00:00", day=None
+):
+    return await client.post(
+        EMERGENCY_URL,
+        json={
+            "patient_id": patient_id,
+            "doctor_id": doctor_id,
+            "department_id": department_id,
+            "date": str(day or next_workday()),
+            "time": slot_time,
+        },
+        headers=headers,
+    )
+
+
+async def test_registrar_books_emergency_off_grid(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, _ = await setup_patient(client)
+    headers = await registrar_headers(client, db)
+
+    response = await book_emergency(client, headers, patient_id, doctor_id, department_id)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["is_emergency"] is True
+    assert body["patient_id"] == patient_id
+    assert body["time"] == "08:00:00"
+
+
+async def test_admin_books_emergency(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, _ = await setup_patient(client)
+    headers = await admin_headers(client, db)
+
+    response = await book_emergency(client, headers, patient_id, doctor_id, department_id)
+
+    assert response.status_code == 200
+    assert response.json()["is_emergency"] is True
+
+
+async def test_patient_cannot_book_emergency(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    response = await book_emergency(client, headers, patient_id, doctor_id, department_id)
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def test_emergency_doctor_not_in_department(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, _ = await setup_patient(client)
+    headers = await registrar_headers(client, db)
+
+    response = await book_emergency(client, headers, patient_id, doctor_id, 999)
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "DOCTOR_NOT_IN_DEPARTMENT"
+
+
+async def test_double_emergency_same_time_conflicts(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, _ = await setup_patient(client)
+    headers = await registrar_headers(client, db)
+
+    await book_emergency(client, headers, patient_id, doctor_id, department_id)
+    response = await book_emergency(client, headers, patient_id, doctor_id, department_id)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "SLOT_TAKEN"
