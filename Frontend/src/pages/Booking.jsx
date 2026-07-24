@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getDoctor } from "../lib/api/doctors.js";
-import { isoDate } from "../lib/format.js";
+import { getSlots } from "../lib/api/schedules.js";
+import { clock, isoDate } from "../lib/format.js";
 import { avatarAccent } from "../lib/mocks/doctors.js";
 import { useI18n } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
@@ -42,9 +43,34 @@ export default function Booking() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => isoDate(new Date()));
 
+  const [slots, setSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState(false);
+
   const todayIso = isoDate(new Date());
   const shorts = t("weekdays.short");
   const weekDays = [0, 1, 2, 3, 4, 5, 6].map((offset) => addDays(weekStart, offset));
+
+  const loadSlots = useCallback(() => {
+    if (!doctorId) return Promise.resolve();
+    setSlotsLoading(true);
+    setSlotsError(false);
+    return getSlots(doctorId, selectedDate)
+      .then(setSlots)
+      .catch(() => setSlotsError(true))
+      .finally(() => setSlotsLoading(false));
+  }, [doctorId, selectedDate]);
+
+  useEffect(() => {
+    loadSlots();
+  }, [loadSlots]);
+
+  const nowTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(
+    new Date().getMinutes()
+  ).padStart(2, "0")}`;
+  const visibleSlots = slots.filter(
+    (slot) => selectedDate !== todayIso || String(slot.time).slice(0, 5) > nowTime
+  );
 
   const load = useCallback(() => {
     if (!doctorId) return Promise.resolve();
@@ -171,7 +197,32 @@ export default function Booking() {
               })}
             </div>
           </Card>
-          <Card className="p-md" id="slots-section" />
+          <Card className="p-md">
+            <h3 className="mb-md text-headline-md font-semibold text-on-surface">
+              {t("booking.slots")}
+            </h3>
+            {slotsError ? (
+              <ErrorState onRetry={loadSlots} />
+            ) : slotsLoading ? (
+              <div className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5">
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
+                  <Skeleton key={i} className="h-12" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5">
+                {visibleSlots.map((slot) => (
+                  <button
+                    key={slot.time}
+                    type="button"
+                    className="rounded-lg border border-outline-variant py-3 text-body-md font-bold text-on-surface transition-all hover:bg-surface-container"
+                  >
+                    {clock(slot.time)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
         <div className="lg:col-span-1">
           <div className="sticky top-24">
