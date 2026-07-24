@@ -21,6 +21,7 @@ from app.models import (  # noqa: E402, F401
     model_department,
     model_doctor,
     model_doctor_department,
+    model_doctor_specialization,
     model_filial,
     model_patient,
     model_schedule,
