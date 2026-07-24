@@ -1,6 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getFilials } from "../lib/api/filials.js";
 import { useT } from "../lib/i18n.jsx";
+import Card from "../components/Card.jsx";
+import Skeleton from "../components/Skeleton.jsx";
+
+const mapsUrl = (f) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    `${f.name} ${f.city} ${f.address}`
+  )}`;
 
 const SPECIALIZATIONS = [
   "Кардиолог",
@@ -22,9 +30,21 @@ export default function Home() {
   const t = useT();
   const navigate = useNavigate();
   const [filials, setFilials] = useState([]);
+  const [filialsLoading, setFilialsLoading] = useState(true);
   const [spec, setSpec] = useState("");
   const [filialId, setFilialId] = useState("");
   const [date, setDate] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getFilials()
+      .then((data) => active && setFilials(data))
+      .catch(() => {})
+      .finally(() => active && setFilialsLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const onSearch = (e) => {
     e.preventDefault();
@@ -136,6 +156,52 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-lg py-xl">
+        <div className="mb-lg flex items-end justify-between gap-sm">
+          <div>
+            <h2 className="mb-xs text-headline-lg-mobile text-on-surface md:text-headline-lg">
+              {t("home.branchesTitle")}
+            </h2>
+            <p className="text-body-md text-on-surface-variant">{t("home.branchesSubtitle")}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-md md:grid-cols-3">
+          {filialsLoading
+            ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
+            : filials.map((f) => (
+                <Card key={f.id} className="group overflow-hidden transition-all hover:shadow-xl">
+                  <div className="relative h-40 overflow-hidden bg-gradient-to-br from-primary to-primary-container">
+                    <div className="absolute inset-0 grid place-items-center">
+                      <span className="material-symbols-outlined text-6xl text-on-primary/90">
+                        apartment
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-md">
+                    <h3 className="mb-xs text-headline-md font-semibold text-on-surface">{f.name}</h3>
+                    <div className="mb-md flex items-start gap-xs text-on-surface-variant">
+                      <span className="material-symbols-outlined mt-0.5 text-base text-primary">
+                        location_on
+                      </span>
+                      <span className="text-body-md">
+                        {f.city}, {f.address}
+                      </span>
+                    </div>
+                    <a
+                      href={mapsUrl(f)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary py-3 font-bold text-primary transition-all hover:bg-primary hover:text-on-primary"
+                    >
+                      <span className="material-symbols-outlined text-lg">directions</span>
+                      {t("home.route")}
+                    </a>
+                  </div>
+                </Card>
+              ))}
         </div>
       </section>
     </div>
