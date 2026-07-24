@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFilials } from "../lib/api/filials.js";
+import { workingHours } from "../lib/mocks/filials.js";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
@@ -189,6 +190,14 @@ export default function Home() {
                       <span className="text-body-md">
                         {f.city}, {f.address}
                       </span>
+                    </div>
+                    <div className="mb-lg flex items-center gap-sm text-label-md">
+                      <span className="flex items-center gap-1 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-sm text-primary">schedule</span>
+                        {workingHours().open} – {workingHours().close}
+                      </span>
+                      <span className="text-outline-variant">|</span>
+                      <span className="text-on-surface-variant">{t("home.noDaysOff")}</span>
                     </div>
                     <a
                       href={mapsUrl(f)}
