@@ -271,7 +271,24 @@ export default function Account() {
                   </AppointmentCard>
                 ))
               ))}
-            {tab === "history" && <Card className="p-md" />}
+            {tab === "history" &&
+              (error ? (
+                <ErrorState onRetry={loadAppointments} />
+              ) : loading ? (
+                <Skeleton className="h-32" />
+              ) : historyAppointments.length === 0 ? (
+                <EmptyState icon="history" title={t("account.noHistory")} />
+              ) : (
+                historyAppointments.map((a) => (
+                  <AppointmentCard
+                    key={a.id}
+                    appointment={a}
+                    doctor={doctors[a.doctor_id]}
+                    department={departments[a.department_id]}
+                    filial={filials[departments[a.department_id]?.filial_id]}
+                  />
+                ))
+              ))}
             {tab === "documents" && <Card className="p-md" />}
           </div>
         </div>
