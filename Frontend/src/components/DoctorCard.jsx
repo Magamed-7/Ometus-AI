@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { avatarAccent } from "../lib/mocks/doctors.js";
 import { useT } from "../lib/i18n.jsx";
 import Card from "./Card.jsx";
 
@@ -18,7 +19,11 @@ export default function DoctorCard({ doctor, footer }) {
   return (
     <Card className="flex flex-col p-md">
       <div className="flex items-center gap-md">
-        <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-primary-container text-on-primary-container">
+        <div
+          className={`grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br text-on-primary ${avatarAccent(
+            doctor.id
+          )}`}
+        >
           <span className="text-headline-md font-bold">{initials(doctor.full_name)}</span>
         </div>
         <div className="min-w-0">
