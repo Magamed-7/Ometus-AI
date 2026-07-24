@@ -121,6 +121,25 @@ export default function Booking() {
           <Card className="p-md">
             <div className="mb-md flex items-center justify-between">
               <h3 className="text-headline-md font-semibold text-on-surface">{t("booking.week")}</h3>
+              <div className="flex gap-xs">
+                <button
+                  type="button"
+                  disabled={isoDate(weekStart) <= isoDate(startOfWeek(new Date()))}
+                  onClick={() => setWeekStart((prev) => addDays(prev, -7))}
+                  aria-label={t("booking.prevWeek")}
+                  className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant transition-all hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span className="material-symbols-outlined">chevron_left</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWeekStart((prev) => addDays(prev, 7))}
+                  aria-label={t("booking.nextWeek")}
+                  className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant transition-all hover:bg-surface-container"
+                >
+                  <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-7 gap-xs md:gap-sm">
               {weekDays.map((date) => {
