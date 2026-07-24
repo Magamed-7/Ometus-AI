@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.db.database import get_db
 from app.schemas.schema_department import DepartmentOut
-from app.schemas.schema_doctor import DoctorOut
+from app.schemas.schema_doctor import DoctorOut, SpecializationOut
 from app.services import crud_doctor
 
 doctors_router = APIRouter(prefix="/api/doctors", tags=["Doctors"])
@@ -38,3 +38,13 @@ async def get_doctor_departments(doctor_id: int, db: AsyncSession = Depends(get_
         raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
 
     return await crud_doctor.get_departments(doctor_id, db)
+
+
+@doctors_router.get("/{doctor_id}/specializations", response_model=list[SpecializationOut])
+async def get_doctor_specializations(doctor_id: int, db: AsyncSession = Depends(get_db)):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    return await crud_doctor.get_specializations(doctor_id, db)
