@@ -222,6 +222,15 @@ export default function Booking() {
                   <Skeleton key={i} className="h-12" />
                 ))}
               </div>
+            ) : visibleSlots.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-xl text-center">
+                <span className="material-symbols-outlined mb-sm text-6xl text-outline">
+                  event_busy
+                </span>
+                <p className="text-headline-md font-semibold text-on-surface-variant">
+                  {t("booking.noSlots")}
+                </p>
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5">
                 {visibleSlots.map((slot) => {
