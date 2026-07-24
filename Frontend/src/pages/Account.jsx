@@ -1,10 +1,21 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
+import ProfileSidebar from "../components/ProfileSidebar.jsx";
 
 export default function Account() {
   const t = useT();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("active");
+  const [editing, setEditing] = useState(false);
+
+  const onLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   const tabs = [
     { id: "active", label: t("account.tabActive") },
@@ -15,8 +26,13 @@ export default function Account() {
   return (
     <div className="mx-auto max-w-7xl px-sm py-md md:px-lg">
       <div className="grid grid-cols-1 items-start gap-md lg:grid-cols-12">
-        <aside className="lg:col-span-4">
-          <Card className="p-md" />
+        <aside className="lg:col-span-4 lg:sticky lg:top-24">
+          <ProfileSidebar
+            user={user}
+            editing={editing}
+            onToggleEdit={() => setEditing((v) => !v)}
+            onLogout={onLogout}
+          />
         </aside>
 
         <div className="lg:col-span-8">
