@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Time, func, text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, String, Time, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -29,6 +29,9 @@ class Appointment(Base):
     date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     time: Mapped[time] = mapped_column(Time, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="booked")
+    is_emergency: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
