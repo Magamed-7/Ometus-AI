@@ -1,6 +1,8 @@
 import { Route, Routes } from "react-router-dom";
 import DocumentTitle from "./components/DocumentTitle.jsx";
 import Layout from "./components/Layout.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import Account from "./pages/Account.jsx";
 import Booking from "./pages/Booking.jsx";
 import DoctorDetail from "./pages/DoctorDetail.jsx";
 import Doctors from "./pages/Doctors.jsx";
@@ -25,7 +27,14 @@ export default function App() {
           <Route path="/booking" element={<Booking />} />
           <Route path="/booking/:doctorId" element={<Booking />} />
           <Route path="/assistant" element={<Placeholder name="Assistant" />} />
-          <Route path="/account" element={<Placeholder name="Account" />} />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <Account />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/doctor/today" element={<Placeholder name="DoctorToday" />} />
           <Route path="/doctor/schedule" element={<Placeholder name="DoctorSchedule" />} />
           <Route path="/admin/filials" element={<Placeholder name="AdminFilials" />} />
