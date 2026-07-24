@@ -7,9 +7,9 @@ import { getFilials } from "../lib/api/filials.js";
 import { getPatient, updateMe, updatePatient } from "../lib/api/users.js";
 import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
-import { clock, formatDate } from "../lib/format.js";
 import { useI18n } from "../lib/i18n.jsx";
 import { useToast } from "../lib/toast.jsx";
+import AppointmentCard from "../components/AppointmentCard.jsx";
 import Button from "../components/Button.jsx";
 import Card from "../components/Card.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -17,10 +17,9 @@ import ErrorState from "../components/ErrorState.jsx";
 import { Field } from "../components/Field.jsx";
 import ProfileSidebar from "../components/ProfileSidebar.jsx";
 import Skeleton from "../components/Skeleton.jsx";
-import StatusPill from "../components/StatusPill.jsx";
 
 export default function Account() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -232,17 +231,13 @@ export default function Account() {
                 <EmptyState icon="event_available" title={t("account.noActive")} />
               ) : (
                 activeAppointments.map((a) => (
-                  <Card key={a.id} className="flex items-center justify-between p-md">
-                    <div>
-                      <p className="font-bold text-on-surface">
-                        {doctors[a.doctor_id]?.full_name || "—"}
-                      </p>
-                      <p className="text-body-md text-on-surface-variant">
-                        {formatDate(a.date, lang)}, {clock(a.time)}
-                      </p>
-                    </div>
-                    <StatusPill status={a.status} />
-                  </Card>
+                  <AppointmentCard
+                    key={a.id}
+                    appointment={a}
+                    doctor={doctors[a.doctor_id]}
+                    department={departments[a.department_id]}
+                    filial={filials[departments[a.department_id]?.filial_id]}
+                  />
                 ))
               ))}
             {tab === "history" && <Card className="p-md" />}
