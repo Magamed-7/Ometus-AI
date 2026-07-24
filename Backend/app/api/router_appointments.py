@@ -3,7 +3,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.permissions import get_current_doctor, get_current_patient
+from app.api.permissions import get_current_doctor, get_current_patient, require_staff
 from app.core.errors import AppError
 from app.db.database import get_db
 from app.schemas.schema_appointment import (
@@ -11,8 +11,9 @@ from app.schemas.schema_appointment import (
     AppointmentOut,
     AppointmentRescheduleIn,
     DoctorAppointmentOut,
+    EmergencyAppointmentIn,
 )
-from app.services import crud_appointment, crud_doctor, crud_schedule
+from app.services import crud_appointment, crud_doctor, crud_patient, crud_schedule
 
 appointments_router = APIRouter(prefix="/api/appointments", tags=["Appointments"])
 
@@ -79,6 +80,48 @@ async def book_appointment(
     appointment = await crud_appointment.create_appointment(
         patient.id, slot["department_id"], data, db
     )
+
+    if appointment is None:
+        raise AppError(
+            code="SLOT_TAKEN", message="Это время только что заняли", status_code=409
+        )
+
+    return appointment
+
+
+@appointments_router.post("/emergency", response_model=AppointmentOut)
+async def book_emergency_appointment(
+    data: EmergencyAppointmentIn,
+    current_user=Depends(require_staff),
+    db: AsyncSession = Depends(get_db),
+):
+    patient = await crud_patient.get_by_id(data.patient_id, db)
+
+    if patient is None:
+        raise AppError(code="PATIENT_NOT_FOUND", message="Пациент не найден", status_code=404)
+
+    doctor = await crud_doctor.get_by_id(data.doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    departments = await crud_doctor.get_departments(data.doctor_id, db)
+
+    if data.department_id not in [item.id for item in departments]:
+        raise AppError(
+            code="DOCTOR_NOT_IN_DEPARTMENT",
+            message="Врач не работает в этом отделении",
+            status_code=400,
+        )
+
+    if datetime.combine(data.date, data.time) < datetime.now():
+        raise AppError(
+            code="SLOT_IN_PAST",
+            message="Нельзя записаться на прошедшее время",
+            status_code=400,
+        )
+
+    appointment = await crud_appointment.create_emergency_appointment(data, db)
 
     if appointment is None:
         raise AppError(
