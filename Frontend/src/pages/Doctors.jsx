@@ -131,6 +131,19 @@ export default function Doctors() {
                 </div>
               </div>
             )}
+
+            {(spec || filialIds.length > 0) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSpec("");
+                  setFilialIds([]);
+                }}
+                className="mt-md w-full rounded-lg bg-secondary-container py-3 font-bold text-on-secondary-container transition-all hover:bg-surface-container-high"
+              >
+                {t("doctors.reset")}
+              </button>
+            )}
           </div>
         </aside>
 
