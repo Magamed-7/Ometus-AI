@@ -289,7 +289,13 @@ export default function Account() {
                   />
                 ))
               ))}
-            {tab === "documents" && <Card className="p-md" />}
+            {tab === "documents" && (
+              <EmptyState
+                icon="folder_open"
+                title={t("account.noDocuments")}
+                text={t("account.documentsHint")}
+              />
+            )}
           </div>
         </div>
       </div>

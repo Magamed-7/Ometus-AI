@@ -163,6 +163,7 @@ export const en = {
     noActive: "No active appointments",
     noHistory: "Visit history is empty",
     noDocuments: "No reports yet",
+    documentsHint: "Test results and doctor's reports will appear here after your visit.",
     cancel: "Cancel appointment",
     reschedule: "Reschedule",
     cancelConfirm: "Cancel this appointment?",
