@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.model_appointment import Appointment
 from app.models.model_doctor import Doctor
 from app.models.model_patient import Patient
-from app.schemas.schema_appointment import AppointmentCreateIn, AppointmentRescheduleIn
+from app.schemas.schema_appointment import (
+    AppointmentCreateIn,
+    AppointmentRescheduleIn,
+    EmergencyAppointmentIn,
+)
 
 ACTIVE_STATUSES = ["booked", "completed", "no_show"]
 
@@ -22,6 +26,29 @@ async def create_appointment(
         date=data.date,
         time=data.time,
         status="booked",
+    )
+
+    db.add(appointment)
+
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        return None
+
+    await db.refresh(appointment)
+    return appointment
+
+
+async def create_emergency_appointment(data: EmergencyAppointmentIn, db: AsyncSession):
+    appointment = Appointment(
+        patient_id=data.patient_id,
+        doctor_id=data.doctor_id,
+        department_id=data.department_id,
+        date=data.date,
+        time=data.time,
+        status="booked",
+        is_emergency=True,
     )
 
     db.add(appointment)
@@ -129,6 +156,7 @@ async def get_all_appointments(
             "date": appointment.date,
             "time": appointment.time,
             "status": appointment.status,
+            "is_emergency": appointment.is_emergency,
             "created_at": appointment.created_at,
         }
         for appointment, patient, doctor in result.all()

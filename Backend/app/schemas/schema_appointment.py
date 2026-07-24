@@ -11,6 +11,7 @@ class AppointmentOut(BaseModel):
     date: date
     time: time
     status: str
+    is_emergency: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -18,6 +19,14 @@ class AppointmentOut(BaseModel):
 
 class AppointmentCreateIn(BaseModel):
     doctor_id: int
+    date: date
+    time: time
+
+
+class EmergencyAppointmentIn(BaseModel):
+    patient_id: int
+    doctor_id: int
+    department_id: int
     date: date
     time: time
 
@@ -50,4 +59,5 @@ class AdminAppointmentOut(BaseModel):
     date: date
     time: time
     status: str
+    is_emergency: bool
     created_at: datetime

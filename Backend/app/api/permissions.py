@@ -16,6 +16,12 @@ def require_role(role: str):
     return role_checker
 
 
+def require_staff(current_user=Depends(get_current_user)):
+    if current_user.role not in ("registrar", "admin"):
+        raise AppError(code="FORBIDDEN", message="Недостаточно прав", status_code=403)
+    return current_user
+
+
 async def get_current_doctor(
     current_user=Depends(require_role("doctor")), db: AsyncSession = Depends(get_db)
 ):

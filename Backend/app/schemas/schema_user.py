@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-Role = Literal["patient", "doctor", "admin"]
+Role = Literal["patient", "doctor", "admin", "registrar"]
 
 
 class UserOut(BaseModel):
