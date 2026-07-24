@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getMyAppointments } from "../lib/api/appointments.js";
+import { cancelAppointment, getMyAppointments } from "../lib/api/appointments.js";
 import { getDepartments } from "../lib/api/departments.js";
 import { searchDoctors } from "../lib/api/doctors.js";
 import { getFilials } from "../lib/api/filials.js";
@@ -64,6 +64,16 @@ export default function Account() {
 
   const activeAppointments = appointments.filter((a) => a.status === "booked");
   const historyAppointments = appointments.filter((a) => a.status !== "booked");
+
+  const onCancel = async (id) => {
+    if (!window.confirm(t("account.cancelConfirm"))) return;
+    try {
+      await cancelAppointment(id);
+      await loadAppointments();
+    } catch (err) {
+      toast.error(errorText(t, err));
+    }
+  };
 
   const onLogout = () => {
     logout();
@@ -237,7 +247,18 @@ export default function Account() {
                     doctor={doctors[a.doctor_id]}
                     department={departments[a.department_id]}
                     filial={filials[departments[a.department_id]?.filial_id]}
-                  />
+                  >
+                    <div className="flex flex-wrap gap-sm">
+                      <Button
+                        variant="danger"
+                        icon="close"
+                        onClick={() => onCancel(a.id)}
+                        className="flex-1"
+                      >
+                        {t("account.cancel")}
+                      </Button>
+                    </div>
+                  </AppointmentCard>
                 ))
               ))}
             {tab === "history" && <Card className="p-md" />}
