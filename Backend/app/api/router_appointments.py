@@ -54,6 +54,17 @@ async def book_appointment(
     if doctor is None:
         raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
 
+    patient_id = patient.id
+
+    if data.patient_id and data.patient_id != patient.id:
+        if not await crud_patient.is_bookable_by(data.patient_id, patient.user_id, db):
+            raise AppError(
+                code="PERMISSION_DENIED",
+                message="Нельзя записать этого пациента",
+                status_code=403,
+            )
+        patient_id = data.patient_id
+
     if datetime.combine(data.date, data.time) < datetime.now():
         raise AppError(
             code="SLOT_IN_PAST",
@@ -61,7 +72,7 @@ async def book_appointment(
             status_code=400,
         )
 
-    if await crud_appointment.has_active_appointment(patient.id, data.doctor_id, data.date, db):
+    if await crud_appointment.has_active_appointment(patient_id, data.doctor_id, data.date, db):
         raise AppError(
             code="ALREADY_BOOKED",
             message="У вас уже есть запись к этому врачу на этот день",
@@ -78,7 +89,7 @@ async def book_appointment(
         )
 
     appointment = await crud_appointment.create_appointment(
-        patient.id, slot["department_id"], data, db
+        patient_id, slot["department_id"], data, db
     )
 
     if appointment is None:

@@ -21,6 +21,7 @@ class AppointmentCreateIn(BaseModel):
     doctor_id: int
     date: date
     time: time
+    patient_id: int | None = None
 
 
 class EmergencyAppointmentIn(BaseModel):
