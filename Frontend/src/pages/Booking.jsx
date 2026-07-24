@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getDoctor, getDoctorDepartments } from "../lib/api/doctors.js";
-import { getSlots } from "../lib/api/schedules.js";
-import { clock, formatDate, isoDate } from "../lib/format.js";
+import { getDoctorSchedule, getSlots } from "../lib/api/schedules.js";
+import { clock, formatDate, isoDate, weekdayIndex } from "../lib/format.js";
 import { avatarAccent } from "../lib/mocks/doctors.js";
 import { useI18n } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
@@ -48,6 +48,7 @@ export default function Booking() {
   const [slotsError, setSlotsError] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [departments, setDepartments] = useState({});
+  const [workdays, setWorkdays] = useState(new Set());
 
   const todayIso = isoDate(new Date());
   const shorts = t("weekdays.short");
@@ -76,7 +77,13 @@ export default function Booking() {
     getDoctorDepartments(doctorId)
       .then((deps) => setDepartments(Object.fromEntries(deps.map((d) => [d.id, d.name]))))
       .catch(() => {});
+    getDoctorSchedule(doctorId)
+      .then((rows) => setWorkdays(new Set(rows.map((row) => row.weekday))))
+      .catch(() => {});
   }, [doctorId]);
+
+  const showAbsence =
+    !slotsLoading && !slotsError && visibleSlots.length === 0 && workdays.has(weekdayIndex(selectedDate));
 
   const nowTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(
     new Date().getMinutes()
@@ -221,6 +228,11 @@ export default function Booking() {
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
                   <Skeleton key={i} className="h-12" />
                 ))}
+              </div>
+            ) : showAbsence ? (
+              <div className="flex items-center gap-sm rounded-lg bg-tertiary-container p-sm text-on-tertiary-container">
+                <span className="material-symbols-outlined">info</span>
+                <p className="text-body-md">{t("booking.absence")}</p>
               </div>
             ) : visibleSlots.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-xl text-center">
