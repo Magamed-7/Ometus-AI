@@ -110,7 +110,15 @@ export default function Booking() {
       });
       setBooked(appointment);
     } catch (e) {
-      toast.error(errorText(t, e));
+      if (e.code === "SLOT_TAKEN" || e.code === "SLOT_NOT_AVAILABLE") {
+        toast.error(t("booking.slotTaken"));
+        setSelectedSlot(null);
+        loadSlots();
+      } else if (e.code === "ALREADY_BOOKED") {
+        toast.error(t("booking.alreadyBooked"));
+      } else {
+        toast.error(errorText(t, e));
+      }
     } finally {
       setBooking(false);
     }
