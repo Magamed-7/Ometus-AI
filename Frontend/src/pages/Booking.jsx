@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { bookAppointment } from "../lib/api/appointments.js";
 import { getDoctor, getDoctorDepartments } from "../lib/api/doctors.js";
 import { getDoctorSchedule, getSlots } from "../lib/api/schedules.js";
+import { errorText } from "../lib/api/errorText.js";
+import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { clock, formatDate, isoDate, weekdayIndex } from "../lib/format.js";
 import { avatarAccent } from "../lib/mocks/doctors.js";
 import { useI18n } from "../lib/i18n.jsx";
+import { useToast } from "../lib/toast.jsx";
 import Card from "../components/Card.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import ErrorState from "../components/ErrorState.jsx";
@@ -37,6 +41,10 @@ function addDays(value, days) {
 export default function Booking() {
   const { t, lang } = useI18n();
   const { doctorId } = useParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const toast = useToast();
   const [doctor, setDoctor] = useState(null);
   const [loading, setLoading] = useState(Boolean(doctorId));
   const [error, setError] = useState(false);
@@ -49,6 +57,8 @@ export default function Booking() {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [departments, setDepartments] = useState({});
   const [workdays, setWorkdays] = useState(new Set());
+  const [booking, setBooking] = useState(false);
+  const [booked, setBooked] = useState(null);
 
   const todayIso = isoDate(new Date());
   const shorts = t("weekdays.short");
@@ -84,6 +94,27 @@ export default function Booking() {
 
   const showAbsence =
     !slotsLoading && !slotsError && visibleSlots.length === 0 && workdays.has(weekdayIndex(selectedDate));
+
+  const onConfirm = async () => {
+    if (!user) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+    if (!selectedSlot) return;
+    setBooking(true);
+    try {
+      const appointment = await bookAppointment({
+        doctor_id: Number(doctorId),
+        date: selectedDate,
+        time: selectedSlot.time,
+      });
+      setBooked(appointment);
+    } catch (e) {
+      toast.error(errorText(t, e));
+    } finally {
+      setBooking(false);
+    }
+  };
 
   const nowTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(
     new Date().getMinutes()
@@ -138,6 +169,17 @@ export default function Booking() {
     return (
       <div className="mx-auto max-w-7xl px-md py-lg md:px-lg">
         <ErrorState onRetry={load} />
+      </div>
+    );
+  }
+
+  if (booked) {
+    return (
+      <div className="mx-auto max-w-lg px-md py-xl text-center md:px-lg">
+        <span className="material-symbols-outlined text-6xl text-primary">check_circle</span>
+        <h1 className="mt-md text-headline-md font-bold text-on-surface">
+          {t("booking.successTitle")}
+        </h1>
       </div>
     );
   }
@@ -315,10 +357,11 @@ export default function Booking() {
               <hr className="my-md border-outline-variant" />
               <button
                 type="button"
-                disabled={!selectedSlot}
+                onClick={onConfirm}
+                disabled={!selectedSlot || booking}
                 className="w-full rounded-lg bg-primary py-4 text-headline-md font-semibold text-on-primary shadow-md transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {t("booking.confirm")}
+                {booking ? t("booking.booking") : t("booking.confirm")}
               </button>
             </Card>
           </div>
