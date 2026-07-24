@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { searchDoctors } from "../lib/api/doctors.js";
+import { getFilials } from "../lib/api/filials.js";
 import { useT } from "../lib/i18n.jsx";
 import DoctorCard from "../components/DoctorCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
@@ -14,8 +15,11 @@ export default function Doctors() {
   const [error, setError] = useState(false);
   const [allSpecs, setAllSpecs] = useState([]);
   const [spec, setSpec] = useState(params.get("specialization") || "");
+  const [filials, setFilials] = useState([]);
+  const [filialIds, setFilialIds] = useState(
+    params.get("filial_id") ? [params.get("filial_id")] : []
+  );
 
-  const filialId = params.get("filial_id") || "";
   const departmentId = params.get("department_id") || "";
 
   useEffect(() => {
@@ -25,20 +29,31 @@ export default function Doctors() {
         setAllSpecs(unique.sort((a, b) => a.localeCompare(b, "ru")));
       })
       .catch(() => {});
+    getFilials()
+      .then(setFilials)
+      .catch(() => {});
   }, []);
+
+  const toggleFilial = (id) =>
+    setFilialIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const load = useCallback(() => {
     setLoading(true);
     setError(false);
-    return searchDoctors({
-      specialization: spec,
-      filial_id: filialId,
-      department_id: departmentId,
-    })
-      .then(setDoctors)
+    const targets = filialIds.length ? filialIds : [""];
+    return Promise.all(
+      targets.map((fid) =>
+        searchDoctors({ specialization: spec, filial_id: fid, department_id: departmentId })
+      )
+    )
+      .then((lists) => {
+        const merged = new Map();
+        for (const doctor of lists.flat()) merged.set(doctor.id, doctor);
+        setDoctors([...merged.values()]);
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [spec, filialId, departmentId]);
+  }, [spec, filialIds, departmentId]);
 
   useEffect(() => {
     load();
@@ -84,6 +99,32 @@ export default function Doctors() {
                 ))}
               </select>
             </div>
+
+            {filials.length > 0 && (
+              <div className="mt-md">
+                <span className="mb-xs block text-label-md font-semibold text-on-surface-variant">
+                  {t("doctors.filial")}
+                </span>
+                <div className="mt-xs space-y-sm">
+                  {filials.map((f) => (
+                    <label
+                      key={f.id}
+                      className="group flex cursor-pointer items-center gap-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filialIds.includes(String(f.id))}
+                        onChange={() => toggleFilial(String(f.id))}
+                        className="h-5 w-5 rounded border-outline-variant text-primary focus:ring-primary"
+                      />
+                      <span className="text-body-md text-on-surface transition-colors group-hover:text-primary">
+                        {f.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </aside>
 
