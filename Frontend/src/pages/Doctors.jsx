@@ -9,16 +9,14 @@ import Skeleton from "../components/Skeleton.jsx";
 
 export default function Doctors() {
   const t = useT();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [allSpecs, setAllSpecs] = useState([]);
   const [spec, setSpec] = useState(params.get("specialization") || "");
   const [filials, setFilials] = useState([]);
-  const [filialIds, setFilialIds] = useState(
-    params.get("filial_id") ? [params.get("filial_id")] : []
-  );
+  const [filialIds, setFilialIds] = useState(params.getAll("filial_id"));
 
   const departmentId = params.get("department_id") || "";
 
@@ -58,6 +56,14 @@ export default function Doctors() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (spec) next.set("specialization", spec);
+    for (const id of filialIds) next.append("filial_id", id);
+    if (departmentId) next.set("department_id", departmentId);
+    setParams(next, { replace: true });
+  }, [spec, filialIds, departmentId, setParams]);
 
   return (
     <div className="mx-auto max-w-7xl px-md py-lg md:px-lg">
