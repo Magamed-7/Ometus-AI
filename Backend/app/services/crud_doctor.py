@@ -1,10 +1,11 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.models.model_department import Department
 from app.models.model_doctor import Doctor
 from app.models.model_doctor_department import DoctorDepartment
+from app.models.model_doctor_specialization import DoctorSpecialization
 from app.models.model_user import User
 from app.schemas.schema_doctor import DoctorCreateIn, DoctorUpdateIn
 
@@ -53,7 +54,14 @@ async def search_doctors(
     query = select(Doctor)
 
     if specialization:
-        query = query.where(Doctor.specialization.ilike(f"%{specialization}%"))
+        query = query.outerjoin(
+            DoctorSpecialization, DoctorSpecialization.doctor_id == Doctor.id
+        ).where(
+            or_(
+                Doctor.specialization.ilike(f"%{specialization}%"),
+                DoctorSpecialization.name.ilike(f"%{specialization}%"),
+            )
+        )
 
     if department_id or filial_id:
         query = query.join(DoctorDepartment, DoctorDepartment.doctor_id == Doctor.id)
@@ -119,3 +127,45 @@ async def remove_department(doctor_id: int, department_id: int, db: AsyncSession
     await db.delete(assignment)
     await db.commit()
     return assignment
+
+
+async def get_specializations(doctor_id: int, db: AsyncSession):
+    result = await db.execute(
+        select(DoctorSpecialization)
+        .where(DoctorSpecialization.doctor_id == doctor_id)
+        .order_by(DoctorSpecialization.id)
+    )
+    return result.scalars().all()
+
+
+async def add_specialization(doctor_id: int, name: str, db: AsyncSession):
+    result = await db.execute(
+        select(DoctorSpecialization)
+        .where(DoctorSpecialization.doctor_id == doctor_id)
+        .where(DoctorSpecialization.name == name)
+    )
+
+    if result.scalar_one_or_none():
+        return None
+
+    specialization = DoctorSpecialization(doctor_id=doctor_id, name=name)
+    db.add(specialization)
+    await db.commit()
+    await db.refresh(specialization)
+    return specialization
+
+
+async def remove_specialization(doctor_id: int, name: str, db: AsyncSession):
+    result = await db.execute(
+        select(DoctorSpecialization)
+        .where(DoctorSpecialization.doctor_id == doctor_id)
+        .where(DoctorSpecialization.name == name)
+    )
+    specialization = result.scalar_one_or_none()
+
+    if specialization is None:
+        return None
+
+    await db.delete(specialization)
+    await db.commit()
+    return specialization

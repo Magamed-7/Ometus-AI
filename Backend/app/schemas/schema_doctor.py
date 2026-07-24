@@ -25,3 +25,15 @@ class DoctorUpdateIn(BaseModel):
 
 class DoctorDepartmentIn(BaseModel):
     department_id: int
+
+
+class SpecializationOut(BaseModel):
+    id: int
+    doctor_id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SpecializationIn(BaseModel):
+    name: str = Field(min_length=1)
