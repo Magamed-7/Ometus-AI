@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { updateMe } from "../lib/api/users.js";
+import { getPatient, updateMe, updatePatient } from "../lib/api/users.js";
 import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { useT } from "../lib/i18n.jsx";
@@ -19,6 +19,15 @@ export default function Account() {
   const [editing, setEditing] = useState(false);
   const [profileForm, setProfileForm] = useState({ first_name: "", last_name: "", phone: "" });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [patient, setPatient] = useState(null);
+  const [patientForm, setPatientForm] = useState({ full_name: "", date_of_birth: "", phone: "" });
+  const [savingPatient, setSavingPatient] = useState(false);
+
+  useEffect(() => {
+    getPatient()
+      .then(setPatient)
+      .catch(() => {});
+  }, []);
 
   const onLogout = () => {
     logout();
@@ -32,8 +41,31 @@ export default function Account() {
         last_name: user.last_name || "",
         phone: user.phone || "",
       });
+      setPatientForm({
+        full_name: patient?.full_name || "",
+        date_of_birth: patient?.date_of_birth || "",
+        phone: patient?.phone || "",
+      });
     }
     setEditing((v) => !v);
+  };
+
+  const savePatient = async (e) => {
+    e.preventDefault();
+    setSavingPatient(true);
+    try {
+      const updated = await updatePatient({
+        full_name: patientForm.full_name || null,
+        date_of_birth: patientForm.date_of_birth || null,
+        phone: patientForm.phone || null,
+      });
+      setPatient(updated);
+      toast.success(t("common.saved"));
+    } catch (err) {
+      toast.error(errorText(t, err));
+    } finally {
+      setSavingPatient(false);
+    }
   };
 
   const saveProfile = async (e) => {
@@ -98,6 +130,38 @@ export default function Account() {
                   </Button>
                   <Button type="button" variant="outline" onClick={() => setEditing(false)}>
                     {t("common.cancel")}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          )}
+
+          {editing && (
+            <Card className="mb-md p-md">
+              <h2 className="mb-md text-headline-md font-semibold text-on-surface">
+                {t("account.patientCard")}
+              </h2>
+              <form onSubmit={savePatient} className="grid gap-sm sm:grid-cols-2">
+                <Field
+                  label={t("account.fullName")}
+                  value={patientForm.full_name}
+                  onChange={(e) => setPatientForm((f) => ({ ...f, full_name: e.target.value }))}
+                  className="sm:col-span-2"
+                />
+                <Field
+                  label={t("account.dateOfBirth")}
+                  type="date"
+                  value={patientForm.date_of_birth}
+                  onChange={(e) => setPatientForm((f) => ({ ...f, date_of_birth: e.target.value }))}
+                />
+                <Field
+                  label={t("auth.phone")}
+                  value={patientForm.phone}
+                  onChange={(e) => setPatientForm((f) => ({ ...f, phone: e.target.value }))}
+                />
+                <div className="sm:col-span-2">
+                  <Button type="submit" loading={savingPatient}>
+                    {t("common.save")}
                   </Button>
                 </div>
               </form>
