@@ -238,7 +238,11 @@ export default function Account() {
               (error ? (
                 <ErrorState onRetry={loadAppointments} />
               ) : loading ? (
-                <Skeleton className="h-32" />
+                <div className="space-y-md">
+                  {[0, 1].map((i) => (
+                    <Skeleton key={i} className="h-48" />
+                  ))}
+                </div>
               ) : activeAppointments.length === 0 ? (
                 <EmptyState icon="event_available" title={t("account.noActive")} />
               ) : (
@@ -275,7 +279,11 @@ export default function Account() {
               (error ? (
                 <ErrorState onRetry={loadAppointments} />
               ) : loading ? (
-                <Skeleton className="h-32" />
+                <div className="space-y-md">
+                  {[0, 1].map((i) => (
+                    <Skeleton key={i} className="h-48" />
+                  ))}
+                </div>
               ) : historyAppointments.length === 0 ? (
                 <EmptyState icon="history" title={t("account.noHistory")} />
               ) : (
