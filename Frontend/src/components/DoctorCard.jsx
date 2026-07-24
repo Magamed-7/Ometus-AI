@@ -27,9 +27,12 @@ export default function DoctorCard({ doctor, footer }) {
           <span className="text-headline-md font-bold">{initials(doctor.full_name)}</span>
         </div>
         <div className="min-w-0">
-          <h3 className="truncate text-headline-md font-semibold text-on-surface">
+          <Link
+            to={`/doctors/${doctor.id}`}
+            className="block truncate text-headline-md font-semibold text-on-surface transition-colors hover:text-primary"
+          >
             {doctor.full_name}
-          </h3>
+          </Link>
           <p className="mt-base text-label-md font-bold uppercase tracking-wider text-primary">
             {doctor.specialization}
           </p>
