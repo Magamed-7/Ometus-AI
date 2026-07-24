@@ -3,6 +3,7 @@ import DocumentTitle from "./components/DocumentTitle.jsx";
 import Layout from "./components/Layout.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Account from "./pages/Account.jsx";
+import Assistant from "./pages/Assistant.jsx";
 import Booking from "./pages/Booking.jsx";
 import DoctorDetail from "./pages/DoctorDetail.jsx";
 import Doctors from "./pages/Doctors.jsx";
@@ -26,7 +27,7 @@ export default function App() {
           <Route path="/doctors/:id" element={<DoctorDetail />} />
           <Route path="/booking" element={<Booking />} />
           <Route path="/booking/:doctorId" element={<Booking />} />
-          <Route path="/assistant" element={<Placeholder name="Assistant" />} />
+          <Route path="/assistant" element={<Assistant />} />
           <Route
             path="/account"
             element={
