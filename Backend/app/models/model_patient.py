@@ -10,8 +10,11 @@ class Patient(Base):
     __tablename__ = "patients"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"), unique=True, nullable=False, index=True
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), unique=True, nullable=True, index=True
+    )
+    guardian_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
     )
     full_name: Mapped[str | None] = mapped_column(String, nullable=True)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
