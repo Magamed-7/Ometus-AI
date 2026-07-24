@@ -183,11 +183,26 @@ export default function Booking() {
 
   if (booked) {
     return (
-      <div className="mx-auto max-w-lg px-md py-xl text-center md:px-lg">
-        <span className="material-symbols-outlined text-6xl text-primary">check_circle</span>
-        <h1 className="mt-md text-headline-md font-bold text-on-surface">
-          {t("booking.successTitle")}
-        </h1>
+      <div className="mx-auto max-w-lg px-md py-xl md:px-lg">
+        <Card className="flex flex-col items-center p-lg text-center">
+          <span className="material-symbols-outlined text-6xl text-primary">check_circle</span>
+          <h1 className="mt-md text-headline-md font-bold text-on-surface">
+            {t("booking.successTitle")}
+          </h1>
+          <p className="mt-sm text-body-md text-on-surface-variant">{t("booking.successText")}</p>
+          <div className="mt-md flex flex-col items-center gap-xs rounded-xl bg-surface-container-low px-md py-sm">
+            <p className="text-body-md font-bold text-on-surface">{doctor.full_name}</p>
+            <p className="text-label-md text-on-surface-variant">
+              {formatDate(booked.date, lang)}, {clock(booked.time)}
+            </p>
+          </div>
+          <Link
+            to="/account"
+            className="mt-lg w-full rounded-xl bg-primary py-3 font-bold text-on-primary transition-all hover:opacity-90 active:scale-95"
+          >
+            {t("booking.toAccount")}
+          </Link>
+        </Card>
       </div>
     );
   }
