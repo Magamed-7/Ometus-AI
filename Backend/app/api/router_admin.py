@@ -12,7 +12,13 @@ from app.schemas.schema_department import (
     DepartmentUpdateIn,
 )
 from app.schemas.schema_appointment import AdminAppointmentOut
-from app.schemas.schema_doctor import DoctorCreateIn, DoctorDepartmentIn, DoctorOut, DoctorUpdateIn
+from app.schemas.schema_doctor import (
+    DoctorCreateIn,
+    DoctorDepartmentIn,
+    DoctorOut,
+    DoctorUpdateIn,
+    SpecializationIn,
+)
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
 from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
 from app.schemas.schema_schedule import ScheduleCreateIn, ScheduleOut, ScheduleUpdateIn
@@ -200,6 +206,54 @@ async def remove_doctor_department(
         )
 
     return {"message": "Врач снят с отделения"}
+
+
+@admin_router.post("/doctors/{doctor_id}/specializations")
+async def add_doctor_specialization(
+    doctor_id: int,
+    data: SpecializationIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    specialization = await crud_doctor.add_specialization(doctor_id, data.name, db)
+
+    if specialization is None:
+        raise AppError(
+            code="SPECIALIZATION_ALREADY_EXISTS",
+            message="У врача уже есть эта специализация",
+            status_code=409,
+        )
+
+    return {"message": "Специализация добавлена"}
+
+
+@admin_router.delete("/doctors/{doctor_id}/specializations/{name}")
+async def remove_doctor_specialization(
+    doctor_id: int,
+    name: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    specialization = await crud_doctor.remove_specialization(doctor_id, name, db)
+
+    if specialization is None:
+        raise AppError(
+            code="SPECIALIZATION_NOT_FOUND",
+            message="У врача нет этой специализации",
+            status_code=404,
+        )
+
+    return {"message": "Специализация снята"}
 
 
 @admin_router.get("/reports/workload", response_model=list[DoctorWorkloadOut])
