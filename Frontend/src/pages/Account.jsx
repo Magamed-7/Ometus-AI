@@ -1,17 +1,26 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getMyAppointments } from "../lib/api/appointments.js";
+import { getDepartments } from "../lib/api/departments.js";
+import { searchDoctors } from "../lib/api/doctors.js";
+import { getFilials } from "../lib/api/filials.js";
 import { getPatient, updateMe, updatePatient } from "../lib/api/users.js";
 import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
-import { useT } from "../lib/i18n.jsx";
+import { clock, formatDate } from "../lib/format.js";
+import { useI18n } from "../lib/i18n.jsx";
 import { useToast } from "../lib/toast.jsx";
 import Button from "../components/Button.jsx";
 import Card from "../components/Card.jsx";
+import EmptyState from "../components/EmptyState.jsx";
+import ErrorState from "../components/ErrorState.jsx";
 import { Field } from "../components/Field.jsx";
 import ProfileSidebar from "../components/ProfileSidebar.jsx";
+import Skeleton from "../components/Skeleton.jsx";
+import StatusPill from "../components/StatusPill.jsx";
 
 export default function Account() {
-  const t = useT();
+  const { t, lang } = useI18n();
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -23,11 +32,39 @@ export default function Account() {
   const [patientForm, setPatientForm] = useState({ full_name: "", date_of_birth: "", phone: "" });
   const [savingPatient, setSavingPatient] = useState(false);
 
+  const [appointments, setAppointments] = useState([]);
+  const [doctors, setDoctors] = useState({});
+  const [departments, setDepartments] = useState({});
+  const [filials, setFilials] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
   useEffect(() => {
     getPatient()
       .then(setPatient)
       .catch(() => {});
   }, []);
+
+  const loadAppointments = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    return Promise.all([getMyAppointments(), searchDoctors(), getDepartments(), getFilials()])
+      .then(([appts, docs, deps, fils]) => {
+        setAppointments(appts);
+        setDoctors(Object.fromEntries(docs.map((d) => [d.id, d])));
+        setDepartments(Object.fromEntries(deps.map((d) => [d.id, d])));
+        setFilials(Object.fromEntries(fils.map((f) => [f.id, f])));
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
+
+  const activeAppointments = appointments.filter((a) => a.status === "booked");
+  const historyAppointments = appointments.filter((a) => a.status !== "booked");
 
   const onLogout = () => {
     logout();
@@ -186,7 +223,28 @@ export default function Account() {
           </div>
 
           <div className="space-y-md">
-            {tab === "active" && <Card className="p-md" />}
+            {tab === "active" &&
+              (error ? (
+                <ErrorState onRetry={loadAppointments} />
+              ) : loading ? (
+                <Skeleton className="h-32" />
+              ) : activeAppointments.length === 0 ? (
+                <EmptyState icon="event_available" title={t("account.noActive")} />
+              ) : (
+                activeAppointments.map((a) => (
+                  <Card key={a.id} className="flex items-center justify-between p-md">
+                    <div>
+                      <p className="font-bold text-on-surface">
+                        {doctors[a.doctor_id]?.full_name || "—"}
+                      </p>
+                      <p className="text-body-md text-on-surface-variant">
+                        {formatDate(a.date, lang)}, {clock(a.time)}
+                      </p>
+                    </div>
+                    <StatusPill status={a.status} />
+                  </Card>
+                ))
+              ))}
             {tab === "history" && <Card className="p-md" />}
             {tab === "documents" && <Card className="p-md" />}
           </div>
