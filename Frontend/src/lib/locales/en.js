@@ -244,6 +244,7 @@ export const en = {
     completed: "Seen",
     cancelled: "Cancelled",
     no_show: "No-show",
+    emergency: "Emergency",
   },
   weekdays: {
     full: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],

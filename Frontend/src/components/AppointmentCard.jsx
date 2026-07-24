@@ -16,7 +16,15 @@ export default function AppointmentCard({ appointment, doctor, department, filia
   return (
     <Card className="p-md">
       <div className="mb-md flex flex-col justify-between gap-sm md:flex-row md:items-center">
-        <StatusPill status={appointment.status} />
+        <div className="flex flex-wrap items-center gap-xs">
+          <StatusPill status={appointment.status} />
+          {appointment.is_emergency && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-error-container px-2.5 py-1 text-label-md font-semibold text-on-error-container">
+              <span className="material-symbols-outlined text-base">emergency</span>
+              {t("status.emergency")}
+            </span>
+          )}
+        </div>
         <div className="md:text-right">
           <p className="text-headline-md font-semibold text-primary">
             {formatDate(appointment.date, lang)}, {clock(appointment.time)}
