@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getDoctor } from "../lib/api/doctors.js";
+import { getDoctor, getDoctorDepartments } from "../lib/api/doctors.js";
 import { getSlots } from "../lib/api/schedules.js";
-import { clock, isoDate } from "../lib/format.js";
+import { clock, formatDate, isoDate } from "../lib/format.js";
 import { avatarAccent } from "../lib/mocks/doctors.js";
 import { useI18n } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
@@ -35,7 +35,7 @@ function addDays(value, days) {
 }
 
 export default function Booking() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { doctorId } = useParams();
   const [doctor, setDoctor] = useState(null);
   const [loading, setLoading] = useState(Boolean(doctorId));
@@ -46,6 +46,8 @@ export default function Booking() {
   const [slots, setSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [departments, setDepartments] = useState({});
 
   const todayIso = isoDate(new Date());
   const shorts = t("weekdays.short");
@@ -64,6 +66,17 @@ export default function Booking() {
   useEffect(() => {
     loadSlots();
   }, [loadSlots]);
+
+  useEffect(() => {
+    setSelectedSlot(null);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!doctorId) return;
+    getDoctorDepartments(doctorId)
+      .then((deps) => setDepartments(Object.fromEntries(deps.map((d) => [d.id, d.name]))))
+      .catch(() => {});
+  }, [doctorId]);
 
   const nowTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(
     new Date().getMinutes()
@@ -211,22 +224,82 @@ export default function Booking() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5">
-                {visibleSlots.map((slot) => (
-                  <button
-                    key={slot.time}
-                    type="button"
-                    className="rounded-lg border border-outline-variant py-3 text-body-md font-bold text-on-surface transition-all hover:bg-surface-container"
-                  >
-                    {clock(slot.time)}
-                  </button>
-                ))}
+                {visibleSlots.map((slot) => {
+                  const isActive = selectedSlot && selectedSlot.time === slot.time;
+                  return (
+                    <button
+                      key={slot.time}
+                      type="button"
+                      onClick={() => setSelectedSlot(slot)}
+                      className={`rounded-lg py-3 text-body-md font-bold transition-all ${
+                        isActive
+                          ? "border-2 border-primary bg-primary-container/10 text-primary shadow-sm"
+                          : "border border-outline-variant text-on-surface hover:bg-surface-container"
+                      }`}
+                    >
+                      {clock(slot.time)}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </Card>
         </div>
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            <Card className="p-md" id="summary" />
+            <Card className="bg-surface-container-high p-md">
+              <h3 className="mb-md text-label-md font-semibold uppercase tracking-widest text-primary">
+                {t("booking.summary")}
+              </h3>
+              <div className="space-y-sm">
+                <div className="flex items-start gap-sm">
+                  <span className="material-symbols-outlined text-primary">person</span>
+                  <div>
+                    <p className="text-label-md text-on-surface-variant">{t("booking.doctor")}</p>
+                    <p className="text-body-md font-bold text-on-surface">{doctor.full_name}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-sm">
+                  <span className="material-symbols-outlined text-primary">event</span>
+                  <div>
+                    <p className="text-label-md text-on-surface-variant">{t("booking.date")}</p>
+                    <p className="text-body-md font-bold text-on-surface">
+                      {formatDate(selectedDate, lang)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-sm">
+                  <span className="material-symbols-outlined text-primary">schedule</span>
+                  <div>
+                    <p className="text-label-md text-on-surface-variant">{t("booking.time")}</p>
+                    <p className="text-body-md font-bold text-on-surface">
+                      {selectedSlot ? clock(selectedSlot.time) : t("booking.pickSlot")}
+                    </p>
+                  </div>
+                </div>
+                {selectedSlot && departments[selectedSlot.department_id] && (
+                  <div className="flex items-start gap-sm">
+                    <span className="material-symbols-outlined text-primary">meeting_room</span>
+                    <div>
+                      <p className="text-label-md text-on-surface-variant">
+                        {t("booking.department")}
+                      </p>
+                      <p className="text-body-md font-bold text-on-surface">
+                        {departments[selectedSlot.department_id]}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <hr className="my-md border-outline-variant" />
+              <button
+                type="button"
+                disabled={!selectedSlot}
+                className="w-full rounded-lg bg-primary py-4 text-headline-md font-semibold text-on-primary shadow-md transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t("booking.confirm")}
+              </button>
+            </Card>
           </div>
         </div>
       </div>
