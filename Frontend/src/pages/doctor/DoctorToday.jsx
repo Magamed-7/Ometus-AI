@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { getDoctorToday } from "../../lib/api/appointments.js";
+import { completeAppointment, getDoctorToday } from "../../lib/api/appointments.js";
+import { errorText } from "../../lib/api/errorText.js";
 import { clock, phone as formatPhone } from "../../lib/format.js";
 import { useT } from "../../lib/i18n.jsx";
+import { useToast } from "../../lib/toast.jsx";
+import Button from "../../components/Button.jsx";
 import Card from "../../components/Card.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
@@ -10,9 +13,11 @@ import StatusPill from "../../components/StatusPill.jsx";
 
 export default function DoctorToday() {
   const t = useT();
+  const toast = useToast();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [acting, setActing] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -26,6 +31,18 @@ export default function DoctorToday() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const act = async (id, fn) => {
+    setActing(id);
+    try {
+      await fn(id);
+      await load();
+    } catch (e) {
+      toast.error(errorText(t, e));
+    } finally {
+      setActing(null);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-5xl px-sm py-md md:px-lg">
@@ -46,7 +63,7 @@ export default function DoctorToday() {
       ) : (
         <div className="space-y-sm">
           {appointments.map((appointment) => (
-            <Card key={appointment.id} className="flex items-center justify-between gap-md p-md">
+            <Card key={appointment.id} className="flex flex-col gap-md p-md sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-md">
                 <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-primary-container text-headline-md font-bold text-on-primary-container">
                   {clock(appointment.time)}
@@ -66,7 +83,19 @@ export default function DoctorToday() {
                   )}
                 </div>
               </div>
-              <StatusPill status={appointment.status} />
+              {appointment.status === "booked" ? (
+                <div className="flex flex-wrap gap-sm">
+                  <Button
+                    icon="task_alt"
+                    loading={acting === appointment.id}
+                    onClick={() => act(appointment.id, completeAppointment)}
+                  >
+                    {t("doctorCabinet.complete")}
+                  </Button>
+                </div>
+              ) : (
+                <StatusPill status={appointment.status} />
+              )}
             </Card>
           ))}
         </div>
