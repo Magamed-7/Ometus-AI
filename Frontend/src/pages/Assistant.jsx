@@ -125,6 +125,21 @@ export default function Assistant() {
       </div>
 
       <div className="sticky bottom-md pt-md">
+        {messages.length <= 1 && !sending && (
+          <div className="mb-sm flex flex-wrap items-center gap-xs">
+            <span className="text-label-md text-on-surface-variant">{t("assistant.suggestions")}</span>
+            {["assistant.s1", "assistant.s2", "assistant.s3"].map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => send(t(key))}
+                className="rounded-full border border-outline-variant bg-surface-container-low px-md py-1.5 text-label-md font-semibold text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
+              >
+                {t(key)}
+              </button>
+            ))}
+          </div>
+        )}
         <form
           onSubmit={onSubmit}
           className="flex items-center gap-xs rounded-2xl border border-outline-variant bg-surface-container-lowest p-xs shadow-lg focus-within:ring-2 focus-within:ring-primary"
