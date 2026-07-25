@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getDoctorToday } from "../../lib/api/appointments.js";
-import { clock } from "../../lib/format.js";
+import { clock, phone as formatPhone } from "../../lib/format.js";
 import { useT } from "../../lib/i18n.jsx";
 import Card from "../../components/Card.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
@@ -55,6 +55,15 @@ export default function DoctorToday() {
                   <p className="font-bold text-on-surface">
                     {appointment.patient_name || `#${appointment.patient_id}`}
                   </p>
+                  {appointment.patient_phone && (
+                    <a
+                      href={`tel:${appointment.patient_phone}`}
+                      className="mt-0.5 inline-flex items-center gap-1 text-label-md text-on-surface-variant transition-colors hover:text-primary"
+                    >
+                      <span className="material-symbols-outlined text-base">call</span>
+                      {formatPhone(appointment.patient_phone)}
+                    </a>
+                  )}
                 </div>
               </div>
               <StatusPill status={appointment.status} />
