@@ -202,6 +202,8 @@ export const ru = {
     startTime: "Начало",
     endTime: "Окончание",
     slotDuration: "Длина слота (мин)",
+    bufferDuration: "Буфер (мин)",
+    minShort: "мин",
     department: "Отделение",
     absences: "Отпуска и больничные",
     addAbsence: "Добавить отсутствие",

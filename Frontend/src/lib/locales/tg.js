@@ -202,6 +202,8 @@ export const tg = {
     startTime: "Оғоз",
     endTime: "Анҷом",
     slotDuration: "Дарозии слот (дақ)",
+    bufferDuration: "Танаффус (дақ)",
+    minShort: "дақ",
     department: "Шӯъба",
     absences: "Рухсатӣ ва бемордорӣ",
     addAbsence: "Илова кардани ғоибӣ",

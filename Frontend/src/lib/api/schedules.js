@@ -7,6 +7,20 @@ export const getSlots = (doctorId, day) =>
 export const getDoctorSchedule = (doctorId) =>
   client.get(`/api/schedules/doctors/${doctorId}`, { auth: false });
 
+export const getMySchedule = () => client.get("/api/schedules/me");
+
+export const createMySchedule = (data) => client.post("/api/schedules/me", data);
+
+export const updateMySchedule = (id, data) => client.put(`/api/schedules/me/${id}`, data);
+
+export const deleteMySchedule = (id) => client.delete(`/api/schedules/me/${id}`);
+
+export const getMyAbsences = () => client.get("/api/schedules/me/absences");
+
+export const createMyAbsence = (data) => client.post("/api/schedules/me/absences", data);
+
+export const deleteMyAbsence = (id) => client.delete(`/api/schedules/me/absences/${id}`);
+
 export async function findNearestSlot(doctorId, days = 14) {
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(

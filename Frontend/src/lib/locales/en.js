@@ -202,6 +202,8 @@ export const en = {
     startTime: "Start",
     endTime: "End",
     slotDuration: "Slot length (min)",
+    bufferDuration: "Buffer (min)",
+    minShort: "min",
     department: "Department",
     absences: "Leaves and sick days",
     addAbsence: "Add absence",
