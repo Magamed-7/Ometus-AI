@@ -268,6 +268,13 @@ export default function Assistant() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-sm py-sm md:px-lg">
+      <div className="mb-sm flex items-start gap-sm rounded-xl border border-outline-variant bg-surface-container-low p-sm">
+        <span className="material-symbols-outlined text-secondary">info</span>
+        <div>
+          <p className="text-label-md font-bold text-on-surface">{t("assistant.title")}</p>
+          <p className="text-label-md text-on-surface-variant">{t("assistant.disclaimer")}</p>
+        </div>
+      </div>
       <div className="flex flex-grow flex-col gap-md pb-xl">
         {messages.map((msg) =>
           msg.role === "user" ? (
