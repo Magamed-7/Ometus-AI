@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { askAssistant } from "../lib/api/ai.js";
 import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
@@ -83,6 +83,35 @@ function SlotsAnswer({ t, lang, data, onPickSlot }) {
   );
 }
 
+function BookedAnswer({ t, lang, appointment }) {
+  return (
+    <div className="rounded-xl border border-primary/40 bg-primary-container/10 p-md">
+      <div className="mb-sm flex items-center gap-sm text-primary">
+        <span className="material-symbols-outlined filled">check_circle</span>
+        <p className="font-bold">{t("booking.successTitle")}</p>
+      </div>
+      <div className="space-y-1 text-body-md text-on-surface">
+        <p className="font-bold">{appointment.doctor_name}</p>
+        {appointment.specialization && (
+          <p className="text-label-md text-on-surface-variant">{appointment.specialization}</p>
+        )}
+        {appointment.department && (
+          <p className="text-label-md text-on-surface-variant">{appointment.department}</p>
+        )}
+        <p className="pt-xs font-semibold text-primary">
+          {formatDate(appointment.date, lang)}, {clock(appointment.time)}
+        </p>
+      </div>
+      <Link
+        to="/account"
+        className="mt-sm inline-flex rounded-lg bg-primary px-md py-2 text-label-md font-bold text-on-primary transition-opacity hover:opacity-90"
+      >
+        {t("booking.toAccount")}
+      </Link>
+    </div>
+  );
+}
+
 function AssistantBubble({ data, t, lang, onPickDoctor, onPickSlot }) {
   return (
     <div className="flex max-w-[85%] gap-sm">
@@ -96,6 +125,9 @@ function AssistantBubble({ data, t, lang, onPickDoctor, onPickSlot }) {
         )}
         {data.action === "slots" && data.slots?.length > 0 && (
           <SlotsAnswer t={t} lang={lang} data={data} onPickSlot={onPickSlot} />
+        )}
+        {data.action === "booked" && data.appointment && (
+          <BookedAnswer t={t} lang={lang} appointment={data.appointment} />
         )}
       </div>
     </div>
