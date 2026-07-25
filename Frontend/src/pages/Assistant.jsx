@@ -136,11 +136,29 @@ function EmergencyAnswer({ t, reply }) {
 function AssistantBubble({ data, t, lang, onPickDoctor, onPickSlot }) {
   if (data.action === "emergency") return <EmergencyAnswer t={t} reply={data.reply} />;
 
+  const isError = data.action === "error";
+  const isClarify = data.action === "clarify";
+
   return (
     <div className="flex max-w-[85%] gap-sm">
       <BotAvatar />
       <div className="flex w-full flex-col gap-sm">
-        <div className="rounded-2xl rounded-tl-none border border-outline-variant bg-surface-container-lowest p-md">
+        <div
+          className={`flex gap-sm rounded-2xl rounded-tl-none border p-md ${
+            isError
+              ? "border-error/40 bg-error-container/30"
+              : "border-outline-variant bg-surface-container-lowest"
+          }`}
+        >
+          {(isError || isClarify) && (
+            <span
+              className={`material-symbols-outlined text-lg ${
+                isError ? "text-error" : "text-secondary"
+              }`}
+            >
+              {isError ? "error" : "help"}
+            </span>
+          )}
           <p className="whitespace-pre-line text-body-md text-on-surface">{data.reply}</p>
         </div>
         {data.action === "doctors" && data.doctors?.length > 0 && (
