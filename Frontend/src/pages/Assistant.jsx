@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { askAssistant } from "../lib/api/ai.js";
 import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
+import { clock } from "../lib/format.js";
 import { useI18n } from "../lib/i18n.jsx";
 
 function BotAvatar() {
@@ -26,7 +27,32 @@ function UserBubble({ text }) {
   );
 }
 
-function AssistantBubble({ data }) {
+function DoctorsAnswer({ t, data, onPickDoctor }) {
+  return (
+    <div className="flex flex-col gap-xs">
+      {data.doctors.map((doctor) => (
+        <div
+          key={doctor.doctor_id}
+          className="flex items-center justify-between gap-sm rounded-xl border border-outline-variant bg-surface-container-low p-sm"
+        >
+          <div className="min-w-0">
+            <p className="truncate font-bold text-on-surface">{doctor.full_name}</p>
+            <p className="text-label-md text-on-surface-variant">{doctor.specialization}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onPickDoctor(doctor)}
+            className="shrink-0 rounded-lg bg-primary px-md py-2 text-label-md font-bold text-on-primary transition-opacity hover:opacity-90"
+          >
+            {t("assistant.showSlots")}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AssistantBubble({ data, t, onPickDoctor }) {
   return (
     <div className="flex max-w-[85%] gap-sm">
       <BotAvatar />
@@ -34,6 +60,9 @@ function AssistantBubble({ data }) {
         <div className="rounded-2xl rounded-tl-none border border-outline-variant bg-surface-container-lowest p-md">
           <p className="whitespace-pre-line text-body-md text-on-surface">{data.reply}</p>
         </div>
+        {data.action === "doctors" && data.doctors?.length > 0 && (
+          <DoctorsAnswer t={t} data={data} onPickDoctor={onPickDoctor} />
+        )}
       </div>
     </div>
   );
@@ -69,24 +98,25 @@ export default function Assistant() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
-  const send = async (text) => {
-    const message = text.trim();
-    if (!message || sending) return;
+  const runAsk = async (payload, userText) => {
+    if (sending) return;
 
     if (!user) {
       navigate("/login", { state: { from: location } });
       return;
     }
 
-    setInput("");
-    setMessages((list) => [
-      ...list,
-      { id: `u-${Date.now()}`, role: "user", data: { text: message } },
-    ]);
+    if (userText) {
+      setMessages((list) => [
+        ...list,
+        { id: `u-${Date.now()}`, role: "user", data: { text: userText } },
+      ]);
+    }
     setSending(true);
 
     try {
-      const answer = await askAssistant({ message });
+      const answer = await askAssistant(payload);
+      if (payload.doctor_id) answer._doctorId = payload.doctor_id;
       setMessages((list) => [
         ...list,
         { id: `a-${Date.now()}`, role: "assistant", data: answer },
@@ -105,6 +135,17 @@ export default function Assistant() {
     }
   };
 
+  const send = (text) => {
+    const message = text.trim();
+    if (!message) return;
+    setInput("");
+    runAsk({ message }, message);
+  };
+
+  const onPickDoctor = (doctor) => {
+    runAsk({ message: t("assistant.showSlots"), doctor_id: doctor.doctor_id }, doctor.full_name);
+  };
+
   const onSubmit = (e) => {
     e.preventDefault();
     send(input);
@@ -117,7 +158,7 @@ export default function Assistant() {
           msg.role === "user" ? (
             <UserBubble key={msg.id} text={msg.data.text} />
           ) : (
-            <AssistantBubble key={msg.id} data={msg.data} />
+            <AssistantBubble key={msg.id} data={msg.data} t={t} onPickDoctor={onPickDoctor} />
           )
         )}
         {sending && <ThinkingBubble label={t("assistant.thinking")} />}
