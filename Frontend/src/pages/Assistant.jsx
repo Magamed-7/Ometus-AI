@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { askAssistant } from "../lib/api/ai.js";
 import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
-import { clock } from "../lib/format.js";
+import { clock, formatDate } from "../lib/format.js";
 import { useI18n } from "../lib/i18n.jsx";
 
 function BotAvatar() {
@@ -52,7 +52,38 @@ function DoctorsAnswer({ t, data, onPickDoctor }) {
   );
 }
 
-function AssistantBubble({ data, t, onPickDoctor }) {
+function SlotsAnswer({ t, lang, data, onPickSlot }) {
+  const byDate = {};
+  for (const slot of data.slots) {
+    (byDate[slot.date] = byDate[slot.date] || []).push(slot);
+  }
+
+  return (
+    <div className="flex flex-col gap-sm rounded-xl border border-outline-variant bg-surface-container-low p-sm">
+      {Object.entries(byDate).map(([date, slots]) => (
+        <div key={date}>
+          <p className="mb-xs text-label-md font-semibold text-on-surface-variant">
+            {formatDate(date, lang)}
+          </p>
+          <div className="grid grid-cols-3 gap-xs sm:grid-cols-4">
+            {slots.map((slot) => (
+              <button
+                key={`${date}-${slot.time}`}
+                type="button"
+                onClick={() => onPickSlot(data, slot)}
+                className="rounded-lg border border-outline-variant bg-surface-container-lowest py-2 text-label-md font-bold text-on-surface transition-colors hover:border-primary hover:text-primary"
+              >
+                {clock(slot.time)}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AssistantBubble({ data, t, lang, onPickDoctor, onPickSlot }) {
   return (
     <div className="flex max-w-[85%] gap-sm">
       <BotAvatar />
@@ -62,6 +93,9 @@ function AssistantBubble({ data, t, onPickDoctor }) {
         </div>
         {data.action === "doctors" && data.doctors?.length > 0 && (
           <DoctorsAnswer t={t} data={data} onPickDoctor={onPickDoctor} />
+        )}
+        {data.action === "slots" && data.slots?.length > 0 && (
+          <SlotsAnswer t={t} lang={lang} data={data} onPickSlot={onPickSlot} />
         )}
       </div>
     </div>
@@ -83,7 +117,7 @@ function ThinkingBubble({ label }) {
 }
 
 export default function Assistant() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -146,6 +180,14 @@ export default function Assistant() {
     runAsk({ message: t("assistant.showSlots"), doctor_id: doctor.doctor_id }, doctor.full_name);
   };
 
+  const onPickSlot = (data, slot) => {
+    const label = t("assistant.book", { time: clock(slot.time) });
+    runAsk(
+      { message: label, doctor_id: data._doctorId, date: slot.date, time: slot.time, confirm: true },
+      label
+    );
+  };
+
   const onSubmit = (e) => {
     e.preventDefault();
     send(input);
@@ -158,7 +200,14 @@ export default function Assistant() {
           msg.role === "user" ? (
             <UserBubble key={msg.id} text={msg.data.text} />
           ) : (
-            <AssistantBubble key={msg.id} data={msg.data} t={t} onPickDoctor={onPickDoctor} />
+            <AssistantBubble
+              key={msg.id}
+              data={msg.data}
+              t={t}
+              lang={lang}
+              onPickDoctor={onPickDoctor}
+              onPickSlot={onPickSlot}
+            />
           )
         )}
         {sending && <ThinkingBubble label={t("assistant.thinking")} />}
