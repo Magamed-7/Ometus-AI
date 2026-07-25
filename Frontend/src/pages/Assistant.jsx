@@ -112,7 +112,30 @@ function BookedAnswer({ t, lang, appointment }) {
   );
 }
 
+function EmergencyAnswer({ t, reply }) {
+  return (
+    <div className="flex max-w-[85%] gap-sm">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-error-container text-on-error-container">
+        <span className="material-symbols-outlined filled">emergency</span>
+      </div>
+      <div className="flex w-full flex-col gap-sm rounded-2xl rounded-tl-none border border-error bg-error-container p-md text-on-error-container">
+        <p className="font-bold uppercase tracking-wide">{t("assistant.emergencyTitle")}</p>
+        <p className="whitespace-pre-line text-body-md">{reply}</p>
+        <a
+          href="tel:103"
+          className="inline-flex w-fit items-center gap-xs rounded-lg bg-error px-md py-2 text-label-md font-bold text-on-error transition-opacity hover:opacity-90"
+        >
+          <span className="material-symbols-outlined text-lg">call</span>
+          103
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function AssistantBubble({ data, t, lang, onPickDoctor, onPickSlot }) {
+  if (data.action === "emergency") return <EmergencyAnswer t={t} reply={data.reply} />;
+
   return (
     <div className="flex max-w-[85%] gap-sm">
       <BotAvatar />
