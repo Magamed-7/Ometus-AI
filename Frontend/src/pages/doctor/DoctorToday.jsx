@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { completeAppointment, getDoctorToday } from "../../lib/api/appointments.js";
+import {
+  completeAppointment,
+  getDoctorToday,
+  noShowAppointment,
+} from "../../lib/api/appointments.js";
 import { errorText } from "../../lib/api/errorText.js";
 import { clock, phone as formatPhone } from "../../lib/format.js";
 import { useT } from "../../lib/i18n.jsx";
@@ -91,6 +95,14 @@ export default function DoctorToday() {
                     onClick={() => act(appointment.id, completeAppointment)}
                   >
                     {t("doctorCabinet.complete")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    icon="person_off"
+                    disabled={acting === appointment.id}
+                    onClick={() => act(appointment.id, noShowAppointment)}
+                  >
+                    {t("doctorCabinet.noShow")}
                   </Button>
                 </div>
               ) : (
