@@ -2,11 +2,14 @@ import { Route, Routes } from "react-router-dom";
 import DocumentTitle from "./components/DocumentTitle.jsx";
 import Layout from "./components/Layout.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import RoleRoute from "./components/RoleRoute.jsx";
 import Account from "./pages/Account.jsx";
 import Assistant from "./pages/Assistant.jsx";
 import Booking from "./pages/Booking.jsx";
 import DoctorDetail from "./pages/DoctorDetail.jsx";
 import Doctors from "./pages/Doctors.jsx";
+import DoctorSchedule from "./pages/doctor/DoctorSchedule.jsx";
+import DoctorToday from "./pages/doctor/DoctorToday.jsx";
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
@@ -36,8 +39,22 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/doctor/today" element={<Placeholder name="DoctorToday" />} />
-          <Route path="/doctor/schedule" element={<Placeholder name="DoctorSchedule" />} />
+          <Route
+            path="/doctor/today"
+            element={
+              <RoleRoute role="doctor">
+                <DoctorToday />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/doctor/schedule"
+            element={
+              <RoleRoute role="doctor">
+                <DoctorSchedule />
+              </RoleRoute>
+            }
+          />
           <Route path="/admin/filials" element={<Placeholder name="AdminFilials" />} />
           <Route path="/admin/departments" element={<Placeholder name="AdminDepartments" />} />
           <Route path="/admin/doctors" element={<Placeholder name="AdminDoctors" />} />
