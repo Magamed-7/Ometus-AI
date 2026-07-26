@@ -265,6 +265,9 @@ export const tg = {
     deleteFilial: "Нест кардани филиал",
     deleteFilialConfirm: "«{name}»-ро нест кунем? Ҳамроҳи филиал шӯъбаҳо ва ҷадвалҳои он нест мешаванд.",
     filialDeleted: "Филиал нест карда шуд",
+    deleteDepartment: "Нест кардани шӯъба",
+    deleteDepartmentConfirm: "«{name}»-ро нест кунем? Ҷадвалҳои табибони ин шӯъба низ нест мешаванд.",
+    departmentDeleted: "Шӯъба нест карда шуд",
   },
   status: {
     booked: "Навбат",

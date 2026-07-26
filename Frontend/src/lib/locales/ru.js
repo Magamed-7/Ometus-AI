@@ -265,6 +265,9 @@ export const ru = {
     deleteFilial: "Удалить филиал",
     deleteFilialConfirm: "Удалить «{name}»? Вместе с филиалом пропадут его отделения и расписания.",
     filialDeleted: "Филиал удалён",
+    deleteDepartment: "Удалить отделение",
+    deleteDepartmentConfirm: "Удалить «{name}»? Расписания врачей в этом отделении тоже пропадут.",
+    departmentDeleted: "Отделение удалено",
   },
   status: {
     booked: "Записан",

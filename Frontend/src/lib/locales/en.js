@@ -265,6 +265,9 @@ export const en = {
     deleteFilial: "Delete branch",
     deleteFilialConfirm: "Delete «{name}»? Its departments and schedules go with it.",
     filialDeleted: "Branch deleted",
+    deleteDepartment: "Delete department",
+    deleteDepartmentConfirm: "Delete «{name}»? Doctor schedules in it go with it.",
+    departmentDeleted: "Department deleted",
   },
   status: {
     booked: "Booked",
