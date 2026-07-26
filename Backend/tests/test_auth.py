@@ -70,6 +70,32 @@ async def test_login_wrong_password(client):
     assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
 
 
+async def test_new_code_kills_the_previous_one(client, db, sent_emails):
+    from app.models.model_user import User
+    from app.services import crud_user as crud_user_module
+    from sqlalchemy import select
+
+    await register(client)
+    first_code = sent_emails[0][1]
+
+    user = (
+        await db.execute(select(User).where(User.email == "patient@ometus.test"))
+    ).scalar_one()
+    await crud_user_module.create_verification_code(user, db)
+    second_code = sent_emails[1][1]
+
+    stale = await client.post(
+        VERIFY_EMAIL_URL, json={"email": "patient@ometus.test", "code": first_code}
+    )
+    fresh = await client.post(
+        VERIFY_EMAIL_URL, json={"email": "patient@ometus.test", "code": second_code}
+    )
+
+    assert stale.status_code == 400
+    assert stale.json()["error"]["code"] == "INVALID_CODE"
+    assert fresh.status_code == 200
+
+
 async def test_register_survives_broken_smtp(client, monkeypatch):
     # SMTP лежит: аккаунт уже создан, поэтому 500 отдавать нельзя — иначе пользователь
     # останется и без письма, и без возможности зарегистрироваться заново

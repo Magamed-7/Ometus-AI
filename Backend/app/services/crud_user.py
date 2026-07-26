@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -67,6 +67,12 @@ async def update_user(user: User, data: UserUpdateIn, db: AsyncSession):
 
 
 async def create_verification_code(user: User, db: AsyncSession):
+    # один активный код на пользователя: старые гасим, иначе после трёх запросов
+    # у человека на руках три рабочих кода, и отозвать их нечем
+    await db.execute(
+        delete(EmailVerificationCode).where(EmailVerificationCode.user_id == user.id)
+    )
+
     code = generate_code()
     verification = EmailVerificationCode(
         user_id=user.id,
