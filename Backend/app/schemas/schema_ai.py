@@ -28,6 +28,7 @@ class AskOut(BaseModel):
     language: str = "ru"
     detected_intent: str | None = None
     intent_confidence: float | None = None
+    emr_used: bool = False
     specialization: str | None = None
     alternatives: list[str] | None = None
     error_code: str | None = None

@@ -429,7 +429,11 @@ async def test_tool_calls_are_logged(client, db):
 
     assert [log.tool_name for log in logs] == ["find_doctors", "book_appointment"]
     assert [log.status for log in logs] == ["ok", "ok"]
-    assert logs[0].params_json == {"specialization": "кардиолог", "city": None}
+    assert logs[0].params_json == {
+        "specialization": "кардиолог",
+        "city": None,
+        "emr_used": False,
+    }
     assert logs[1].params_json["doctor_id"] == doctor_id
 
 

@@ -8,6 +8,7 @@ from app.api.router_auth import auth_router
 from app.api.router_departments import departments_router
 from app.api.router_doctors import doctors_router
 from app.api.router_filials import filials_router
+from app.api.router_medical_records import medical_records_router
 from app.api.router_schedules import schedules_router
 from app.api.router_users import users_router
 from app.core.config import settings
@@ -34,6 +35,7 @@ app.include_router(departments_router)
 app.include_router(doctors_router)
 app.include_router(schedules_router)
 app.include_router(appointments_router)
+app.include_router(medical_records_router)
 app.include_router(ai_router)
 app.include_router(admin_router)
 

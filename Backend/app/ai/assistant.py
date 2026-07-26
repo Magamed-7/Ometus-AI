@@ -42,9 +42,20 @@ SYSTEM_PROMPT_TEMPLATE = (
 
 SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(language="русском")
 
+# история болезни передаётся только чтобы подобрать специалиста. Без этой оговорки
+# модель, увидев «гипертония», охотно начинает советовать лечение — а это прямо запрещено
+EMR_CONTEXT_KEY = "история_болезни"
 
-def build_system_prompt(language: str):
-    return SYSTEM_PROMPT_TEMPLATE.format(language=translate("answer_language", language))
+EMR_PROMPT_NOTE = (
+    " В данных системы может быть история болезни пациента. Она дана исключительно для "
+    "выбора подходящего специалиста. Категорически запрещено комментировать заболевания, "
+    "аллергии и лекарства, оценивать их и давать любые советы по лечению."
+)
+
+
+def build_system_prompt(language: str, with_emr: bool = False):
+    prompt = SYSTEM_PROMPT_TEMPLATE.format(language=translate("answer_language", language))
+    return prompt + EMR_PROMPT_NOTE if with_emr else prompt
 
 
 def build_user_prompt(message: str, context: dict, history: list | None = None):
@@ -84,7 +95,11 @@ async def ask_groq(
             "model": model,
             "temperature": 0.2,
             "messages": [
-                {"role": "system", "content": system_prompt or build_system_prompt(language)},
+                {
+                    "role": "system",
+                    "content": system_prompt
+                    or build_system_prompt(language, EMR_CONTEXT_KEY in context),
+                },
                 {"role": "user", "content": build_user_prompt(message, context, history)},
             ],
         }
@@ -132,7 +147,14 @@ async def ask_gemini(
         return None
 
     payload = {
-        "system_instruction": {"parts": [{"text": system_prompt or build_system_prompt(language)}]},
+        "system_instruction": {
+            "parts": [
+                {
+                    "text": system_prompt
+                    or build_system_prompt(language, EMR_CONTEXT_KEY in context)
+                }
+            ]
+        },
         "contents": [{"parts": [{"text": build_user_prompt(message, context, history)}]}],
         "generationConfig": {"temperature": 0.2},
     }
@@ -756,6 +778,26 @@ async def show_slots(
     }
 
 
+async def load_emr_context(current_patient, db: AsyncSession):
+    if not current_patient.ai_consent:
+        return None
+
+    from app.services import crud_medical_record
+
+    records = await crud_medical_record.get_records(current_patient.id, db)
+
+    if not records:
+        return None
+
+    grouped = {}
+
+    for record in records:
+        entry = f"{record.name} ({record.note})" if record.note else record.name
+        grouped.setdefault(record.kind, []).append(entry)
+
+    return grouped
+
+
 async def find_available_alternatives(db: AsyncSession, specialization: str):
     available = []
 
@@ -791,11 +833,14 @@ async def suggest_doctors(
         }
 
     specialization = specializations[0]
+    emr = await load_emr_context(current_patient, db)
     result = await find_doctors(db, specialization, city=data.city)
+    # в аудит идёт только факт использования истории болезни: само содержимое
+    # в таблице логов было бы утечкой медданных
     await log_call(
         current_patient,
         "find_doctors",
-        {"specialization": specialization, "city": data.city},
+        {"specialization": specialization, "city": data.city, "emr_used": bool(emr)},
         result,
         db,
         severity,
@@ -836,15 +881,15 @@ async def suggest_doctors(
     if doctors[0].get("other_city"):
         fallback = f"{translate('other_city_note', language, city=data.city)} {fallback}"
 
+    context = {"специализация": specialization, "врачи": doctors}
+
+    if emr:
+        context[EMR_CONTEXT_KEY] = emr
+
     return {
         "action": "doctors",
         "specialization": specialization,
         "doctors": doctors,
-        "reply": await build_reply(
-            data.message,
-            fallback,
-            {"специализация": specialization, "врачи": doctors},
-            history,
-            language,
-        ),
+        "emr_used": bool(emr),
+        "reply": await build_reply(data.message, fallback, context, history, language),
     }
