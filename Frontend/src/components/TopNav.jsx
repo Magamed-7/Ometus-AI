@@ -82,6 +82,7 @@ export default function TopNav() {
             <button
               type="button"
               onClick={onLogout}
+              aria-label={t("nav.logout")}
               className="flex h-11 items-center gap-1 rounded-full bg-primary px-md text-label-md font-semibold text-on-primary transition-all hover:bg-primary-container active:scale-95"
             >
               <span aria-hidden="true" className="material-symbols-outlined text-lg">logout</span>

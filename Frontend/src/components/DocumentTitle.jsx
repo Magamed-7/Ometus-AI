@@ -24,7 +24,7 @@ function titleKey(pathname) {
   if (TITLES[pathname]) return TITLES[pathname];
   if (pathname.startsWith("/doctors/")) return "doctors.profile";
   if (pathname.startsWith("/booking/")) return "nav.booking";
-  return null;
+  return "notFound.title";
 }
 
 export default function DocumentTitle() {

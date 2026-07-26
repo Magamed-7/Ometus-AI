@@ -299,6 +299,7 @@ export const en = {
     title: "Page not found",
     text: "Looks like this page doesn't exist. Back to home?",
     home: "Go home",
+    toDoctors: "Browse doctors",
   },
   errors: {
     ABSENCE_NOT_FOUND: "Absence not found",

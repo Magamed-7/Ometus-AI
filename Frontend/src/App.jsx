@@ -17,12 +17,9 @@ import DoctorSchedule from "./pages/doctor/DoctorSchedule.jsx";
 import DoctorToday from "./pages/doctor/DoctorToday.jsx";
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
+import NotFound from "./pages/NotFound.jsx";
 import Register from "./pages/Register.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
-
-function Placeholder({ name }) {
-  return <div className="p-lg text-on-surface-variant">{name}</div>;
-}
 
 export default function App() {
   return (
@@ -74,7 +71,7 @@ export default function App() {
             <Route path="doctors" element={<AdminDoctors />} />
             <Route path="reports" element={<AdminReports />} />
           </Route>
-          <Route path="*" element={<Placeholder name="NotFound" />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
