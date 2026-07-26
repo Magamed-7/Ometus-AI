@@ -231,4 +231,21 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* спиннер загрузки не выключаем совсем — замерший на середине оборота
+     значок хуже, чем медленный: просто крутим спокойнее */
+  .animate-spin {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  /* пульсация скелетонов заменяется постоянной приглушённой заливкой */
+  .animate-pulse {
+    animation: none !important;
+    opacity: 0.65;
+  }
+
+  .skip-link {
+    transition: none;
+  }
 }

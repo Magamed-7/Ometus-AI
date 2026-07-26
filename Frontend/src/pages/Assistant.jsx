@@ -5,6 +5,7 @@ import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { clock, formatDate } from "../lib/format.js";
 import { useI18n } from "../lib/i18n.jsx";
+import { scrollBehavior } from "../lib/motion.js";
 
 function BotAvatar() {
   return (
@@ -203,7 +204,7 @@ export default function Assistant() {
   const endRef = useRef(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    endRef.current?.scrollIntoView({ behavior: scrollBehavior() });
   }, [messages, sending]);
 
   const runAsk = async (payload, userText) => {
