@@ -162,6 +162,7 @@ export const en = {
     patientCard: "Patient card",
     dateOfBirth: "Date of birth",
     fullName: "Full name",
+    nameFromProfile: "Name on the card: {name} — change it in the profile above",
     tabActive: "My appointments",
     tabHistory: "Visit history",
     tabDocuments: "Medical reports",

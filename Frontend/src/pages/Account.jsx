@@ -110,7 +110,6 @@ export default function Account() {
     setSavingPatient(true);
     try {
       const updated = await updatePatient({
-        full_name: patientForm.full_name || null,
         date_of_birth: patientForm.date_of_birth || null,
         phone: patientForm.phone || null,
       });
@@ -197,12 +196,11 @@ export default function Account() {
                 {t("account.patientCard")}
               </h2>
               <form onSubmit={savePatient} className="grid gap-sm sm:grid-cols-2">
-                <Field
-                  label={t("account.fullName")}
-                  value={patientForm.full_name}
-                  onChange={(e) => setPatientForm((f) => ({ ...f, full_name: e.target.value }))}
-                  className="sm:col-span-2"
-                />
+                {/* имя карточки больше не редактируется здесь: оно отражает профиль выше,
+                    бэкенд на `full_name` отвечает NAME_FROM_ACCOUNT */}
+                <p className="text-label-md text-on-surface-variant sm:col-span-2">
+                  {t("account.nameFromProfile", { name: patient?.full_name || "—" })}
+                </p>
                 <Field
                   label={t("account.dateOfBirth")}
                   type="date"

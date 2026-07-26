@@ -162,6 +162,7 @@ export const ru = {
     patientCard: "Карточка пациента",
     dateOfBirth: "Дата рождения",
     fullName: "ФИО",
+    nameFromProfile: "Имя в карточке: {name} — меняется в профиле выше",
     tabActive: "Мои записи",
     tabHistory: "История визитов",
     tabDocuments: "Заключения врачей",

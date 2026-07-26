@@ -162,6 +162,7 @@ export const tg = {
     patientCard: "Корти бемор",
     dateOfBirth: "Санаи таваллуд",
     fullName: "Ному насаб",
+    nameFromProfile: "Ном дар корт: {name} — дар профил боло тағйир меёбад",
     tabActive: "Навбатҳои ман",
     tabHistory: "Таърихи ташрифҳо",
     tabDocuments: "Хулосаҳои табибон",
