@@ -17,7 +17,7 @@ from app.ai.mcp_tools import (
 from app.ai.specialization_map import match_specializations
 from app.core.config import settings
 from app.schemas.schema_ai import AskIn
-from app.services import crud_ai_log
+from app.services import crud_ai_log, crud_conversation
 
 SYSTEM_PROMPT = (
     "Ты — ассистент регистратуры клиники Ometus. Твоя единственная задача — помочь пациенту "
@@ -29,11 +29,17 @@ SYSTEM_PROMPT = (
 )
 
 
-def build_user_prompt(message: str, context: dict):
-    return (
-        f"Запрос пациента: {message}\n\n"
-        f"Данные системы: {json.dumps(context, ensure_ascii=False)}"
-    )
+def build_user_prompt(message: str, context: dict, history: list | None = None):
+    prompt = f"Запрос пациента: {message}\n\n"
+
+    if history:
+        prompt += "История диалога:\n"
+        for msg in history:
+            prompt += f"- {msg.role}: {msg.content}\n"
+        prompt += "\n"
+
+    prompt += f"Данные системы: {json.dumps(context, ensure_ascii=False)}"
+    return prompt
 
 
 def read_gemini_text(data: dict):
@@ -141,6 +147,19 @@ async def log_call(current_patient, tool_name: str, params: dict, result: dict, 
 
 
 async def ask(data: AskIn, current_patient, db: AsyncSession):
+    if data.conversation_id:
+        conversation = await crud_conversation.get_conversation(data.conversation_id, db)
+        if conversation is None:
+            conversation = await crud_conversation.create_conversation(
+                current_patient.user_id, db
+            )
+    else:
+        conversation = await crud_conversation.get_or_create_active_conversation(
+            current_patient.user_id, db
+        )
+
+    history = await crud_conversation.get_conversation_history(conversation.id, limit=10, db=db)
+
     if is_emergency(data.message):
         await log_call(
             current_patient,
@@ -149,27 +168,57 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
             tool_error("EMERGENCY", EMERGENCY_MESSAGE),
             db,
         )
-        return {"action": "emergency", "reply": EMERGENCY_MESSAGE}
+        await crud_conversation.add_message(conversation.id, "user", data.message, db)
+        await crud_conversation.add_message(conversation.id, "assistant", EMERGENCY_MESSAGE, db)
+        return {"action": "emergency", "reply": EMERGENCY_MESSAGE, "conversation_id": conversation.id}
 
     if data.intent == "cancel":
-        return await cancel_flow(data, current_patient, db)
+        result = await cancel_flow(data, current_patient, db)
+        result["conversation_id"] = conversation.id
+        await crud_conversation.add_message(conversation.id, "user", data.message, db)
+        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+        return result
 
     if data.intent == "reschedule":
-        return await reschedule_flow(data, current_patient, db)
+        result = await reschedule_flow(data, current_patient, db)
+        result["conversation_id"] = conversation.id
+        await crud_conversation.add_message(conversation.id, "user", data.message, db)
+        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+        return result
 
     if data.intent == "my_appointments":
-        return await my_appointments_flow(data, current_patient, db)
+        result = await my_appointments_flow(data, current_patient, db)
+        result["conversation_id"] = conversation.id
+        await crud_conversation.add_message(conversation.id, "user", data.message, db)
+        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+        return result
 
     if data.intent == "doctor_schedule":
-        return await doctor_schedule_flow(data, current_patient, db)
+        result = await doctor_schedule_flow(data, current_patient, db)
+        result["conversation_id"] = conversation.id
+        await crud_conversation.add_message(conversation.id, "user", data.message, db)
+        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+        return result
 
     if data.confirm:
-        return await confirm_booking(data, current_patient, db)
+        result = await confirm_booking(data, current_patient, db, history, conversation)
+        result["conversation_id"] = conversation.id
+        await crud_conversation.add_message(conversation.id, "user", data.message, db)
+        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+        return result
 
     if data.doctor_id:
-        return await show_slots(data, current_patient, db)
+        result = await show_slots(data, current_patient, db, history, conversation)
+        result["conversation_id"] = conversation.id
+        await crud_conversation.add_message(conversation.id, "user", data.message, db)
+        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+        return result
 
-    return await suggest_doctors(data, current_patient, db)
+    result = await suggest_doctors(data, current_patient, db, history, conversation)
+    result["conversation_id"] = conversation.id
+    await crud_conversation.add_message(conversation.id, "user", data.message, db)
+    await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+    return result
 
 
 def tool_failure(result: dict):
@@ -288,7 +337,7 @@ async def doctor_schedule_flow(data: AskIn, current_patient, db: AsyncSession):
     }
 
 
-async def confirm_booking(data: AskIn, current_patient, db: AsyncSession):
+async def confirm_booking(data: AskIn, current_patient, db: AsyncSession, history: list = None, conversation = None):
     if not data.doctor_id or not data.day or not data.slot_time:
         return {
             "action": "clarify",
@@ -333,7 +382,7 @@ async def confirm_booking(data: AskIn, current_patient, db: AsyncSession):
     }
 
 
-async def show_slots(data: AskIn, current_patient, db: AsyncSession):
+async def show_slots(data: AskIn, current_patient, db: AsyncSession, history: list = None, conversation = None):
     result = await get_available_time(db, data.doctor_id, data.day)
     await log_call(
         current_patient,
@@ -363,7 +412,7 @@ async def show_slots(data: AskIn, current_patient, db: AsyncSession):
     }
 
 
-async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession):
+async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, history: list = None, conversation = None):
     specializations = match_specializations(data.message)
 
     if not specializations:
