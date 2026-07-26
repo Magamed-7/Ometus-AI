@@ -268,6 +268,7 @@ export const ru = {
     deleteDepartment: "Удалить отделение",
     deleteDepartmentConfirm: "Удалить «{name}»? Расписания врачей в этом отделении тоже пропадут.",
     departmentDeleted: "Отделение удалено",
+    department: "Отделение",
   },
   status: {
     booked: "Записан",

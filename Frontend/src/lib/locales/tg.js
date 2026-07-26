@@ -268,6 +268,7 @@ export const tg = {
     deleteDepartment: "Нест кардани шӯъба",
     deleteDepartmentConfirm: "«{name}»-ро нест кунем? Ҷадвалҳои табибони ин шӯъба низ нест мешаванд.",
     departmentDeleted: "Шӯъба нест карда шуд",
+    department: "Шӯъба",
   },
   status: {
     booked: "Навбат",

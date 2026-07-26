@@ -268,6 +268,7 @@ export const en = {
     deleteDepartment: "Delete department",
     deleteDepartmentConfirm: "Delete «{name}»? Doctor schedules in it go with it.",
     departmentDeleted: "Department deleted",
+    department: "Department",
   },
   status: {
     booked: "Booked",
