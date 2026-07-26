@@ -174,6 +174,10 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
         await crud_conversation.add_message(conversation.id, "assistant", EMERGENCY_MESSAGE, db)
         return {"action": "emergency", "reply": EMERGENCY_MESSAGE, "conversation_id": conversation.id, "severity": severity}
 
+    if severity == 2:
+        warning_msg = "⚠️ Судя по симптомам, это может быть срочно. Попробую найти врача на ближайшее время."
+        await crud_conversation.add_message(conversation.id, "system", warning_msg, db)
+
     if data.intent == "cancel":
         result = await cancel_flow(data, current_patient, db)
         result["conversation_id"] = conversation.id
