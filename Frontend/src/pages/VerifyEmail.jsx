@@ -94,13 +94,12 @@ export default function VerifyEmail() {
             </Button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => toast.info(t("auth.resendStub"))}
-            className="mt-md w-full text-center text-body-md font-semibold text-primary hover:underline"
-          >
-            {t("auth.resend")}
-          </button>
+          {/* Заглушка STUBS #2: эндпоинта POST /api/auth/resend-code в API нет.
+              Кнопка «отправить ещё раз» здесь была бы обманом — она ничего не отправляет,
+              поэтому вместо неё честная подсказка, что делать, если письмо не дошло. */}
+          <p className="mt-md rounded-xl bg-surface-container px-4 py-3 text-center text-body-md text-on-surface-variant">
+            {t("auth.resendStub")}
+          </p>
         </div>
       </div>
     </div>
