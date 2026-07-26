@@ -115,6 +115,25 @@ async def ask(client, headers, message, **extra):
     return await client.post(ASK_URL, json={"message": message, **extra}, headers=headers)
 
 
+async def make_appointment(db, patient_id, doctor_id, department_id, slot_time, status):
+    from datetime import datetime
+
+    from app.models.model_appointment import Appointment
+
+    appointment = Appointment(
+        patient_id=patient_id,
+        doctor_id=doctor_id,
+        department_id=department_id,
+        date=date.today() - timedelta(days=7),
+        time=datetime.strptime(slot_time, "%H:%M:%S").time(),
+        status=status,
+    )
+
+    db.add(appointment)
+    await db.commit()
+    return appointment
+
+
 async def test_emergency_message_blocks_booking_flow(client, db):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
@@ -262,7 +281,10 @@ async def test_slots_without_date_look_ahead(client, db):
 
     body = response.json()
     assert body["action"] == "slots"
-    assert body["slots"][0]["date"] == str(next_workday())
+
+    first_day = date.fromisoformat(body["slots"][0]["date"])
+    assert first_day.weekday() == WORKDAY["weekday"]
+    assert first_day >= date.today()
 
 
 async def test_no_slots_for_doctor_without_schedule(client, db):
@@ -754,6 +776,70 @@ async def test_history_of_foreign_conversation_is_denied(client, db):
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "CONVERSATION_NOT_FOUND"
+
+
+def test_sort_slots_by_preference_puts_liked_hours_first():
+    slots = [
+        {"date": "2026-08-03", "time": "09:00:00"},
+        {"date": "2026-08-03", "time": "15:00:00"},
+        {"date": "2026-08-03", "time": "16:00:00"},
+    ]
+
+    sorted_slots = assistant.sort_slots_by_preference(slots, {15: 4, 9: -2})
+
+    assert [slot["time"] for slot in sorted_slots] == ["15:00:00", "16:00:00", "09:00:00"]
+    assert sorted_slots[0]["preferred"] is True
+    assert sorted_slots[2]["preferred"] is False
+
+
+def test_sort_slots_keeps_order_without_history():
+    slots = [
+        {"date": "2026-08-03", "time": "09:00:00"},
+        {"date": "2026-08-03", "time": "15:00:00"},
+    ]
+
+    assert assistant.sort_slots_by_preference(slots, {}) == slots
+
+
+async def test_hour_preferences_count_visits_and_penalise_cancels(client, db):
+    from app.services import crud_appointment
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    await make_appointment(db, patient_id, doctor_id, department_id, "10:00:00", "completed")
+    await make_appointment(db, patient_id, doctor_id, department_id, "10:30:00", "booked")
+    await make_appointment(db, patient_id, doctor_id, department_id, "17:00:00", "cancelled")
+
+    preferences = await crud_appointment.get_hour_preferences(patient_id, db)
+
+    assert preferences == {10: 3, 17: -1}
+
+
+async def test_slots_are_reordered_by_patient_habits(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db, with_schedule=False)
+    patient_id, headers = await setup_patient(client)
+
+    await client.post(
+        MY_SCHEDULE_URL,
+        json={
+            "weekday": WORKDAY["weekday"],
+            "start_time": "09:00:00",
+            "end_time": "16:00:00",
+            "slot_duration": 60,
+            "department_id": department_id,
+        },
+        headers=doctor_headers,
+    )
+
+    await make_appointment(db, patient_id, doctor_id, department_id, "15:00:00", "completed")
+
+    body = (
+        await ask(client, headers, "какое время свободно", doctor_id=doctor_id, date=str(next_workday()))
+    ).json()
+
+    assert body["slots"][0]["time"] == "15:00:00"
+    assert body["slots"][0]["preferred"] is True
 
 
 @pytest.mark.parametrize(

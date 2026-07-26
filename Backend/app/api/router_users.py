@@ -101,6 +101,15 @@ async def update_my_patient_profile(
     if patient is None:
         raise AppError(code="PATIENT_NOT_FOUND", message="Профиль пациента не найден", status_code=404)
 
+    # у карточки владельца аккаунта имя не своё, а отражение профиля — редактировать
+    # его здесь значит завести второй источник правды об одном и том же человеке
+    if data.full_name is not None:
+        raise AppError(
+            code="NAME_FROM_ACCOUNT",
+            message="Имя меняется в профиле, а не в карточке пациента",
+            status_code=400,
+        )
+
     return await crud_patient.update_patient(patient, data, db)
 
 

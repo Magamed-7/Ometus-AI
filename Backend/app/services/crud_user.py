@@ -9,6 +9,7 @@ from app.models.model_user import User
 from app.models.model_verification import EmailVerificationCode
 from app.schemas.schema_auth import RegisterIn
 from app.schemas.schema_user import UserUpdateIn
+from app.services import crud_patient
 from app.services.email import deliver_verification_code, generate_code
 
 
@@ -60,6 +61,17 @@ async def update_user(user: User, data: UserUpdateIn, db: AsyncSession):
     user.first_name = data.first_name or user.first_name
     user.last_name = data.last_name or user.last_name
     user.phone = data.phone or user.phone
+
+    # имя владельца аккаунта живёт в users и нигде больше: карточка пациента только
+    # отражает его. Иначе после правки профиля в карточке остаётся старое имя,
+    # и врач на приёме видит одно, а пациент у себя — другое
+    patient = await crud_patient.get_by_user_id(user.id, db)
+
+    if patient is not None:
+        patient.full_name = " ".join(
+            part for part in [user.first_name, user.last_name] if part
+        ) or None
+        patient.phone = user.phone or patient.phone
 
     await db.commit()
     await db.refresh(user)

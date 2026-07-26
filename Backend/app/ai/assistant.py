@@ -24,7 +24,7 @@ from app.ai.mcp_tools import (
 from app.ai.specialization_map import find_fallback_specialists, match_specializations
 from app.core.config import settings
 from app.schemas.schema_ai import AskIn
-from app.services import crud_ai_log, crud_conversation
+from app.services import crud_ai_log, crud_appointment, crud_conversation
 
 SYSTEM_PROMPT = (
     "Ты — ассистент регистратуры клиники Ometus. Твоя единственная задача — помочь пациенту "
@@ -130,6 +130,21 @@ def describe_doctors(doctors: list):
 
 def describe_slots(slots: list):
     return ", ".join(f"{slot['date']} {slot['time'][:5]}" for slot in slots[:10])
+
+
+def slot_hour(slot: dict):
+    return int(slot["time"][:2])
+
+
+def sort_slots_by_preference(slots: list, preferences: dict):
+    if not preferences:
+        return slots
+
+    marked = [
+        {**slot, "preferred": preferences.get(slot_hour(slot), 0) > 0} for slot in slots
+    ]
+
+    return sorted(marked, key=lambda slot: -preferences.get(slot_hour(slot), 0))
 
 
 WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
@@ -400,7 +415,8 @@ async def show_slots(data: AskIn, current_patient, db: AsyncSession, history: li
             "reply": result["error"]["message"],
         }
 
-    slots = result["data"]
+    preferences = await crud_appointment.get_hour_preferences(current_patient.id, db)
+    slots = sort_slots_by_preference(result["data"], preferences)
     fallback = (
         f"Свободное время: {describe_slots(slots)}. "
         "Скажите, какое время подходит, и я оформлю запись."

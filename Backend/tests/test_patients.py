@@ -3,6 +3,7 @@ from tests.conftest import verify_email
 REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
 PATIENT_URL = "/api/users/me/patient"
+ME_URL = "/api/users/me"
 ADMIN_DOCTORS_URL = "/api/admin/doctors"
 
 DOCTOR_DATA = {
@@ -273,3 +274,23 @@ async def test_admin_adds_dependent_in_patient_account(client, db):
     assert created.status_code == 200
     assert created.json()["guardian_user_id"] == patient_user["id"]
     assert len(listing.json()) == 1
+
+
+async def test_patient_card_follows_the_account_name(client):
+    await register(client, first_name="Азиз")
+    headers = await auth_headers(client)
+
+    await client.put(ME_URL, json={"first_name": "Азиз", "last_name": "Негматов"}, headers=headers)
+    card = await client.get(PATIENT_URL, headers=headers)
+
+    assert card.json()["full_name"] == "Азиз Негматов"
+
+
+async def test_patient_card_name_cannot_be_edited_directly(client):
+    await register(client, first_name="Азиз")
+    headers = await auth_headers(client)
+
+    response = await client.put(PATIENT_URL, json={"full_name": "Другое Имя"}, headers=headers)
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "NAME_FROM_ACCOUNT"

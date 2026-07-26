@@ -173,6 +173,25 @@ async def get_taken_times(doctor_id: int, day: date, db: AsyncSession):
     return result.scalars().all()
 
 
+HOUR_WEIGHTS = {"completed": 2, "booked": 1, "cancelled": -1, "no_show": -2}
+
+
+async def get_hour_preferences(patient_id: int, db: AsyncSession):
+    result = await db.execute(
+        select(Appointment.time, Appointment.status).where(Appointment.patient_id == patient_id)
+    )
+
+    preferences = {}
+
+    for slot_time, status in result.all():
+        weight = HOUR_WEIGHTS.get(status, 0)
+
+        if weight:
+            preferences[slot_time.hour] = preferences.get(slot_time.hour, 0) + weight
+
+    return preferences
+
+
 async def has_active_appointment(patient_id: int, doctor_id: int, day: date, db: AsyncSession):
     result = await db.execute(
         select(Appointment)
