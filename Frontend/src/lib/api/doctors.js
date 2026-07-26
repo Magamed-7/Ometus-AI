@@ -15,6 +15,9 @@ export const getDoctor = (id) => client.get(`/api/doctors/${id}`, { auth: false 
 export const getDoctorDepartments = (id) =>
   client.get(`/api/doctors/${id}/departments`, { auth: false });
 
+export const getDoctorSpecializations = (id) =>
+  client.get(`/api/doctors/${id}/specializations`, { auth: false });
+
 export async function findMyDoctor(userId) {
   const doctors = await searchDoctors();
   return doctors.find((doctor) => doctor.user_id === userId) || null;

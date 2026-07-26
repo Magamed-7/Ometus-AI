@@ -275,6 +275,10 @@ export const ru = {
     copyCredentials: "Скопировать",
     credentialsCopied: "Данные скопированы",
     copyFailed: "Не удалось скопировать — выделите текст вручную",
+    doctorDepartments: "Отделения врача",
+    noDoctorDepartments: "Врач ещё не назначен ни в одно отделение",
+    extraSpecializations: "Дополнительные специализации",
+    noExtraSpecializations: "Дополнительных специализаций нет",
   },
   status: {
     booked: "Записан",

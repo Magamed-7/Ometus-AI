@@ -275,6 +275,10 @@ export const en = {
     copyCredentials: "Copy",
     credentialsCopied: "Credentials copied",
     copyFailed: "Copy failed — select the text manually",
+    doctorDepartments: "Doctor departments",
+    noDoctorDepartments: "The doctor is not assigned to any department yet",
+    extraSpecializations: "Extra specializations",
+    noExtraSpecializations: "No extra specializations",
   },
   status: {
     booked: "Booked",

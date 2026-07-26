@@ -275,6 +275,10 @@ export const tg = {
     copyCredentials: "Нусхабардорӣ",
     credentialsCopied: "Маълумот нусхабардорӣ шуд",
     copyFailed: "Нусхабардорӣ нашуд — матнро дастӣ интихоб кунед",
+    doctorDepartments: "Шӯъбаҳои табиб",
+    noDoctorDepartments: "Табиб ҳанӯз ба ягон шӯъба таъин нашудааст",
+    extraSpecializations: "Ихтисосҳои иловагӣ",
+    noExtraSpecializations: "Ихтисосҳои иловагӣ нест",
   },
   status: {
     booked: "Навбат",

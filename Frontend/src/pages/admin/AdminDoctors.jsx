@@ -14,6 +14,7 @@ import ErrorState from "../../components/ErrorState.jsx";
 import { Field, Select } from "../../components/Field.jsx";
 import Modal from "../../components/Modal.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
+import DoctorAssignments from "./DoctorAssignments.jsx";
 
 const EMPTY_FORM = { email: "", full_name: "", specialization: "", phone: "" };
 
@@ -36,6 +37,7 @@ export default function AdminDoctors() {
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({ full_name: "", specialization: "" });
   const [updating, setUpdating] = useState(false);
+  const [assigning, setAssigning] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -215,6 +217,14 @@ export default function AdminDoctors() {
                       >
                         <span className="material-symbols-outlined text-lg">edit</span>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setAssigning(doctor)}
+                        aria-label={t("admin.assignDepartment")}
+                        className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                      >
+                        <span className="material-symbols-outlined text-lg">meeting_room</span>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -284,6 +294,17 @@ export default function AdminDoctors() {
             />
           </form>
         </Modal>
+      )}
+
+      {assigning && (
+        <DoctorAssignments
+          doctor={assigning}
+          departments={departments}
+          onClose={() => {
+            setAssigning(null);
+            load();
+          }}
+        />
       )}
 
       {editing && (
