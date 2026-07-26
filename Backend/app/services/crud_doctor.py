@@ -4,6 +4,7 @@ from datetime import date
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.clock import clinic_today
 from app.core.security import hash_password
 from app.models.model_appointment import Appointment
 from app.models.model_department import Department
@@ -83,7 +84,7 @@ async def search_doctors(
 ):
     # уволенный врач исчезает из поиска с даты увольнения; до неё к нему ещё можно попасть
     query = select(Doctor).where(
-        or_(Doctor.dismissed_at.is_(None), Doctor.dismissed_at > date.today())
+        or_(Doctor.dismissed_at.is_(None), Doctor.dismissed_at > clinic_today())
     )
 
     if specialization:

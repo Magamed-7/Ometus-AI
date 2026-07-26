@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.permissions import get_current_doctor, get_current_patient, require_staff
+from app.core.clock import clinic_now
 from app.core.errors import AppError
 from app.db.database import get_db
 from app.schemas.schema_appointment import (
@@ -73,7 +74,7 @@ async def book_appointment(
             )
         patient_id = data.patient_id
 
-    if datetime.combine(data.date, data.time) < datetime.now():
+    if datetime.combine(data.date, data.time) < clinic_now():
         raise AppError(
             code="SLOT_IN_PAST",
             message="Нельзя записаться на прошедшее время",
@@ -140,7 +141,7 @@ async def book_emergency_appointment(
             status_code=400,
         )
 
-    if datetime.combine(data.date, data.time) < datetime.now():
+    if datetime.combine(data.date, data.time) < clinic_now():
         raise AppError(
             code="SLOT_IN_PAST",
             message="Нельзя записаться на прошедшее время",
@@ -229,7 +230,7 @@ async def reschedule_appointment(
             code="APPOINTMENT_NOT_ACTIVE", message="Запись уже закрыта", status_code=400
         )
 
-    if datetime.combine(data.date, data.time) < datetime.now():
+    if datetime.combine(data.date, data.time) < clinic_now():
         raise AppError(
             code="SLOT_IN_PAST",
             message="Нельзя записаться на прошедшее время",

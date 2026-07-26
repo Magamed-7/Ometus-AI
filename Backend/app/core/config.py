@@ -25,6 +25,9 @@ class Settings:
     # без таймаута зависший SMTP держит поток отправки бесконечно
     EMAIL_TIMEOUT: int = int(os.getenv("EMAIL_TIMEOUT", "10"))
 
+    # часовой пояс клиники: в нём заданы все расписания и записи
+    CLINIC_TIMEZONE: str = os.getenv("CLINIC_TIMEZONE", "Asia/Dushanbe")
+
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     GROQ_MODELS: list[str] = os.getenv(
         "GROQ_MODELS", "llama-3.3-70b-versatile,llama-3.1-8b-instant,openai/gpt-oss-120b"

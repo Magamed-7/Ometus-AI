@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.clock import clinic_now
 from app.schemas.schema_appointment import AppointmentCreateIn, AppointmentRescheduleIn
 from app.services import crud_appointment, crud_department, crud_doctor, crud_schedule
 
@@ -17,7 +18,7 @@ def tool_result(data):
 
 
 def is_future(day: date, slot_time: time):
-    return datetime.combine(day, slot_time) >= datetime.now()
+    return datetime.combine(day, slot_time) >= clinic_now()
 
 
 async def find_doctors(
