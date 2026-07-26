@@ -112,8 +112,6 @@ export const tg = {
     doctorsSubtitle: "Беҳтарин мутахассисони Душанбе бо таҷрибаи солҳо",
     allDoctors: "Ҳамаи табибонро нишон диҳед",
     book: "Навбат гирифтан",
-    workingHours: "08:00 – 20:00",
-    noDaysOff: "Бе рӯзҳои истироҳат",
     hoursUnknown: "Соатҳои кориро пурсед",
   },
   doctors: {

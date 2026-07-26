@@ -112,8 +112,6 @@ export const ru = {
     doctorsSubtitle: "Лучшие специалисты Душанбе с многолетним опытом",
     allDoctors: "Показать всех врачей",
     book: "Записаться",
-    workingHours: "08:00 – 20:00",
-    noDaysOff: "Без выходных",
     hoursUnknown: "Часы работы уточняйте",
   },
   doctors: {

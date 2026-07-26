@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { findNearestSlot } from "../lib/api/schedules.js";
 import { clock, formatDateShort, isoDate } from "../lib/format.js";
-import { avatarAccent } from "../lib/mocks/doctors.js";
+import { avatarAccent } from "../lib/avatar.js";
 import { useI18n } from "../lib/i18n.jsx";
 import Card from "./Card.jsx";
 

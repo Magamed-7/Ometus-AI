@@ -6,7 +6,7 @@ import { getDoctorSchedule, getSlots } from "../lib/api/schedules.js";
 import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { clock, formatDate, isoDate, weekdayIndex } from "../lib/format.js";
-import { avatarAccent } from "../lib/mocks/doctors.js";
+import { avatarAccent } from "../lib/avatar.js";
 import { useI18n } from "../lib/i18n.jsx";
 import { nextIndex } from "../lib/roving.js";
 import { useToast } from "../lib/toast.jsx";

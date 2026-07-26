@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getDoctor, getDoctorDepartments } from "../lib/api/doctors.js";
 import { getFilials } from "../lib/api/filials.js";
-import { avatarAccent } from "../lib/mocks/doctors.js";
+import { avatarAccent } from "../lib/avatar.js";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
 import ErrorState from "../components/ErrorState.jsx";

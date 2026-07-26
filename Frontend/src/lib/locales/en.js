@@ -112,8 +112,6 @@ export const en = {
     doctorsSubtitle: "The best specialists in Dushanbe with years of experience",
     allDoctors: "Show all doctors",
     book: "Book",
-    workingHours: "08:00 – 20:00",
-    noDaysOff: "Open daily",
     hoursUnknown: "Call to check opening hours",
   },
   doctors: {
