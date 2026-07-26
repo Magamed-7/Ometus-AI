@@ -35,37 +35,15 @@ EMERGENCY_MESSAGE = (
 )
 
 
-CRITICAL_SYMPTOMS = [
-    "без сознани",
-    "потерял сознание",
-    "теряю сознание",
-    "не дышит",
-    "не могу дышать",
-    "задыха",
-    "кровотеч",
-    "кровь идет",
-    "инфаркт",
-    "инсульт",
-    "судорог",
-    "отравлени",
-    "передозиров",
-    "анафилакт",
-    "аллергический шок",
-    "покончить с собой",
-    "суицид",
-]
-
 HIGH_SYMPTOMS = [
-    "боль в груди",
-    "давит в груди",
     "острая боль",
-    "сильный ожог",
-    "перестал говорить",
-    "отнялась рука",
-    "отнялась нога",
-    "парализ",
-    "сильное кровотечение",
     "сильная боль",
+    "парализ",
+    "температура 39",
+    "температура 40",
+    "сильная рвота",
+    "не могу встать",
+    "не проходит боль",
 ]
 
 MODERATE_SYMPTOMS = [
@@ -76,27 +54,37 @@ MODERATE_SYMPTOMS = [
     "рвота",
     "понос",
     "головная боль",
-    "сильная слабость",
+    "слабость",
     "одышка",
     "тошнота",
 ]
 
+SEVERITY_CRITICAL = 3
+SEVERITY_HIGH = 2
+SEVERITY_MODERATE = 1
+SEVERITY_LOW = 0
 
-def assess_symptom_severity(text: str) -> int:
-    normalized = normalize(text)
-
-    if any(keyword in normalized for keyword in CRITICAL_SYMPTOMS):
-        return 3
-
-    if any(keyword in normalized for keyword in HIGH_SYMPTOMS):
-        return 2
-
-    if any(keyword in normalized for keyword in MODERATE_SYMPTOMS):
-        return 1
-
-    return 0
+HIGH_SEVERITY_NOTE = (
+    "Судя по описанию, тянуть не стоит — подберу ближайшее время. "
+    "Если станет хуже, обратитесь в скорую."
+)
 
 
 def is_emergency(text: str):
     normalized = normalize(text)
     return any(keyword in normalized for keyword in EMERGENCY_KEYWORDS)
+
+
+def assess_symptom_severity(text: str):
+    if is_emergency(text):
+        return SEVERITY_CRITICAL
+
+    normalized = normalize(text)
+
+    if any(keyword in normalized for keyword in HIGH_SYMPTOMS):
+        return SEVERITY_HIGH
+
+    if any(keyword in normalized for keyword in MODERATE_SYMPTOMS):
+        return SEVERITY_MODERATE
+
+    return SEVERITY_LOW

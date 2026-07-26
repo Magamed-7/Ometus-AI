@@ -3,7 +3,14 @@ import json
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.emergency_guard import EMERGENCY_MESSAGE, assess_symptom_severity, is_emergency
+from app.ai.emergency_guard import (
+    EMERGENCY_MESSAGE,
+    HIGH_SEVERITY_NOTE,
+    SEVERITY_CRITICAL,
+    SEVERITY_HIGH,
+    assess_symptom_severity,
+    is_emergency,
+)
 from app.ai.mcp_tools import (
     book_appointment,
     cancel_appointment,
@@ -146,22 +153,48 @@ async def log_call(current_patient, tool_name: str, params: dict, result: dict, 
     await crud_ai_log.log_tool_call(current_patient.user_id, tool_name, params, result, db, severity)
 
 
-async def ask(data: AskIn, current_patient, db: AsyncSession):
-    conversation = None
-
+async def resolve_conversation(data: AskIn, current_patient, db: AsyncSession):
     if data.conversation_id:
         conversation = await crud_conversation.get_conversation(data.conversation_id, db)
 
-        if conversation is not None and conversation.patient_id != current_patient.id:
-            conversation = None
+        if conversation is not None and conversation.patient_id == current_patient.id:
+            return conversation
 
-    if conversation is None:
-        conversation = await crud_conversation.get_or_create_active_conversation(
-            current_patient.id, db
-        )
+    return await crud_conversation.get_or_create_active_conversation(current_patient.id, db)
 
+
+def pick_flow(data: AskIn):
+    flows = {
+        "cancel": cancel_flow,
+        "reschedule": reschedule_flow,
+        "my_appointments": my_appointments_flow,
+        "doctor_schedule": doctor_schedule_flow,
+    }
+
+    if data.intent in flows:
+        return flows[data.intent]
+
+    if data.confirm:
+        return confirm_booking
+
+    if data.doctor_id:
+        return show_slots
+
+    return suggest_doctors
+
+
+async def remember(conversation, message: str, result: dict, severity: int, db: AsyncSession):
+    result["conversation_id"] = conversation.id
+    result["severity"] = severity
+
+    await crud_conversation.add_message(conversation.id, "user", message, db)
+    await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+    return result
+
+
+async def ask(data: AskIn, current_patient, db: AsyncSession):
+    conversation = await resolve_conversation(data, current_patient, db)
     history = await crud_conversation.get_conversation_history(conversation.id, limit=10, db=db)
-
     severity = data.severity or assess_symptom_severity(data.message)
 
     if is_emergency(data.message):
@@ -171,70 +204,18 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
             {"message": data.message},
             tool_error("EMERGENCY", EMERGENCY_MESSAGE),
             db,
-            severity,
+            SEVERITY_CRITICAL,
         )
-        await crud_conversation.add_message(conversation.id, "user", data.message, db)
-        await crud_conversation.add_message(conversation.id, "assistant", EMERGENCY_MESSAGE, db)
-        return {"action": "emergency", "reply": EMERGENCY_MESSAGE, "conversation_id": conversation.id, "severity": severity}
+        emergency = {"action": "emergency", "reply": EMERGENCY_MESSAGE}
+        return await remember(conversation, data.message, emergency, SEVERITY_CRITICAL, db)
 
-    if severity == 2:
-        warning_msg = "⚠️ Судя по симптомам, это может быть срочно. Попробую найти врача на ближайшее время."
-        await crud_conversation.add_message(conversation.id, "system", warning_msg, db)
+    flow = pick_flow(data)
+    result = await flow(data, current_patient, db, history, severity)
 
-    if data.intent == "cancel":
-        result = await cancel_flow(data, current_patient, db, history, severity)
-        result["conversation_id"] = conversation.id
-        result["severity"] = severity
-        await crud_conversation.add_message(conversation.id, "user", data.message, db)
-        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
-        return result
+    if severity == SEVERITY_HIGH:
+        result["reply"] = f"{HIGH_SEVERITY_NOTE} {result['reply']}"
 
-    if data.intent == "reschedule":
-        result = await reschedule_flow(data, current_patient, db, history, severity)
-        result["conversation_id"] = conversation.id
-        result["severity"] = severity
-        await crud_conversation.add_message(conversation.id, "user", data.message, db)
-        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
-        return result
-
-    if data.intent == "my_appointments":
-        result = await my_appointments_flow(data, current_patient, db, history, severity)
-        result["conversation_id"] = conversation.id
-        result["severity"] = severity
-        await crud_conversation.add_message(conversation.id, "user", data.message, db)
-        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
-        return result
-
-    if data.intent == "doctor_schedule":
-        result = await doctor_schedule_flow(data, current_patient, db, history, severity)
-        result["conversation_id"] = conversation.id
-        result["severity"] = severity
-        await crud_conversation.add_message(conversation.id, "user", data.message, db)
-        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
-        return result
-
-    if data.confirm:
-        result = await confirm_booking(data, current_patient, db, history, severity)
-        result["conversation_id"] = conversation.id
-        result["severity"] = severity
-        await crud_conversation.add_message(conversation.id, "user", data.message, db)
-        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
-        return result
-
-    if data.doctor_id:
-        result = await show_slots(data, current_patient, db, history, severity)
-        result["conversation_id"] = conversation.id
-        result["severity"] = severity
-        await crud_conversation.add_message(conversation.id, "user", data.message, db)
-        await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
-        return result
-
-    result = await suggest_doctors(data, current_patient, db, history, severity)
-    result["conversation_id"] = conversation.id
-    result["severity"] = severity
-    await crud_conversation.add_message(conversation.id, "user", data.message, db)
-    await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
-    return result
+    return await remember(conversation, data.message, result, severity, db)
 
 
 def tool_failure(result: dict):

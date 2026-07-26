@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
@@ -49,6 +49,7 @@ async def change_my_password(
 @users_router.put("/me/email", response_model=UserOut)
 async def change_my_email(
     data: EmailChangeIn,
+    background: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -64,7 +65,10 @@ async def change_my_email(
     if await crud_user.get_by_email(data.email, db):
         raise AppError(code="EMAIL_ALREADY_EXISTS", message="Email уже занят", status_code=409)
 
-    return await crud_user.change_email(current_user, data.email, db)
+    user = await crud_user.change_email(current_user, data.email, db)
+    code = await crud_user.create_verification_code(user, db)
+    background.add_task(crud_user.deliver_verification_code, user.email, code)
+    return user
 
 
 @users_router.get("/me/patient", response_model=PatientOut)

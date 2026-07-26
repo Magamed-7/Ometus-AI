@@ -658,3 +658,168 @@ async def test_template_reply_used_when_llm_unavailable(client, db):
 
     assert "Иванова Мария" in response.json()["reply"]
     assert "кардиолог" in response.json()["reply"]
+
+
+async def test_conversation_belongs_to_patient_not_user(client, db):
+    from app.models.model_conversation import Conversation
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    conversation_id = (await ask(client, headers, "болит сердце")).json()["conversation_id"]
+
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+
+    assert result.scalar_one().patient_id == patient_id
+
+
+async def test_same_conversation_reused_between_requests(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    first = (await ask(client, headers, "болит сердце")).json()["conversation_id"]
+    second = (await ask(client, headers, "а какое время свободно")).json()["conversation_id"]
+
+    assert first == second
+
+
+async def test_history_accumulates_messages(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    conversation_id = (await ask(client, headers, "болит сердце")).json()["conversation_id"]
+    await ask(client, headers, "а какое время свободно", conversation_id=conversation_id)
+
+    response = await client.get(f"/api/ai/history/{conversation_id}", headers=headers)
+
+    body = response.json()
+    assert response.status_code == 200
+    assert [message["role"] for message in body["messages"]] == [
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+    ]
+    assert body["messages"][0]["content"] == "болит сердце"
+    assert body["messages"][2]["content"] == "а какое время свободно"
+
+
+async def test_history_is_passed_to_llm(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    seen = []
+
+    async def fake_ask_llm(message, context, history=None):
+        seen.append(history or [])
+        return None
+
+    monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
+
+    conversation_id = (await ask(client, headers, "болит сердце")).json()["conversation_id"]
+    await ask(client, headers, "болит сердце", conversation_id=conversation_id)
+
+    assert seen[0] == []
+    assert [message.content for message in seen[-1]][0] == "болит сердце"
+
+
+async def test_foreign_conversation_id_is_ignored(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    owner_id, owner_headers = await setup_patient(client, "owner@ometus.test")
+    other_id, other_headers = await setup_patient(client, "other@ometus.test")
+
+    owner_conversation = (await ask(client, owner_headers, "болит сердце")).json()[
+        "conversation_id"
+    ]
+
+    response = await ask(
+        client, other_headers, "болит сердце", conversation_id=owner_conversation
+    )
+
+    assert response.json()["conversation_id"] != owner_conversation
+
+
+async def test_history_of_foreign_conversation_is_denied(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    owner_id, owner_headers = await setup_patient(client, "owner@ometus.test")
+    other_id, other_headers = await setup_patient(client, "other@ometus.test")
+
+    owner_conversation = (await ask(client, owner_headers, "болит сердце")).json()[
+        "conversation_id"
+    ]
+
+    response = await client.get(
+        f"/api/ai/history/{owner_conversation}", headers=other_headers
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "CONVERSATION_NOT_FOUND"
+
+
+@pytest.mark.parametrize(
+    "message, expected",
+    [
+        ("нужен кардиолог", 0),
+        ("высокая температура и тошнота", 1),
+        ("острая боль в колене", 2),
+        ("отец без сознания", 3),
+    ],
+)
+def test_symptom_severity_levels(message, expected):
+    from app.ai.emergency_guard import assess_symptom_severity
+
+    assert assess_symptom_severity(message) == expected
+
+
+async def test_emergency_reports_critical_severity(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "отец без сознания")
+
+    assert response.json()["severity"] == 3
+
+
+async def test_high_severity_adds_note_to_reply(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "острая боль в сердце")
+
+    body = response.json()
+    assert body["severity"] == 2
+    assert body["reply"].startswith("Судя по описанию, тянуть не стоит")
+
+
+async def test_low_severity_reply_has_no_note(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "нужен кардиолог")).json()
+
+    assert body["severity"] == 0
+    assert not body["reply"].startswith("Судя по описанию")
+
+
+async def test_severity_is_logged(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    await ask(client, headers, "острая боль в сердце")
+
+    result = await db.execute(select(AiQueryLog).order_by(AiQueryLog.id.desc()))
+
+    assert result.scalars().first().severity == 2
+
+
+async def test_several_conversations_do_not_break_lookup(client, db):
+    from app.services import crud_conversation
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    await crud_conversation.create_conversation(patient_id, db)
+    await crud_conversation.create_conversation(patient_id, db)
+
+    response = await ask(client, headers, "болит сердце")
+
+    assert response.status_code == 200

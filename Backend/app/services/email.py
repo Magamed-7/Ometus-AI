@@ -5,6 +5,7 @@ import smtplib
 from email.message import EmailMessage
 
 from app.core.config import settings
+from app.services import notifications
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,14 @@ async def deliver_verification_code(email: str, code: str) -> bool:
     # Уносим в поток и никогда не роняем вызывающий код: пользователь в базе уже создан,
     # и падать после этого 500-й — значит оставить аккаунт, в который нельзя войти
     # и на который нельзя зарегистрироваться заново.
+    await notifications.publish(email, {"status": "sending"})
+
     try:
         await asyncio.to_thread(send_verification_code, email, code)
-        return True
     except Exception as error:
         logger.warning("не удалось отправить код подтверждения на %s: %s", email, error)
+        await notifications.publish(email, {"status": "failed"})
         return False
+
+    await notifications.publish(email, {"status": "sent"})
+    return True

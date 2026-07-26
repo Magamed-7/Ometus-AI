@@ -75,14 +75,14 @@ async def change_password(user: User, new_password: str, db: AsyncSession):
 
 
 async def change_email(user: User, new_email: str, db: AsyncSession):
-    # новая почта не подтверждена по определению, поэтому сбрасываем флаг и шлём код:
-    # иначе аккаунт можно было бы увести на чужой адрес и войти без подтверждения
+    # новая почта не подтверждена по определению, поэтому сбрасываем флаг:
+    # иначе аккаунт можно было бы увести на чужой адрес и войти без подтверждения.
+    # Код на новый адрес выпускает и ставит в очередь отправки сам эндпоинт
     user.email = new_email
     user.is_verified = False
 
     await db.commit()
     await db.refresh(user)
-    await create_verification_code(user, db)
     return user
 
 
@@ -103,7 +103,8 @@ async def create_verification_code(user: User, db: AsyncSession):
     db.add(verification)
     await db.commit()
 
-    await deliver_verification_code(user.email, code)
+    # саму отправку здесь не ждём: письмо уходит фоновой задачей, а её статус
+    # прилетает клиенту по websocket. Ответ эндпоинта не должен зависеть от Gmail
     return code
 
 

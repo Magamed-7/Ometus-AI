@@ -19,7 +19,7 @@ SPECIALIST_HIERARCHY = {
     "кардиолог": ["терапевт", "кардиохирург"],
     "невролог": ["терапевт"],
     "терапевт": ["кардиолог", "невролог"],
-    "отоларинголог": ["лор", "терапевт"],
+    "отоларинголог": ["терапевт"],
     "офтальмолог": ["терапевт"],
     "дерматолог": ["терапевт"],
     "гастроэнтеролог": ["терапевт"],
@@ -58,11 +58,5 @@ def detect_specialization(text: str):
     return None
 
 
-def find_fallback_specialists(requested: str) -> list:
-    requested_norm = normalize(requested)
-
-    for specialization in SPECIALIZATION_KEYWORDS:
-        if specialization == requested_norm or requested_norm in SPECIALIZATION_KEYWORDS.get(specialization, []):
-            return SPECIALIST_HIERARCHY.get(specialization, [])
-
-    return []
+def find_fallback_specialists(requested: str):
+    return SPECIALIST_HIERARCHY.get(normalize(requested), [])

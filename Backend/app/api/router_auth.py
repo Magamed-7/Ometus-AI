@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
@@ -18,13 +18,15 @@ from app.schemas.schema_auth import (
     VerifyEmailIn,
 )
 from app.schemas.schema_user import UserOut
-from app.services import crud_patient, crud_user
+from app.services import crud_patient, crud_user, notifications
 
 auth_router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 
 @auth_router.post("/register", response_model=UserOut)
-async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
+async def register(
+    data: RegisterIn, background: BackgroundTasks, db: AsyncSession = Depends(get_db)
+):
     existing_user = await crud_user.get_by_email(data.email, db)
 
     if existing_user:
@@ -32,8 +34,29 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
 
     user = await crud_user.create_user(data, db)
     await crud_patient.create_patient(user, db)
-    await crud_user.create_verification_code(user, db)
+    code = await crud_user.create_verification_code(user, db)
+
+    # ответ уходит сразу, письмо отправляется после него; как оно дошло —
+    # клиент узнаёт из websocket `/api/auth/verification/{email}`
+    background.add_task(crud_user.deliver_verification_code, user.email, code)
     return user
+
+
+@auth_router.websocket("/verification/{email}")
+async def verification_status(websocket: WebSocket, email: str):
+    # канал статуса отправки кода: sending → sent либо failed.
+    # Ни кода, ни данных пользователя сюда не уходит — только чем закончилась отправка
+    await websocket.accept()
+    queue = notifications.subscribe(email)
+
+    try:
+        while True:
+            event = await queue.get()
+            await websocket.send_json(event)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        notifications.unsubscribe(email, queue)
 
 
 @auth_router.post("/login", response_model=TokenPair)

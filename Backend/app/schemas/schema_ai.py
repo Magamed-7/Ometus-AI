@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -30,3 +30,16 @@ class AskOut(BaseModel):
     appointment: dict | None = None
     appointments: list[dict] | None = None
     schedule: list[dict] | None = None
+
+
+class MessageOut(BaseModel):
+    role: str
+    content: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ConversationHistoryOut(BaseModel):
+    conversation_id: int
+    messages: list[MessageOut]

@@ -81,8 +81,7 @@ async def test_new_code_kills_the_previous_one(client, db, sent_emails):
     user = (
         await db.execute(select(User).where(User.email == "patient@ometus.test"))
     ).scalar_one()
-    await crud_user_module.create_verification_code(user, db)
-    second_code = sent_emails[1][1]
+    second_code = await crud_user_module.create_verification_code(user, db)
 
     stale = await client.post(
         VERIFY_EMAIL_URL, json={"email": "patient@ometus.test", "code": first_code}

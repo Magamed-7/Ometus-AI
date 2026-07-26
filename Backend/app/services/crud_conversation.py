@@ -52,7 +52,7 @@ async def get_conversation_history(conversation_id: int, limit: int = 10, db: As
     result = await db.execute(
         select(Message)
         .where(Message.conversation_id == conversation_id)
-        .order_by(Message.created_at.desc())
+        .order_by(Message.id.desc())
         .limit(limit)
     )
     messages = result.scalars().all()
@@ -64,7 +64,7 @@ async def get_recent_conversations(patient_id: int, limit: int = 5, db: AsyncSes
     result = await db.execute(
         select(Conversation)
         .where(Conversation.patient_id == patient_id)
-        .order_by(Conversation.updated_at.desc())
+        .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
         .limit(limit)
     )
     return result.scalars().all()
