@@ -205,6 +205,8 @@ export const tg = {
     bufferDuration: "Танаффус (дақ)",
     minShort: "дақ",
     department: "Шӯъба",
+    pickDepartment: "Шӯъбаро интихоб кунед",
+    noDepartments: "Шумо ҳанӯз ба ягон шӯъба таъин нашудаед — ба маъмур муроҷиат кунед",
     absences: "Рухсатӣ ва бемордорӣ",
     addAbsence: "Илова кардани ғоибӣ",
     dateFrom: "Аз",

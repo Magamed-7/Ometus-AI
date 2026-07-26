@@ -205,6 +205,8 @@ export const ru = {
     bufferDuration: "Буфер (мин)",
     minShort: "мин",
     department: "Отделение",
+    pickDepartment: "Выберите отделение",
+    noDepartments: "Вас ещё не назначили ни в одно отделение — обратитесь к администратору",
     absences: "Отпуска и больничные",
     addAbsence: "Добавить отсутствие",
     dateFrom: "С",

@@ -205,6 +205,8 @@ export const en = {
     bufferDuration: "Buffer (min)",
     minShort: "min",
     department: "Department",
+    pickDepartment: "Pick a department",
+    noDepartments: "You are not assigned to any department yet — ask the administrator",
     absences: "Leaves and sick days",
     addAbsence: "Add absence",
     dateFrom: "From",
