@@ -45,3 +45,11 @@ class MessageOut(BaseModel):
 class ConversationHistoryOut(BaseModel):
     conversation_id: int
     messages: list[MessageOut]
+
+
+class CheckupSuggestionOut(BaseModel):
+    doctor_id: int
+    doctor_name: str
+    specialization: str
+    last_visit: date
+    reply: str

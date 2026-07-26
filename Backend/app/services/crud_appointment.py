@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -173,7 +173,53 @@ async def get_taken_times(doctor_id: int, day: date, db: AsyncSession):
     return result.scalars().all()
 
 
+CHECKUP_INTERVAL_DAYS = 180
+
 HOUR_WEIGHTS = {"completed": 2, "booked": 1, "cancelled": -1, "no_show": -2}
+
+
+async def get_overdue_checkup(patient_id: int, db: AsyncSession, today: date | None = None):
+    today = today or date.today()
+
+    upcoming = await db.execute(
+        select(Appointment.doctor_id)
+        .where(Appointment.patient_id == patient_id)
+        .where(Appointment.status == "booked")
+        .where(Appointment.date >= today)
+    )
+    already_booked = set(upcoming.scalars().all())
+
+    visits = await db.execute(
+        select(
+            Appointment.doctor_id,
+            Doctor.full_name,
+            Doctor.specialization,
+            func.max(Appointment.date),
+        )
+        .join(Doctor, Doctor.id == Appointment.doctor_id)
+        .where(Appointment.patient_id == patient_id)
+        .where(Appointment.status == "completed")
+        .where(Doctor.dismissed_at.is_(None))
+        .group_by(Appointment.doctor_id, Doctor.full_name, Doctor.specialization)
+    )
+
+    overdue = [
+        {
+            "doctor_id": doctor_id,
+            "doctor_name": full_name,
+            "specialization": specialization,
+            "last_visit": last_visit,
+            "days_since_visit": (today - last_visit).days,
+        }
+        for doctor_id, full_name, specialization, last_visit in visits.all()
+        if doctor_id not in already_booked
+        and (today - last_visit).days >= CHECKUP_INTERVAL_DAYS
+    ]
+
+    if not overdue:
+        return None
+
+    return max(overdue, key=lambda visit: visit["days_since_visit"])
 
 
 async def get_hour_preferences(patient_id: int, db: AsyncSession):

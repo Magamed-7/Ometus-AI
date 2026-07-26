@@ -69,6 +69,8 @@ REPLIES = {
         "appointments": "Ваши записи: {appointments}.",
         "no_appointments": "У вас пока нет записей.",
         "schedule": "Врач принимает: {schedule}.",
+        "checkup_reminder": "Вы были у врача {doctor} ({specialization}) {months} мес. назад. "
+        "Записаться на повторный приём?",
     },
     "tg": {
         "answer_language": "тоҷикӣ",
@@ -91,6 +93,8 @@ REPLIES = {
         "appointments": "Навбатҳои шумо: {appointments}.",
         "no_appointments": "Шумо ҳоло навбат надоред.",
         "schedule": "Духтур қабул мекунад: {schedule}.",
+        "checkup_reminder": "Шумо {months} моҳ пеш дар назди духтур {doctor} ({specialization}) будед. "
+        "Ба қабули такрорӣ навбат гирем?",
     },
     "en": {
         "answer_language": "English",
@@ -113,6 +117,8 @@ REPLIES = {
         "appointments": "Your appointments: {appointments}.",
         "no_appointments": "You have no appointments yet.",
         "schedule": "The doctor sees patients: {schedule}.",
+        "checkup_reminder": "You saw {doctor} ({specialization}) {months} months ago. "
+        "Would you like to book a follow-up?",
     },
 }
 

@@ -183,6 +183,29 @@ async def log_call(current_patient, tool_name: str, params: dict, result: dict, 
     await crud_ai_log.log_tool_call(current_patient.user_id, tool_name, params, result, db, severity)
 
 
+async def suggest_checkup(current_patient, db: AsyncSession, language: str = DEFAULT_LANGUAGE):
+    overdue = await crud_appointment.get_overdue_checkup(current_patient.id, db)
+
+    if overdue is None:
+        return None
+
+    months = overdue["days_since_visit"] // 30
+
+    return {
+        "doctor_id": overdue["doctor_id"],
+        "doctor_name": overdue["doctor_name"],
+        "specialization": overdue["specialization"],
+        "last_visit": overdue["last_visit"],
+        "reply": translate(
+            "checkup_reminder",
+            language,
+            doctor=overdue["doctor_name"],
+            specialization=overdue["specialization"],
+            months=months,
+        ),
+    }
+
+
 async def resolve_conversation(data: AskIn, current_patient, db: AsyncSession):
     if data.conversation_id:
         conversation = await crud_conversation.get_conversation(data.conversation_id, db)

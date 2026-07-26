@@ -778,6 +778,96 @@ async def test_history_of_foreign_conversation_is_denied(client, db):
     assert response.json()["error"]["code"] == "CONVERSATION_NOT_FOUND"
 
 
+SUGGESTION_URL = "/api/ai/suggestion"
+
+
+async def make_past_visit(db, patient_id, doctor_id, department_id, days_ago, status="completed"):
+    from datetime import time as clock
+
+    from app.models.model_appointment import Appointment
+
+    appointment = Appointment(
+        patient_id=patient_id,
+        doctor_id=doctor_id,
+        department_id=department_id,
+        date=date.today() - timedelta(days=days_ago),
+        time=clock(9, 0),
+        status=status,
+    )
+
+    db.add(appointment)
+    await db.commit()
+    return appointment
+
+
+async def test_no_suggestion_without_visits(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    response = await client.get(SUGGESTION_URL, headers=headers)
+
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+async def test_no_suggestion_for_recent_visit(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    await make_past_visit(db, patient_id, doctor_id, department_id, 30)
+
+    assert (await client.get(SUGGESTION_URL, headers=headers)).json() is None
+
+
+async def test_suggestion_for_overdue_visit(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    await make_past_visit(db, patient_id, doctor_id, department_id, 200)
+
+    body = (await client.get(SUGGESTION_URL, headers=headers)).json()
+
+    assert body["doctor_id"] == doctor_id
+    assert body["specialization"] == DOCTOR_DATA["specialization"]
+    assert "6 мес. назад" in body["reply"]
+
+
+async def test_no_suggestion_when_already_booked(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    await make_past_visit(db, patient_id, doctor_id, department_id, 200)
+    await make_past_visit(db, patient_id, doctor_id, department_id, -5, status="booked")
+
+    assert (await client.get(SUGGESTION_URL, headers=headers)).json() is None
+
+
+async def test_no_suggestion_for_dismissed_doctor(client, db):
+    from app.models.model_doctor import Doctor
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    await make_past_visit(db, patient_id, doctor_id, department_id, 200)
+
+    doctor = (await db.execute(select(Doctor).where(Doctor.id == doctor_id))).scalar_one()
+    doctor.dismissed_at = date.today()
+    await db.commit()
+
+    assert (await client.get(SUGGESTION_URL, headers=headers)).json() is None
+
+
+async def test_suggestion_is_localised(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    await make_past_visit(db, patient_id, doctor_id, department_id, 200)
+
+    body = (await client.get(f"{SUGGESTION_URL}?language=en", headers=headers)).json()
+
+    assert body["reply"].startswith("You saw")
+
+
 @pytest.mark.parametrize(
     "text, expected",
     [

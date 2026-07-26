@@ -5,7 +5,13 @@ from app.ai import assistant
 from app.api.permissions import get_current_patient
 from app.core.errors import AppError
 from app.db.database import get_db
-from app.schemas.schema_ai import AskIn, AskOut, ConversationHistoryOut
+from app.ai.i18n import DEFAULT_LANGUAGE
+from app.schemas.schema_ai import (
+    AskIn,
+    AskOut,
+    CheckupSuggestionOut,
+    ConversationHistoryOut,
+)
 from app.services import crud_conversation
 
 ai_router = APIRouter(prefix="/api/ai", tags=["AI"])
@@ -18,6 +24,15 @@ async def ask_assistant(
     db: AsyncSession = Depends(get_db),
 ):
     return await assistant.ask(data, patient, db)
+
+
+@ai_router.get("/suggestion", response_model=CheckupSuggestionOut | None)
+async def get_checkup_suggestion(
+    language: str = DEFAULT_LANGUAGE,
+    patient=Depends(get_current_patient),
+    db: AsyncSession = Depends(get_db),
+):
+    return await assistant.suggest_checkup(patient, db, language)
 
 
 @ai_router.get("/history/{conversation_id}", response_model=ConversationHistoryOut)
