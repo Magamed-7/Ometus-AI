@@ -11,6 +11,7 @@ import { useI18n } from "../lib/i18n.jsx";
 import { useToast } from "../lib/toast.jsx";
 import AppointmentCard from "../components/AppointmentCard.jsx";
 import Button from "../components/Button.jsx";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import RescheduleModal from "../components/RescheduleModal.jsx";
 import Card from "../components/Card.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -28,6 +29,8 @@ export default function Account() {
   const [tab, setTab] = useState("active");
   const [editing, setEditing] = useState(false);
   const [rescheduling, setRescheduling] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
   const [profileForm, setProfileForm] = useState({ first_name: "", last_name: "", phone: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [patient, setPatient] = useState(null);
@@ -68,13 +71,16 @@ export default function Account() {
   const activeAppointments = appointments.filter((a) => a.status === "booked");
   const historyAppointments = appointments.filter((a) => a.status !== "booked");
 
-  const onCancel = async (id) => {
-    if (!window.confirm(t("account.cancelConfirm"))) return;
+  const onCancel = async () => {
+    setCancelling(true);
     try {
-      await cancelAppointment(id);
+      await cancelAppointment(cancelTarget.id);
+      setCancelTarget(null);
       await loadAppointments();
     } catch (err) {
       toast.error(errorText(t, err));
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -268,7 +274,7 @@ export default function Account() {
                       <Button
                         variant="danger"
                         icon="close"
-                        onClick={() => onCancel(a.id)}
+                        onClick={() => setCancelTarget(a)}
                         className="flex-1"
                       >
                         {t("account.cancel")}
@@ -310,6 +316,17 @@ export default function Account() {
           </div>
         </div>
       </div>
+
+      {cancelTarget && (
+        <ConfirmDialog
+          title={t("account.cancel")}
+          text={t("account.cancelConfirm")}
+          confirmLabel={t("account.cancel")}
+          loading={cancelling}
+          onConfirm={onCancel}
+          onClose={() => setCancelTarget(null)}
+        />
+      )}
 
       {rescheduling && (
         <RescheduleModal

@@ -6,6 +6,7 @@ import { useI18n } from "../../lib/i18n.jsx";
 import { useToast } from "../../lib/toast.jsx";
 import Button from "../../components/Button.jsx";
 import Card from "../../components/Card.jsx";
+import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
 import { Field } from "../../components/Field.jsx";
@@ -24,6 +25,7 @@ export default function DoctorAbsences() {
   const [form, setForm] = useState({ date_from: today(), date_to: today(), reason: "" });
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(null);
+  const [confirming, setConfirming] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -61,14 +63,13 @@ export default function DoctorAbsences() {
     }
   };
 
-  const remove = async (absence) => {
-    if (!window.confirm(t("doctorCabinet.deleteAbsenceConfirm"))) return;
-
-    setRemoving(absence.id);
+  const remove = async () => {
+    setRemoving(confirming.id);
 
     try {
-      await deleteMyAbsence(absence.id);
+      await deleteMyAbsence(confirming.id);
       toast.success(t("doctorCabinet.absenceDeleted"));
+      setConfirming(null);
       await load();
     } catch (err) {
       toast.error(errorText(t, err));
@@ -158,7 +159,7 @@ export default function DoctorAbsences() {
               </div>
               <button
                 type="button"
-                onClick={() => remove(absence)}
+                onClick={() => setConfirming(absence)}
                 disabled={removing === absence.id}
                 aria-label={t("common.delete")}
                 className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-error-container hover:text-error disabled:opacity-50"
@@ -168,6 +169,16 @@ export default function DoctorAbsences() {
             </Card>
           ))}
         </div>
+      )}
+
+      {confirming && (
+        <ConfirmDialog
+          title={t("doctorCabinet.absences")}
+          text={t("doctorCabinet.deleteAbsenceConfirm")}
+          loading={removing === confirming.id}
+          onConfirm={remove}
+          onClose={() => setConfirming(null)}
+        />
       )}
     </section>
   );
