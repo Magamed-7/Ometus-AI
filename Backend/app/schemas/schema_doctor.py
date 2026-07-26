@@ -12,10 +12,20 @@ class DoctorOut(BaseModel):
 
 class DoctorCreateIn(BaseModel):
     email: str
-    password: str = Field(min_length=8)
+    password: str | None = None
     full_name: str
     specialization: str
     phone: str | None = None
+
+
+class DoctorCreateOut(BaseModel):
+    id: int
+    user_id: int
+    full_name: str
+    specialization: str
+    password: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DoctorUpdateIn(BaseModel):

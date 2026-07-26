@@ -14,6 +14,7 @@ from app.schemas.schema_department import (
 from app.schemas.schema_appointment import AdminAppointmentOut
 from app.schemas.schema_doctor import (
     DoctorCreateIn,
+    DoctorCreateOut,
     DoctorDepartmentIn,
     DoctorOut,
     DoctorUpdateIn,
@@ -124,7 +125,7 @@ async def delete_department(
     return {"message": "Отделение удалено"}
 
 
-@admin_router.post("/doctors", response_model=DoctorOut)
+@admin_router.post("/doctors", response_model=DoctorCreateOut)
 async def create_doctor(
     data: DoctorCreateIn,
     db: AsyncSession = Depends(get_db),

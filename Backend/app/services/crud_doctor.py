@@ -1,3 +1,5 @@
+import secrets
+
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,10 +12,17 @@ from app.models.model_user import User
 from app.schemas.schema_doctor import DoctorCreateIn, DoctorUpdateIn
 
 
+def generate_password(length: int = 20) -> str:
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
 async def create_doctor(data: DoctorCreateIn, db: AsyncSession):
+    password = data.password or generate_password()
+
     user = User(
         email=data.email,
-        hashed_password=hash_password(data.password),
+        hashed_password=hash_password(password),
         first_name=data.full_name,
         phone=data.phone,
         role="doctor",
@@ -32,6 +41,8 @@ async def create_doctor(data: DoctorCreateIn, db: AsyncSession):
     db.add(doctor)
     await db.commit()
     await db.refresh(doctor)
+
+    doctor.password = password
     return doctor
 
 
