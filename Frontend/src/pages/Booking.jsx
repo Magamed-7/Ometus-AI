@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { bookAppointment } from "../lib/api/appointments.js";
 import { getDoctor, getDoctorDepartments } from "../lib/api/doctors.js";
@@ -8,6 +8,7 @@ import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { clock, formatDate, isoDate, weekdayIndex } from "../lib/format.js";
 import { avatarAccent } from "../lib/mocks/doctors.js";
 import { useI18n } from "../lib/i18n.jsx";
+import { nextIndex } from "../lib/roving.js";
 import { useToast } from "../lib/toast.jsx";
 import Card from "../components/Card.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -63,6 +64,55 @@ export default function Booking() {
   const todayIso = isoDate(new Date());
   const shorts = t("weekdays.short");
   const weekDays = [0, 1, 2, 3, 4, 5, 6].map((offset) => addDays(weekStart, offset));
+  const weekIsos = weekDays.map(isoDate);
+  const tabDayIso = weekIsos.includes(selectedDate)
+    ? selectedDate
+    : weekIsos.find((iso) => iso >= todayIso) || weekIsos[0];
+  const dayRefs = useRef({});
+  const slotRefs = useRef({});
+  const [pendingFocus, setPendingFocus] = useState(null);
+
+  useEffect(() => {
+    if (!pendingFocus) return;
+    const element = dayRefs.current[pendingFocus];
+    if (element) element.focus();
+    setPendingFocus(null);
+  }, [pendingFocus, weekStart]);
+
+  const selectDay = (date) => {
+    const iso = isoDate(date);
+    if (iso < todayIso) return;
+    if (isoDate(startOfWeek(date)) !== isoDate(weekStart)) setWeekStart(startOfWeek(date));
+    setSelectedDate(iso);
+    setPendingFocus(iso);
+  };
+
+  const onDayKeyDown = (event, date) => {
+    const steps = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+    if (event.key in steps) {
+      event.preventDefault();
+      selectDay(addDays(date, steps[event.key]));
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      selectDay(weekDays.find((day) => isoDate(day) >= todayIso) || weekDays[0]);
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      selectDay(weekDays[6]);
+    }
+  };
+
+  const onSlotKeyDown = (event, index) => {
+    const target = nextIndex(event.key, index, visibleSlots.length);
+    if (target === null) return;
+    event.preventDefault();
+    const slot = visibleSlots[target];
+    setSelectedSlot(slot);
+    const element = slotRefs.current[slot.time];
+    if (element) element.focus();
+  };
 
   const loadSlots = useCallback(() => {
     if (!doctorId) return Promise.resolve();
@@ -91,9 +141,6 @@ export default function Booking() {
       .then((rows) => setWorkdays(new Set(rows.map((row) => row.weekday))))
       .catch(() => {});
   }, [doctorId]);
-
-  const showAbsence =
-    !slotsLoading && !slotsError && visibleSlots.length === 0 && workdays.has(weekdayIndex(selectedDate));
 
   const onConfirm = async () => {
     if (!user) {
@@ -130,6 +177,19 @@ export default function Booking() {
   const visibleSlots = slots.filter(
     (slot) => selectedDate !== todayIso || String(slot.time).slice(0, 5) > nowTime
   );
+
+  const tabSlotTime =
+    selectedSlot && visibleSlots.some((slot) => slot.time === selectedSlot.time)
+      ? selectedSlot.time
+      : visibleSlots.length > 0
+        ? visibleSlots[0].time
+        : null;
+
+  const showAbsence =
+    !slotsLoading &&
+    !slotsError &&
+    visibleSlots.length === 0 &&
+    workdays.has(weekdayIndex(selectedDate));
 
   const load = useCallback(() => {
     if (!doctorId) return Promise.resolve();
@@ -231,7 +291,9 @@ export default function Booking() {
           </Card>
           <Card className="p-md">
             <div className="mb-md flex items-center justify-between">
-              <h3 className="text-headline-md font-semibold text-on-surface">{t("booking.week")}</h3>
+              <h3 id="week-heading" className="text-headline-md font-semibold text-on-surface">
+                {t("booking.week")}
+              </h3>
               <div className="flex gap-xs">
                 <button
                   type="button"
@@ -252,7 +314,11 @@ export default function Booking() {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-7 gap-xs md:gap-sm">
+            <div
+              role="radiogroup"
+              aria-labelledby="week-heading"
+              className="grid grid-cols-7 gap-xs md:gap-sm"
+            >
               {weekDays.map((date) => {
                 const iso = isoDate(date);
                 const isPast = iso < todayIso;
@@ -262,8 +328,16 @@ export default function Booking() {
                   <button
                     key={iso}
                     type="button"
+                    ref={(element) => {
+                      dayRefs.current[iso] = element;
+                    }}
+                    role="radio"
+                    aria-checked={isSelected}
+                    aria-label={formatDate(iso, lang)}
+                    tabIndex={iso === tabDayIso ? 0 : -1}
                     disabled={isPast}
-                    onClick={() => setSelectedDate(iso)}
+                    onClick={() => selectDay(date)}
+                    onKeyDown={(event) => onDayKeyDown(event, date)}
                     className={`flex flex-col items-center rounded-lg border p-xs transition-all md:p-sm ${
                       isSelected
                         ? "border-2 border-primary bg-primary-container/10 text-primary"
@@ -283,7 +357,7 @@ export default function Booking() {
             </div>
           </Card>
           <Card className="p-md">
-            <h3 className="mb-md text-headline-md font-semibold text-on-surface">
+            <h3 id="slots-heading" className="mb-md text-headline-md font-semibold text-on-surface">
               {t("booking.slots")}
             </h3>
             {slotsError ? (
@@ -309,14 +383,25 @@ export default function Booking() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5">
-                {visibleSlots.map((slot) => {
+              <div
+                role="radiogroup"
+                aria-labelledby="slots-heading"
+                className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5"
+              >
+                {visibleSlots.map((slot, index) => {
                   const isActive = selectedSlot && selectedSlot.time === slot.time;
                   return (
                     <button
                       key={slot.time}
                       type="button"
+                      ref={(element) => {
+                        slotRefs.current[slot.time] = element;
+                      }}
+                      role="radio"
+                      aria-checked={Boolean(isActive)}
+                      tabIndex={slot.time === tabSlotTime ? 0 : -1}
                       onClick={() => setSelectedSlot(slot)}
+                      onKeyDown={(event) => onSlotKeyDown(event, index)}
                       className={`rounded-lg py-3 text-body-md font-bold transition-all ${
                         isActive
                           ? "border-2 border-primary bg-primary-container/10 text-primary shadow-sm"

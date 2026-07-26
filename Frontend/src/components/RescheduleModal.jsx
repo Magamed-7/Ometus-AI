@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { rescheduleAppointment } from "../lib/api/appointments.js";
 import { getSlots } from "../lib/api/schedules.js";
 import { errorText } from "../lib/api/errorText.js";
 import { clock, isoDate } from "../lib/format.js";
 import { useI18n } from "../lib/i18n.jsx";
+import { nextIndex } from "../lib/roving.js";
 import { useToast } from "../lib/toast.jsx";
 import Button from "./Button.jsx";
 import Skeleton from "./Skeleton.jsx";
@@ -16,6 +17,7 @@ export default function RescheduleModal({ appointment, onClose, onDone }) {
   const [loading, setLoading] = useState(true);
   const [selectedTime, setSelectedTime] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const slotRefs = useRef({});
 
   const todayIso = isoDate(new Date());
   const nowTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(
@@ -38,6 +40,21 @@ export default function RescheduleModal({ appointment, onClose, onDone }) {
   const visibleSlots = slots.filter(
     (slot) => date !== todayIso || String(slot.time).slice(0, 5) > nowTime
   );
+
+  const tabSlotTime =
+    visibleSlots.some((slot) => slot.time === selectedTime) || visibleSlots.length === 0
+      ? selectedTime
+      : visibleSlots[0].time;
+
+  const onSlotKeyDown = (event, index) => {
+    const target = nextIndex(event.key, index, visibleSlots.length);
+    if (target === null) return;
+    event.preventDefault();
+    const slot = visibleSlots[target];
+    setSelectedTime(slot.time);
+    const element = slotRefs.current[slot.time];
+    if (element) element.focus();
+  };
 
   const onConfirm = async () => {
     if (!selectedTime) return;
@@ -110,14 +127,25 @@ export default function RescheduleModal({ appointment, onClose, onDone }) {
               {t("booking.noSlots")}
             </p>
           ) : (
-            <div className="grid grid-cols-3 gap-sm sm:grid-cols-4">
-              {visibleSlots.map((slot) => {
+            <div
+              role="radiogroup"
+              aria-label={t("booking.slots")}
+              className="grid grid-cols-3 gap-sm sm:grid-cols-4"
+            >
+              {visibleSlots.map((slot, index) => {
                 const isActive = selectedTime === slot.time;
                 return (
                   <button
                     key={slot.time}
                     type="button"
+                    ref={(element) => {
+                      slotRefs.current[slot.time] = element;
+                    }}
+                    role="radio"
+                    aria-checked={isActive}
+                    tabIndex={slot.time === tabSlotTime ? 0 : -1}
                     onClick={() => setSelectedTime(slot.time)}
+                    onKeyDown={(event) => onSlotKeyDown(event, index)}
                     className={`rounded-lg py-3 text-body-md font-bold transition-all ${
                       isActive
                         ? "border-2 border-primary bg-primary-container/10 text-primary"
