@@ -223,10 +223,11 @@ export default function Home() {
                         {f.city}, {f.address}
                       </span>
                     </div>
-                    {/* Заглушка STUBS #4: часов работы и выходных в таблице `filials` нет.
-                        Раньше здесь для всех трёх филиалов стояло выдуманное «08:00 – 20:00,
-                        без выходных» — по такому расписанию пациент мог приехать к закрытым
-                        дверям, поэтому показываем настоящий телефон филиала вместо выдумки. */}
+                    {/* STUBS #4: 26.07.2026 в `filials` появилось поле `opening_hours`, но у всех
+                        филиалов оно пока пустое. Показываем настоящие часы, если они заполнены,
+                        и подсказку «уточняйте» — если нет. Выдуманное «08:00 – 20:00, без
+                        выходных», которое стояло здесь раньше, не возвращаем: по нему пациент
+                        мог приехать к закрытым дверям. */}
                     <div className="mb-lg flex items-center gap-sm text-label-md">
                       <span className="flex items-center gap-1 text-on-surface-variant">
                         <span
@@ -235,7 +236,7 @@ export default function Home() {
                         >
                           schedule
                         </span>
-                        {t("home.hoursUnknown")}
+                        {f.opening_hours || t("home.hoursUnknown")}
                       </span>
                       {f.phone && (
                         <>
