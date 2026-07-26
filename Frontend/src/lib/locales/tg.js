@@ -44,6 +44,7 @@ export const tg = {
     empty: "Ҳеҷ чиз ёфт нашуд",
     required: "Майдони ҳатмӣ",
     optional: "ихтиёрӣ",
+    skipToContent: "Ба мундариҷа гузаред",
   },
   theme: {
     light: "Мавзӯи равшан",

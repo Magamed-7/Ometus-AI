@@ -44,6 +44,7 @@ export const ru = {
     empty: "Ничего не найдено",
     required: "Обязательное поле",
     optional: "необязательно",
+    skipToContent: "Перейти к содержимому",
   },
   theme: {
     light: "Светлая тема",

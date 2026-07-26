@@ -44,6 +44,7 @@ export const en = {
     empty: "Nothing found",
     required: "Required field",
     optional: "optional",
+    skipToContent: "Skip to content",
   },
   theme: {
     light: "Light theme",
