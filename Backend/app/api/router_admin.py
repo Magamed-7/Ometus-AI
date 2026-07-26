@@ -15,6 +15,8 @@ from app.schemas.schema_appointment import AdminAppointmentOut
 from app.schemas.schema_doctor import (
     DoctorCreateIn,
     DoctorCreateOut,
+    DoctorDismissIn,
+    DoctorDismissOut,
     DoctorDepartmentIn,
     DoctorOut,
     DoctorUpdateIn,
@@ -516,3 +518,55 @@ async def add_patient_dependent(
         )
 
     return await crud_patient.create_dependent(user, data, db)
+
+
+@admin_router.put("/doctors/{doctor_id}/dismiss", response_model=DoctorDismissOut)
+async def dismiss_doctor(
+    doctor_id: int,
+    data: DoctorDismissIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    upcoming = await crud_doctor.count_upcoming_appointments(doctor_id, data.dismissed_at, db)
+
+    # предупреждение перед увольнением: сначала показываем, сколько живых записей
+    # попадает на закрываемые даты, и только по confirm=true применяем
+    if upcoming and not data.confirm:
+        raise AppError(
+            code="DOCTOR_HAS_UPCOMING_APPOINTMENTS",
+            message=(
+                f"К врачу нельзя будет записаться с {data.dismissed_at:%d.%m.%Y}, "
+                f"но на эти даты уже есть активных записей: {upcoming}. "
+                "Отправьте confirm=true, если всё равно увольняем"
+            ),
+            status_code=409,
+        )
+
+    doctor = await crud_doctor.dismiss_doctor(doctor, data.dismissed_at, db)
+
+    return DoctorDismissOut(
+        id=doctor.id,
+        full_name=doctor.full_name,
+        dismissed_at=doctor.dismissed_at,
+        upcoming_appointments=upcoming,
+    )
+
+
+@admin_router.delete("/doctors/{doctor_id}/dismiss", response_model=DoctorDismissOut)
+async def restore_doctor(
+    doctor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    doctor = await crud_doctor.restore_doctor(doctor, db)
+    return DoctorDismissOut(id=doctor.id, full_name=doctor.full_name, dismissed_at=None)

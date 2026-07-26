@@ -54,6 +54,14 @@ async def book_appointment(
     if doctor is None:
         raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
 
+    # уже сделанные записи не трогаем, а новые с даты увольнения не принимаем
+    if crud_doctor.is_dismissed_on(doctor, data.date):
+        raise AppError(
+            code="DOCTOR_DISMISSED",
+            message=f"Врач не принимает с {doctor.dismissed_at:%d.%m.%Y}",
+            status_code=409,
+        )
+
     patient_id = patient.id
 
     if data.patient_id and data.patient_id != patient.id:

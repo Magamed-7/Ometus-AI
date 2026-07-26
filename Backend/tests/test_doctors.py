@@ -429,3 +429,115 @@ async def test_empty_specialization_returns_every_doctor(client, db):
 
     assert with_empty_filter.status_code == 200
     assert len(with_empty_filter.json()) == len(everyone.json()) == 2
+
+
+async def test_dismissed_doctor_disappears_from_search(client, db):
+    from datetime import date
+
+    headers = await admin_headers(client, db)
+    created = await client.post(
+        ADMIN_DOCTORS_URL,
+        json={
+            "email": "leaving@ometus.test",
+            "full_name": "Уходящий Врач",
+            "specialization": "Терапевт",
+        },
+        headers=headers,
+    )
+    doctor_id = created.json()["id"]
+
+    dismissed = await client.put(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/dismiss",
+        json={"dismissed_at": date.today().isoformat()},
+        headers=headers,
+    )
+    listing = await client.get(DOCTORS_URL)
+
+    assert dismissed.status_code == 200
+    assert dismissed.json()["dismissed_at"] == date.today().isoformat()
+    assert all(doctor["id"] != doctor_id for doctor in listing.json())
+
+    # карточка по прямой ссылке остаётся: на неё ссылаются прошлые записи
+    card = await client.get(f"{DOCTORS_URL}/{doctor_id}")
+    assert card.status_code == 200
+
+
+async def test_dismissal_warns_about_upcoming_appointments(client, db):
+    from datetime import date, time, timedelta
+
+    from app.models.model_appointment import Appointment
+
+    headers = await admin_headers(client, db)
+    created = await client.post(
+        ADMIN_DOCTORS_URL,
+        json={
+            "email": "busy@ometus.test",
+            "full_name": "Занятый Врач",
+            "specialization": "Терапевт",
+        },
+        headers=headers,
+    )
+    doctor_id = created.json()["id"]
+
+    await register(client, "some.patient@ometus.test")
+    patient_card = await client.get(
+        "/api/users/me/patient", headers=await auth_headers(client, "some.patient@ometus.test")
+    )
+
+    db.add(
+        Appointment(
+            patient_id=patient_card.json()["id"],
+            doctor_id=doctor_id,
+            department_id=1,
+            date=date.today() + timedelta(days=3),
+            time=time(9, 0),
+            status="booked",
+        )
+    )
+    await db.commit()
+
+    warned = await client.put(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/dismiss",
+        json={"dismissed_at": date.today().isoformat()},
+        headers=headers,
+    )
+
+    assert warned.status_code == 409
+    assert warned.json()["error"]["code"] == "DOCTOR_HAS_UPCOMING_APPOINTMENTS"
+
+    confirmed = await client.put(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/dismiss",
+        json={"dismissed_at": date.today().isoformat(), "confirm": True},
+        headers=headers,
+    )
+
+    assert confirmed.status_code == 200
+    assert confirmed.json()["upcoming_appointments"] == 1
+
+
+async def test_dismissal_can_be_undone(client, db):
+    from datetime import date
+
+    headers = await admin_headers(client, db)
+    created = await client.post(
+        ADMIN_DOCTORS_URL,
+        json={
+            "email": "returning@ometus.test",
+            "full_name": "Вернувшийся Врач",
+            "specialization": "Терапевт",
+        },
+        headers=headers,
+    )
+    doctor_id = created.json()["id"]
+
+    await client.put(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/dismiss",
+        json={"dismissed_at": date.today().isoformat()},
+        headers=headers,
+    )
+    restored = await client.delete(f"{ADMIN_DOCTORS_URL}/{doctor_id}/dismiss", headers=headers)
+    listing = await client.get(DOCTORS_URL)
+
+    assert restored.status_code == 200
+    assert restored.json()["dismissed_at"] is None
+    assert any(doctor["id"] == doctor_id for doctor in listing.json())

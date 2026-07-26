@@ -12,7 +12,7 @@ from app.schemas.schema_schedule import (
     ScheduleCreateIn,
     ScheduleUpdateIn,
 )
-from app.services import crud_appointment
+from app.services import crud_appointment, crud_doctor
 
 
 async def create_schedule(doctor_id: int, data: ScheduleCreateIn, db: AsyncSession):
@@ -191,6 +191,13 @@ def slice_slots(day: date, schedules, taken):
 
 
 async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    # с даты увольнения свободного времени у врача нет — иначе слот покажется,
+    # а запись на него отвалится ошибкой уже после выбора
+    if doctor is not None and crud_doctor.is_dismissed_on(doctor, day):
+        return []
+
     if await is_absent(doctor_id, day, db):
         return []
 
