@@ -1,6 +1,6 @@
 import secrets
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
@@ -17,13 +17,30 @@ def generate_password(length: int = 20) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
+def split_full_name(full_name: str):
+    # «Иванова Мария Петровна» → first_name «Мария Петровна», last_name «Иванова».
+    # ФИО целиком в first_name разъезжается с карточкой врача с первой же секунды:
+    # в users одно имя, в doctors другое, и в профиле врач видит бессмыслицу
+    parts = full_name.split()
+
+    if not parts:
+        return None, None
+
+    if len(parts) == 1:
+        return parts[0], None
+
+    return " ".join(parts[1:]), parts[0]
+
+
 async def create_doctor(data: DoctorCreateIn, db: AsyncSession):
     password = data.password or generate_password()
+    first_name, last_name = split_full_name(data.full_name)
 
     user = User(
         email=data.email,
         hashed_password=hash_password(password),
-        first_name=data.full_name,
+        first_name=first_name,
+        last_name=last_name,
         phone=data.phone,
         role="doctor",
         is_verified=True,
@@ -93,6 +110,13 @@ async def update_doctor(doctor: Doctor, data: DoctorUpdateIn, db: AsyncSession):
     doctor.full_name = data.full_name or doctor.full_name
     doctor.specialization = data.specialization or doctor.specialization
 
+    # ФИО правится в одном месте, но лежит в двух таблицах — держим их вместе
+    if data.full_name:
+        user = await db.get(User, doctor.user_id)
+
+        if user is not None:
+            user.first_name, user.last_name = split_full_name(data.full_name)
+
     await db.commit()
     await db.refresh(doctor)
     return doctor
@@ -153,7 +177,9 @@ async def add_specialization(doctor_id: int, name: str, db: AsyncSession):
     result = await db.execute(
         select(DoctorSpecialization)
         .where(DoctorSpecialization.doctor_id == doctor_id)
-        .where(DoctorSpecialization.name == name)
+        # регистр не важен: «Кардиолог» и «кардиолог» — одна специализация,
+        # а в remove имя ещё и приезжает из пути URL в процентной кодировке
+        .where(func.lower(DoctorSpecialization.name) == name.strip().lower())
     )
 
     if result.scalar_one_or_none():
@@ -170,7 +196,9 @@ async def remove_specialization(doctor_id: int, name: str, db: AsyncSession):
     result = await db.execute(
         select(DoctorSpecialization)
         .where(DoctorSpecialization.doctor_id == doctor_id)
-        .where(DoctorSpecialization.name == name)
+        # регистр не важен: «Кардиолог» и «кардиолог» — одна специализация,
+        # а в remove имя ещё и приезжает из пути URL в процентной кодировке
+        .where(func.lower(DoctorSpecialization.name) == name.strip().lower())
     )
     specialization = result.scalar_one_or_none()
 

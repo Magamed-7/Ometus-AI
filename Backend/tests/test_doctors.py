@@ -357,3 +357,75 @@ async def test_search_doctors_by_additional_specialization(client, db):
     body = response.json()
     assert len(body) == 1
     assert body[0]["id"] == doctor["id"]
+
+
+async def test_doctor_name_is_split_between_first_and_last(client, db):
+    from sqlalchemy import select
+
+    from app.models.model_user import User
+
+    headers = await admin_headers(client, db)
+    await client.post(
+        ADMIN_DOCTORS_URL,
+        json={
+            "email": "surgeon@ometus.test",
+            "full_name": "Иванова Мария Петровна",
+            "specialization": "Хирург",
+        },
+        headers=headers,
+    )
+
+    user = (
+        await db.execute(select(User).where(User.email == "surgeon@ometus.test"))
+    ).scalar_one()
+
+    assert user.last_name == "Иванова"
+    assert user.first_name == "Мария Петровна"
+
+
+async def test_specialization_removal_ignores_case(client, db):
+    headers = await admin_headers(client, db)
+    created = await client.post(
+        ADMIN_DOCTORS_URL,
+        json={
+            "email": "multi@ometus.test",
+            "full_name": "Саидов Фарход",
+            "specialization": "Терапевт",
+        },
+        headers=headers,
+    )
+    doctor_id = created.json()["id"]
+    await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/specializations",
+        json={"name": "Кардиолог"},
+        headers=headers,
+    )
+
+    response = await client.delete(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/specializations/кардиолог", headers=headers
+    )
+    left = await client.get(f"/api/doctors/{doctor_id}/specializations")
+
+    assert response.status_code == 200
+    assert left.json() == []
+
+
+async def test_empty_specialization_returns_every_doctor(client, db):
+    headers = await admin_headers(client, db)
+
+    for number in range(2):
+        await client.post(
+            ADMIN_DOCTORS_URL,
+            json={
+                "email": f"doc{number}@ometus.test",
+                "full_name": f"Врач Номер{number}",
+                "specialization": "Терапевт",
+            },
+            headers=headers,
+        )
+
+    everyone = await client.get(DOCTORS_URL)
+    with_empty_filter = await client.get(f"{DOCTORS_URL}?specialization=")
+
+    assert with_empty_filter.status_code == 200
+    assert len(with_empty_filter.json()) == len(everyone.json()) == 2
