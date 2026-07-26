@@ -15,6 +15,10 @@ from app.schemas.schema_appointment import (
 
 ACTIVE_STATUSES = ["booked", "completed", "no_show"]
 
+# без потолка админский список за год работы клиники вернул бы всю базу одним ответом
+DEFAULT_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 200
+
 
 async def create_appointment(
     patient_id: int, department_id: int, data: AppointmentCreateIn, db: AsyncSession
@@ -69,14 +73,22 @@ async def get_by_id(appointment_id: int, db: AsyncSession):
 
 
 async def get_patient_appointments(
-    patient_id: int, db: AsyncSession, status: str | None = None
+    patient_id: int,
+    db: AsyncSession,
+    status: str | None = None,
+    limit: int = DEFAULT_PAGE_SIZE,
+    offset: int = 0,
 ):
     query = select(Appointment).where(Appointment.patient_id == patient_id)
 
     if status:
         query = query.where(Appointment.status == status)
 
-    result = await db.execute(query.order_by(Appointment.date.desc(), Appointment.time.desc()))
+    result = await db.execute(
+        query.order_by(Appointment.date.desc(), Appointment.time.desc())
+        .limit(limit)
+        .offset(offset)
+    )
     return result.scalars().all()
 
 
@@ -119,6 +131,8 @@ async def get_all_appointments(
     status: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    limit: int = DEFAULT_PAGE_SIZE,
+    offset: int = 0,
 ):
     query = (
         select(Appointment, Patient, Doctor)
@@ -141,7 +155,9 @@ async def get_all_appointments(
     if date_to:
         query = query.where(Appointment.date <= date_to)
 
-    result = await db.execute(query.order_by(Appointment.date.desc(), Appointment.time.desc()))
+    result = await db.execute(
+        query.order_by(Appointment.date.desc(), Appointment.time.desc()).limit(limit).offset(offset)
+    )
 
     return [
         {

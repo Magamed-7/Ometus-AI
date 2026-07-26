@@ -649,3 +649,53 @@ async def test_reschedule_cannot_collide_with_another_appointment(client, db):
     # запись осталась там, где была: объект в сессии не уехал наружу изменённым
     unchanged = await client.get(f"{APPOINTMENTS_URL}/{moving.json()['id']}", headers=headers)
     assert unchanged.json()["time"] == "09:20:00"
+
+
+async def test_doctor_can_cancel_an_appointment(client, db):
+    doctor_id, _, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    booked = await book(client, headers, doctor_id)
+
+    response = await client.delete(
+        f"{DOCTOR_APPOINTMENTS_URL}/{booked.json()['id']}", headers=doctor_headers
+    )
+    mine = await client.get(f"{APPOINTMENTS_URL}/me", headers=headers)
+
+    assert response.status_code == 200
+    assert mine.json()[0]["status"] == "cancelled"
+
+
+async def test_doctor_cannot_cancel_someone_elses_appointment(client, db):
+    doctor_id, _, _ = await setup_doctor(client, db)
+    other_doctor, _, other_headers = await setup_doctor(client, db, email="other.doc@ometus.test")
+    patient_id, headers = await setup_patient(client)
+    booked = await book(client, headers, doctor_id)
+
+    response = await client.delete(
+        f"{DOCTOR_APPOINTMENTS_URL}/{booked.json()['id']}", headers=other_headers
+    )
+
+    assert response.status_code == 404
+
+
+async def test_admin_can_cancel_an_appointment(client, db):
+    doctor_id, _, _ = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    booked = await book(client, headers, doctor_id)
+    admin = await auth_headers(client, "admin@ometus.test")
+
+    response = await client.delete(
+        f"/api/admin/appointments/{booked.json()['id']}", headers=admin
+    )
+    mine = await client.get(f"{APPOINTMENTS_URL}/me", headers=headers)
+
+    assert response.status_code == 200
+    assert mine.json()[0]["status"] == "cancelled"
+
+
+async def test_unknown_status_filter_is_rejected(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    response = await client.get(f"{APPOINTMENTS_URL}/me?status=абракадабра", headers=headers)
+
+    assert response.status_code == 422

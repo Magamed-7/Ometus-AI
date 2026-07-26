@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.permissions import get_current_doctor, get_current_patient, require_staff
@@ -8,6 +8,7 @@ from app.core.clock import clinic_now
 from app.core.errors import AppError
 from app.db.database import get_db
 from app.schemas.schema_appointment import (
+    AppointmentStatus,
     AppointmentCreateIn,
     AppointmentOut,
     AppointmentRescheduleIn,
@@ -37,11 +38,13 @@ async def get_doctor_appointment(appointment_id: int, doctor, db: AsyncSession):
 
 @appointments_router.get("/me", response_model=list[AppointmentOut])
 async def get_my_appointments(
-    status: str | None = None,
+    status: AppointmentStatus | None = None,
+    limit: int = Query(crud_appointment.DEFAULT_PAGE_SIZE, ge=1, le=crud_appointment.MAX_PAGE_SIZE),
+    offset: int = Query(0, ge=0),
     patient=Depends(get_current_patient),
     db: AsyncSession = Depends(get_db),
 ):
-    return await crud_appointment.get_patient_appointments(patient.id, db, status)
+    return await crud_appointment.get_patient_appointments(patient.id, db, status, limit, offset)
 
 
 @appointments_router.post("", response_model=AppointmentOut)
@@ -161,7 +164,7 @@ async def book_emergency_appointment(
 @appointments_router.get("/doctor/me", response_model=list[DoctorAppointmentOut])
 async def get_doctor_appointments(
     day: date | None = None,
-    status: str | None = None,
+    status: AppointmentStatus | None = None,
     doctor=Depends(get_current_doctor),
     db: AsyncSession = Depends(get_db),
 ):
@@ -287,6 +290,29 @@ async def cancel_appointment(
     appointment = await crud_appointment.get_by_id(appointment_id, db)
 
     if appointment is None or appointment.patient_id != patient.id:
+        raise AppError(
+            code="APPOINTMENT_NOT_FOUND", message="Запись не найдена", status_code=404
+        )
+
+    if appointment.status != "booked":
+        raise AppError(
+            code="APPOINTMENT_NOT_ACTIVE", message="Запись уже закрыта", status_code=400
+        )
+
+    await crud_appointment.set_status(appointment, "cancelled", db)
+    return {"message": "Запись отменена"}
+
+
+@appointments_router.delete("/doctor/me/{appointment_id}")
+async def cancel_appointment_by_doctor(
+    appointment_id: int,
+    doctor=Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    # врач тоже должен уметь снять приём — хотя бы уходя на больничный
+    appointment = await crud_appointment.get_by_id(appointment_id, db)
+
+    if appointment is None or appointment.doctor_id != doctor.id:
         raise AppError(
             code="APPOINTMENT_NOT_FOUND", message="Запись не найдена", status_code=404
         )

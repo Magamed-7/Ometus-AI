@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.permissions import require_role
@@ -11,7 +11,7 @@ from app.schemas.schema_department import (
     DepartmentOut,
     DepartmentUpdateIn,
 )
-from app.schemas.schema_appointment import AdminAppointmentOut
+from app.schemas.schema_appointment import AdminAppointmentOut, AppointmentStatus
 from app.schemas.schema_doctor import (
     DoctorCreateIn,
     DoctorCreateOut,
@@ -434,9 +434,13 @@ async def delete_doctor_schedule(
 async def list_all_appointments(
     doctor_id: int | None = None,
     patient_id: int | None = None,
-    status: str | None = None,
+    status: AppointmentStatus | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    limit: int = Query(
+        crud_appointment.DEFAULT_PAGE_SIZE, ge=1, le=crud_appointment.MAX_PAGE_SIZE
+    ),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_role("admin")),
 ):
@@ -454,7 +458,7 @@ async def list_all_appointments(
             raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
 
     return await crud_appointment.get_all_appointments(
-        db, doctor_id, patient_id, status, date_from, date_to
+        db, doctor_id, patient_id, status, date_from, date_to, limit, offset
     )
 
 
@@ -611,3 +615,25 @@ async def restore_doctor(
 
     doctor = await crud_doctor.restore_doctor(doctor, db)
     return DoctorDismissOut(id=doctor.id, full_name=doctor.full_name, dismissed_at=None)
+
+
+@admin_router.delete("/appointments/{appointment_id}")
+async def cancel_appointment_by_admin(
+    appointment_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    appointment = await crud_appointment.get_by_id(appointment_id, db)
+
+    if appointment is None:
+        raise AppError(
+            code="APPOINTMENT_NOT_FOUND", message="Запись не найдена", status_code=404
+        )
+
+    if appointment.status != "booked":
+        raise AppError(
+            code="APPOINTMENT_NOT_ACTIVE", message="Запись уже закрыта", status_code=400
+        )
+
+    await crud_appointment.set_status(appointment, "cancelled", db)
+    return {"message": "Запись отменена"}
