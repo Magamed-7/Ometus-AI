@@ -23,6 +23,7 @@ class AskOut(BaseModel):
     conversation_id: int
     severity: int = 0
     specialization: str | None = None
+    alternatives: list[str] | None = None
     error_code: str | None = None
     doctors: list[dict] | None = None
     slots: list[dict] | None = None

@@ -430,6 +430,18 @@ async def show_slots(data: AskIn, current_patient, db: AsyncSession, history: li
     }
 
 
+async def find_available_alternatives(db: AsyncSession, specialization: str):
+    available = []
+
+    for candidate in find_fallback_specialists(specialization):
+        result = await find_doctors(db, candidate)
+
+        if result["ok"] and result["data"]:
+            available.append(candidate)
+
+    return available
+
+
 async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
     specializations = match_specializations(data.message)
 

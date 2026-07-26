@@ -182,6 +182,55 @@ async def test_direct_specialization_request(client, db):
     assert body["specialization"] == "кардиолог"
 
 
+async def setup_therapist(client, db, email="therapist@ometus.test"):
+    admin = await admin_headers(client, db)
+
+    filial = await client.post(ADMIN_FILIALS_URL, json=FILIAL_DATA, headers=admin)
+    department = await client.post(
+        ADMIN_DEPARTMENTS_URL,
+        json={"filial_id": filial.json()["id"], "name": "Терапия"},
+        headers=admin,
+    )
+    department_id = department.json()["id"]
+
+    doctor = await client.post(
+        ADMIN_DOCTORS_URL,
+        json={**DOCTOR_DATA, "email": email, "full_name": "Петров Пётр", "specialization": "Терапевт"},
+        headers=admin,
+    )
+    doctor_id = doctor.json()["id"]
+
+    await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/departments",
+        json={"department_id": department_id},
+        headers=admin,
+    )
+
+    return doctor_id, department_id
+
+
+async def test_missing_specialist_offers_alternative(client, db):
+    await setup_therapist(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "нужен кардиолог")
+
+    body = response.json()
+    assert body["action"] == "clarify"
+    assert body["alternatives"] == ["терапевт"]
+    assert "терапевт" in body["reply"]
+
+
+async def test_missing_specialist_without_alternatives_returns_error(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "нужен стоматолог")
+
+    body = response.json()
+    assert body["action"] == "error"
+    assert body["error_code"] == "DOCTORS_NOT_FOUND"
+
+
 async def test_no_doctors_for_specialization(client, db):
     patient_id, headers = await setup_patient(client)
 
