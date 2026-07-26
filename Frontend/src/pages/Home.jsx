@@ -57,7 +57,7 @@ export default function Home() {
     setFilialsError(false);
     return getFilials()
       .then(setFilials)
-      .catch(() => setFilialsError(true))
+      .catch((e) => setFilialsError(e))
       .finally(() => setFilialsLoading(false));
   }, []);
 
@@ -66,7 +66,7 @@ export default function Home() {
     setDoctorsError(false);
     return searchDoctors()
       .then((data) => setDoctors(data.slice(0, 6)))
-      .catch(() => setDoctorsError(true))
+      .catch((e) => setDoctorsError(e))
       .finally(() => setDoctorsLoading(false));
   }, []);
 
@@ -198,7 +198,7 @@ export default function Home() {
           </div>
         </div>
         {filialsError ? (
-          <ErrorState onRetry={loadFilials} />
+          <ErrorState error={filialsError} onRetry={loadFilials} />
         ) : (
         <div className="grid grid-cols-1 gap-md md:grid-cols-3">
           {filialsLoading && <LoadingStatus />}
@@ -264,7 +264,7 @@ export default function Home() {
             </Link>
           </div>
           {doctorsError ? (
-            <ErrorState onRetry={loadDoctors} />
+            <ErrorState error={doctorsError} onRetry={loadDoctors} />
           ) : (
           <div className="grid grid-cols-1 gap-md sm:grid-cols-2 md:grid-cols-3">
             {doctorsLoading && <LoadingStatus />}

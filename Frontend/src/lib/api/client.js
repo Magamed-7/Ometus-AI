@@ -21,6 +21,8 @@ async function send(path, { method = "GET", body, auth = true, signal } = {}) {
   const token = getAccessToken();
   if (auth && token) headers["Authorization"] = `Bearer ${token}`;
 
+  if (navigator.onLine === false) throw networkError();
+
   let response;
 
   try {

@@ -49,7 +49,7 @@ export default function AdminDoctors() {
       specialization: specialization || undefined,
     })
       .then(setDoctors)
-      .catch(() => setError(true))
+      .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, [filialId, departmentId, specialization]);
 
@@ -131,7 +131,7 @@ export default function AdminDoctors() {
     else toast.error(t("admin.copyFailed"));
   };
 
-  if (error) return <ErrorState onRetry={load} />;
+  if (error) return <ErrorState error={error} onRetry={load} />;
 
   return (
     <div className="space-y-md">

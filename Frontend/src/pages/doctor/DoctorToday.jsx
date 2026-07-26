@@ -34,7 +34,7 @@ export default function DoctorToday() {
     setError(false);
     return getDoctorAppointments({ day: day || undefined, status: status || undefined })
       .then(setAppointments)
-      .catch(() => setError(true))
+      .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, [day, status]);
 
@@ -91,7 +91,7 @@ export default function DoctorToday() {
       </div>
 
       {error ? (
-        <ErrorState onRetry={load} />
+        <ErrorState error={error} onRetry={load} />
       ) : loading ? (
         <div className="space-y-sm">
           <LoadingStatus />

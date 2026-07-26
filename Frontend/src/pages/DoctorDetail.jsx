@@ -37,7 +37,7 @@ export default function DoctorDetail() {
         setDepartments(deps);
         setFilials(Object.fromEntries(fils.map((f) => [f.id, f])));
       })
-      .catch(() => setError(true))
+      .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -58,7 +58,7 @@ export default function DoctorDetail() {
   if (error || !doctor) {
     return (
       <div className="mx-auto max-w-4xl px-md py-lg md:px-lg">
-        <ErrorState onRetry={load} />
+        <ErrorState error={error} onRetry={load} />
       </div>
     );
   }

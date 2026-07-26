@@ -121,7 +121,7 @@ export default function Booking() {
     setSlotsError(false);
     return getSlots(doctorId, selectedDate)
       .then(setSlots)
-      .catch(() => setSlotsError(true))
+      .catch((e) => setSlotsError(e))
       .finally(() => setSlotsLoading(false));
   }, [doctorId, selectedDate]);
 
@@ -198,7 +198,7 @@ export default function Booking() {
     setError(false);
     return getDoctor(doctorId)
       .then(setDoctor)
-      .catch(() => setError(true))
+      .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, [doctorId]);
 
@@ -238,7 +238,7 @@ export default function Booking() {
   if (error || !doctor) {
     return (
       <div className="mx-auto max-w-7xl px-md py-lg md:px-lg">
-        <ErrorState onRetry={load} />
+        <ErrorState error={error} onRetry={load} />
       </div>
     );
   }
@@ -363,7 +363,7 @@ export default function Booking() {
               {t("booking.slots")}
             </h3>
             {slotsError ? (
-              <ErrorState onRetry={loadSlots} />
+              <ErrorState error={slotsError} onRetry={loadSlots} />
             ) : slotsLoading ? (
               <div className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5">
                 <LoadingStatus />

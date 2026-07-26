@@ -57,7 +57,7 @@ export default function Account() {
         setDepartments(Object.fromEntries(deps.map((d) => [d.id, d])));
         setFilials(Object.fromEntries(fils.map((f) => [f.id, f])));
       })
-      .catch(() => setError(true))
+      .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, []);
 
@@ -237,7 +237,7 @@ export default function Account() {
           <div className="space-y-md">
             {tab === "active" &&
               (error ? (
-                <ErrorState onRetry={loadAppointments} />
+                <ErrorState error={error} onRetry={loadAppointments} />
               ) : loading ? (
                 <div className="space-y-md">
                   <LoadingStatus />
@@ -279,7 +279,7 @@ export default function Account() {
               ))}
             {tab === "history" &&
               (error ? (
-                <ErrorState onRetry={loadAppointments} />
+                <ErrorState error={error} onRetry={loadAppointments} />
               ) : loading ? (
                 <div className="space-y-md">
                   <LoadingStatus />

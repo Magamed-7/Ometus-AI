@@ -44,6 +44,8 @@ export const en = {
     yes: "Yes",
     no: "No",
     loadError: "Failed to load data",
+    offline: "No internet connection",
+    offlineHint: "Check your connection and press “Retry” — the data will load again.",
     empty: "Nothing found",
     required: "Required field",
     optional: "optional",

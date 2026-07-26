@@ -51,7 +51,7 @@ export default function Doctors() {
         for (const doctor of lists.flat()) merged.set(doctor.id, doctor);
         setDoctors([...merged.values()]);
       })
-      .catch(() => setError(true))
+      .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, [spec, filialIds, departmentId]);
 
@@ -151,7 +151,7 @@ export default function Doctors() {
 
         <div className="flex-grow">
           {error ? (
-            <ErrorState onRetry={load} />
+            <ErrorState error={error} onRetry={load} />
           ) : loading ? (
             <div className="grid grid-cols-1 gap-md sm:grid-cols-2 xl:grid-cols-3">
               <LoadingStatus />

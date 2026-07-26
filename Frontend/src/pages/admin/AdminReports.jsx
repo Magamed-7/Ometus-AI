@@ -64,7 +64,7 @@ export default function AdminReports() {
         setSummary(total);
       })
       .catch((err) => {
-        setError(true);
+        setError(err);
         toast.error(errorText(t, err));
       })
       .finally(() => setLoading(false));
@@ -129,7 +129,7 @@ export default function AdminReports() {
           ))}
         </div>
       ) : error ? (
-        <ErrorState onRetry={load} />
+        <ErrorState error={error} onRetry={load} />
       ) : (
         <>
           {summary && (

@@ -65,7 +65,7 @@ export default function DoctorSchedule() {
         setDepartments(own);
         setNames(Object.fromEntries(own.map((d) => [d.id, d.name])));
       })
-      .catch(() => setError(true))
+      .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, [user.id]);
 
@@ -243,7 +243,7 @@ export default function DoctorSchedule() {
       )}
 
       {error ? (
-        <ErrorState onRetry={load} />
+        <ErrorState error={error} onRetry={load} />
       ) : loading ? (
         <div className="space-y-sm">
           <LoadingStatus />

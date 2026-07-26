@@ -30,7 +30,7 @@ export default function DoctorAbsences() {
     setError(false);
     return getMyAbsences()
       .then(setAbsences)
-      .catch(() => setError(true))
+      .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, []);
 
@@ -124,7 +124,7 @@ export default function DoctorAbsences() {
       )}
 
       {error ? (
-        <ErrorState onRetry={load} />
+        <ErrorState error={error} onRetry={load} />
       ) : loading ? (
         <div className="space-y-sm">
           <LoadingStatus />

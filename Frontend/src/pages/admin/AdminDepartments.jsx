@@ -43,7 +43,7 @@ export default function AdminDepartments() {
         setDepartments(deps);
         setFilials(brs);
       })
-      .catch(() => setError(true))
+      .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, []);
 
@@ -111,7 +111,7 @@ export default function AdminDepartments() {
     }
   };
 
-  if (error) return <ErrorState onRetry={load} />;
+  if (error) return <ErrorState error={error} onRetry={load} />;
 
   return (
     <div className="space-y-md">
