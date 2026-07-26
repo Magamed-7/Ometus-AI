@@ -603,3 +603,49 @@ async def test_cannot_book_for_others_dependent(client, db):
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "PERMISSION_DENIED"
+
+
+async def test_patient_cannot_sit_at_two_doctors_at_once(client, db):
+    first_doctor, _, _ = await setup_doctor(client, db)
+    second_doctor, _, _ = await setup_doctor(client, db, email="second.doctor@ometus.test")
+    patient_id, headers = await setup_patient(client)
+
+    first = await book(client, headers, first_doctor, "09:00:00")
+    clash = await book(client, headers, second_doctor, "09:00:00")
+
+    assert first.status_code == 200
+    assert clash.status_code == 409
+    assert clash.json()["error"]["code"] == "PATIENT_BUSY"
+
+
+async def test_other_time_with_another_doctor_is_allowed(client, db):
+    first_doctor, _, _ = await setup_doctor(client, db)
+    second_doctor, _, _ = await setup_doctor(client, db, email="second.doctor@ometus.test")
+    patient_id, headers = await setup_patient(client)
+
+    await book(client, headers, first_doctor, "09:00:00")
+    other = await book(client, headers, second_doctor, "09:20:00")
+
+    assert other.status_code == 200
+
+
+async def test_reschedule_cannot_collide_with_another_appointment(client, db):
+    first_doctor, _, _ = await setup_doctor(client, db)
+    second_doctor, _, _ = await setup_doctor(client, db, email="second.doctor@ometus.test")
+    patient_id, headers = await setup_patient(client)
+
+    await book(client, headers, first_doctor, "09:00:00")
+    moving = await book(client, headers, second_doctor, "09:20:00")
+
+    response = await client.put(
+        f"{APPOINTMENTS_URL}/{moving.json()['id']}/reschedule",
+        json={"date": str(next_workday()), "time": "09:00:00"},
+        headers=headers,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "PATIENT_BUSY"
+
+    # запись осталась там, где была: объект в сессии не уехал наружу изменённым
+    unchanged = await client.get(f"{APPOINTMENTS_URL}/{moving.json()['id']}", headers=headers)
+    assert unchanged.json()["time"] == "09:20:00"

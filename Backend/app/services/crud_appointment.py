@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -249,6 +249,26 @@ async def has_active_appointment(patient_id: int, doctor_id: int, day: date, db:
     return result.scalars().first() is not None
 
 
+async def has_appointment_at(
+    patient_id: int, day: date, slot_time: time, db: AsyncSession, exclude_id: int | None = None
+):
+    # пациент не может сидеть на двух приёмах одновременно — даже у разных врачей
+    # и в разных филиалах. has_active_appointment ловит только «дважды к одному врачу за день»
+    query = (
+        select(Appointment)
+        .where(Appointment.patient_id == patient_id)
+        .where(Appointment.date == day)
+        .where(Appointment.time == slot_time)
+        .where(Appointment.status == "booked")
+    )
+
+    if exclude_id is not None:
+        query = query.where(Appointment.id != exclude_id)
+
+    result = await db.execute(query)
+    return result.scalars().first() is not None
+
+
 async def set_status(appointment: Appointment, status: str, db: AsyncSession):
     appointment.status = status
 
@@ -267,7 +287,10 @@ async def reschedule_appointment(
     try:
         await db.commit()
     except IntegrityError:
+        # rollback откатывает транзакцию, но объект в сессии остаётся с новыми полями
+        # и мог бы уехать наружу как «перенесённый». Возвращаем его к тому, что в базе
         await db.rollback()
+        await db.refresh(appointment)
         return None
 
     await db.refresh(appointment)

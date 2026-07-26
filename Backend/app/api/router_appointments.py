@@ -80,6 +80,13 @@ async def book_appointment(
             status_code=400,
         )
 
+    if await crud_appointment.has_appointment_at(patient_id, data.date, data.time, db):
+        raise AppError(
+            code="PATIENT_BUSY",
+            message="На это время у вас уже есть запись к другому врачу",
+            status_code=409,
+        )
+
     if await crud_appointment.has_active_appointment(patient_id, data.doctor_id, data.date, db):
         raise AppError(
             code="ALREADY_BOOKED",
@@ -235,6 +242,26 @@ async def reschedule_appointment(
         raise AppError(
             code="SLOT_NOT_AVAILABLE",
             message="Это время недоступно для записи",
+            status_code=409,
+        )
+
+    # переносом можно было обойти обе проверки: и «две записи к одному врачу в день»,
+    # и «пациент занят в это время»
+    if await crud_appointment.has_appointment_at(
+        appointment.patient_id, data.date, data.time, db, exclude_id=appointment.id
+    ):
+        raise AppError(
+            code="PATIENT_BUSY",
+            message="На это время у вас уже есть запись к другому врачу",
+            status_code=409,
+        )
+
+    if data.date != appointment.date and await crud_appointment.has_active_appointment(
+        appointment.patient_id, appointment.doctor_id, data.date, db
+    ):
+        raise AppError(
+            code="ALREADY_BOOKED",
+            message="У вас уже есть запись к этому врачу на этот день",
             status_code=409,
         )
 
