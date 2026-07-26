@@ -262,6 +262,9 @@ export const tg = {
     addDoctor: "Илова кардани духтур",
     editDoctor: "Тағйир додани духтур",
     actions: "Амалҳо",
+    deleteFilial: "Нест кардани филиал",
+    deleteFilialConfirm: "«{name}»-ро нест кунем? Ҳамроҳи филиал шӯъбаҳо ва ҷадвалҳои он нест мешаванд.",
+    filialDeleted: "Филиал нест карда шуд",
   },
   status: {
     booked: "Навбат",

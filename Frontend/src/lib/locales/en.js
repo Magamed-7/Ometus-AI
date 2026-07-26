@@ -262,6 +262,9 @@ export const en = {
     addDoctor: "Add doctor",
     editDoctor: "Edit doctor",
     actions: "Actions",
+    deleteFilial: "Delete branch",
+    deleteFilialConfirm: "Delete «{name}»? Its departments and schedules go with it.",
+    filialDeleted: "Branch deleted",
   },
   status: {
     booked: "Booked",

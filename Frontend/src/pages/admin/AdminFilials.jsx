@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createFilial, updateFilial } from "../../lib/api/admin.js";
+import { createFilial, deleteFilial, updateFilial } from "../../lib/api/admin.js";
 import { errorText } from "../../lib/api/errorText.js";
 import { getFilials } from "../../lib/api/filials.js";
 import { phone as formatPhone } from "../../lib/format.js";
@@ -7,6 +7,7 @@ import { useT } from "../../lib/i18n.jsx";
 import { useToast } from "../../lib/toast.jsx";
 import Button from "../../components/Button.jsx";
 import Card from "../../components/Card.jsx";
+import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
 import { Field, Select } from "../../components/Field.jsx";
@@ -25,6 +26,8 @@ export default function AdminFilials() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -87,6 +90,21 @@ export default function AdminFilials() {
       toast.error(errorText(t, err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    setDeleting(true);
+
+    try {
+      await deleteFilial(removing.id);
+      toast.success(t("admin.filialDeleted"));
+      setRemoving(null);
+      await load();
+    } catch (err) {
+      toast.error(errorText(t, err));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -163,6 +181,14 @@ export default function AdminFilials() {
                       >
                         <span className="material-symbols-outlined text-lg">edit</span>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setRemoving(filial)}
+                        aria-label={t("common.delete")}
+                        className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-error-container hover:text-error"
+                      >
+                        <span className="material-symbols-outlined text-lg">delete</span>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -215,6 +241,16 @@ export default function AdminFilials() {
             />
           </form>
         </Modal>
+      )}
+
+      {removing && (
+        <ConfirmDialog
+          title={t("admin.deleteFilial")}
+          text={t("admin.deleteFilialConfirm", { name: removing.name })}
+          loading={deleting}
+          onConfirm={remove}
+          onClose={() => setRemoving(null)}
+        />
       )}
     </div>
   );

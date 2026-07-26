@@ -262,6 +262,9 @@ export const ru = {
     addDoctor: "Добавить врача",
     editDoctor: "Изменить врача",
     actions: "Действия",
+    deleteFilial: "Удалить филиал",
+    deleteFilialConfirm: "Удалить «{name}»? Вместе с филиалом пропадут его отделения и расписания.",
+    filialDeleted: "Филиал удалён",
   },
   status: {
     booked: "Записан",
