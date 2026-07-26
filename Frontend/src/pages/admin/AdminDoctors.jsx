@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createDoctor } from "../../lib/api/admin.js";
+import { createDoctor, updateDoctor } from "../../lib/api/admin.js";
 import { getDepartments } from "../../lib/api/departments.js";
 import { searchDoctors } from "../../lib/api/doctors.js";
 import { errorText } from "../../lib/api/errorText.js";
@@ -33,6 +33,9 @@ export default function AdminDoctors() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [created, setCreated] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState({ full_name: "", specialization: "" });
+  const [updating, setUpdating] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -92,6 +95,30 @@ export default function AdminDoctors() {
       toast.error(errorText(t, err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEdit = (doctor) => {
+    setEditForm({ full_name: doctor.full_name, specialization: doctor.specialization });
+    setEditing(doctor);
+  };
+
+  const submitEdit = async (e) => {
+    e.preventDefault();
+    setUpdating(true);
+
+    try {
+      await updateDoctor(editing.id, {
+        full_name: editForm.full_name.trim(),
+        specialization: editForm.specialization.trim(),
+      });
+      toast.success(t("common.saved"));
+      setEditing(null);
+      await load();
+    } catch (err) {
+      toast.error(errorText(t, err));
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -169,6 +196,7 @@ export default function AdminDoctors() {
                 <th className="px-4 py-3 font-semibold">#</th>
                 <th className="px-4 py-3 font-semibold">{t("admin.fullName")}</th>
                 <th className="px-4 py-3 font-semibold">{t("admin.specialization")}</th>
+                <th className="px-4 py-3 text-right font-semibold">{t("admin.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -177,6 +205,18 @@ export default function AdminDoctors() {
                   <td className="px-4 py-3 text-on-surface-variant">{doctor.id}</td>
                   <td className="px-4 py-3 font-semibold text-on-surface">{doctor.full_name}</td>
                   <td className="px-4 py-3 text-on-surface-variant">{doctor.specialization}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(doctor)}
+                        aria-label={t("common.edit")}
+                        className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                      >
+                        <span className="material-symbols-outlined text-lg">edit</span>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -242,6 +282,50 @@ export default function AdminDoctors() {
               value={form.phone}
               onChange={change("phone")}
             />
+          </form>
+        </Modal>
+      )}
+
+      {editing && (
+        <Modal
+          title={t("admin.editDoctor")}
+          onClose={() => setEditing(null)}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setEditing(null)} className="flex-1">
+                {t("common.cancel")}
+              </Button>
+              <Button
+                form="doctor-edit-form"
+                type="submit"
+                loading={updating}
+                disabled={!editForm.full_name.trim() || !editForm.specialization.trim()}
+                className="flex-1"
+              >
+                {t("common.save")}
+              </Button>
+            </>
+          }
+        >
+          <form id="doctor-edit-form" onSubmit={submitEdit} className="space-y-sm">
+            <Field
+              label={t("admin.fullName")}
+              required
+              value={editForm.full_name}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, full_name: e.target.value }))}
+            />
+            <Field
+              label={t("admin.specialization")}
+              required
+              list="specialization-options"
+              value={editForm.specialization}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, specialization: e.target.value }))}
+            />
+            <datalist id="specialization-options">
+              {specializations.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
           </form>
         </Modal>
       )}
