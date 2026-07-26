@@ -15,8 +15,8 @@ export default function ErrorState({ error, message, onRetry }) {
       <span aria-hidden="true" className="material-symbols-outlined text-5xl text-error">
         {offline ? "wifi_off" : "error"}
       </span>
-      <p className="max-w-md text-body-lg text-on-surface">{text}</p>
-      {offline && <p className="max-w-md text-body-md text-on-surface-variant">{t("common.offlineHint")}</p>}
+      <p className="max-w-form text-body-lg text-on-surface">{text}</p>
+      {offline && <p className="max-w-form text-body-md text-on-surface-variant">{t("common.offlineHint")}</p>}
       {onRetry && (
         <Button variant="outline" icon="refresh" onClick={onRetry}>
           {t("common.retry")}

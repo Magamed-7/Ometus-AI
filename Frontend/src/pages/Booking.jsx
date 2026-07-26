@@ -115,14 +115,27 @@ export default function Booking() {
     if (element) element.focus();
   };
 
+  // даты переключают быстро, а ответы приходят вразнобой: без счётчика запросов
+  // медленный ответ по вчерашней дате затирал слоты уже выбранного дня
+  const slotsRequest = useRef(0);
+
   const loadSlots = useCallback(() => {
     if (!doctorId) return Promise.resolve();
+    const request = ++slotsRequest.current;
+    const isCurrent = () => request === slotsRequest.current;
+
     setSlotsLoading(true);
     setSlotsError(false);
     return getSlots(doctorId, selectedDate)
-      .then(setSlots)
-      .catch((e) => setSlotsError(e))
-      .finally(() => setSlotsLoading(false));
+      .then((data) => {
+        if (isCurrent()) setSlots(data);
+      })
+      .catch((e) => {
+        if (isCurrent()) setSlotsError(e);
+      })
+      .finally(() => {
+        if (isCurrent()) setSlotsLoading(false);
+      });
   }, [doctorId, selectedDate]);
 
   useEffect(() => {
@@ -245,7 +258,7 @@ export default function Booking() {
 
   if (booked) {
     return (
-      <div className="mx-auto max-w-lg px-md py-xl md:px-lg">
+      <div className="mx-auto max-w-dialog px-md py-xl md:px-lg">
         <Card className="flex flex-col items-center p-lg text-center">
           <span aria-hidden="true" className="material-symbols-outlined text-6xl text-primary">check_circle</span>
           <h1 className="mt-md text-headline-md font-bold text-on-surface">

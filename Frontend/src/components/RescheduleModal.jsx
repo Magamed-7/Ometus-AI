@@ -84,7 +84,7 @@ export default function RescheduleModal({ appointment, onClose, onDone }) {
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-outline-variant bg-surface-container-lowest sm:rounded-2xl"
+        className="flex max-h-[90vh] w-full max-w-dialog flex-col overflow-hidden rounded-t-2xl border border-outline-variant bg-surface-container-lowest sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-outline-variant p-md">

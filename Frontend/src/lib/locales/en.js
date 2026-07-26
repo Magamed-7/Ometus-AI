@@ -48,6 +48,8 @@ export const en = {
     offlineHint: "Check your connection and press “Retry” — the data will load again.",
     empty: "Nothing found",
     required: "Required field",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     optional: "optional",
     skipToContent: "Skip to content",
   },

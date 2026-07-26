@@ -54,7 +54,7 @@ export default function VerifyEmail() {
       </div>
 
       <div className="flex flex-1 items-center justify-center px-sm py-lg">
-        <div className="w-full max-w-md rounded-2xl border border-outline-variant bg-surface-container-lowest p-lg shadow-sm">
+        <div className="w-full max-w-form rounded-2xl border border-outline-variant bg-surface-container-lowest p-lg shadow-sm">
           <h1 className="text-headline-lg-mobile font-bold text-on-surface">
             {t("auth.verifyTitle")}
           </h1>

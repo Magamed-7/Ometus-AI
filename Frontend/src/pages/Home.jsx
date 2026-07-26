@@ -98,7 +98,7 @@ export default function Home() {
               <h1 className="mb-sm text-headline-lg-mobile leading-tight text-on-surface md:text-headline-xl">
                 {t("home.title")}
               </h1>
-              <p className="mb-xl max-w-xl text-body-lg text-on-surface-variant">
+              <p className="mb-xl max-w-hero text-body-lg text-on-surface-variant">
                 {t("home.subtitle")}
               </p>
 

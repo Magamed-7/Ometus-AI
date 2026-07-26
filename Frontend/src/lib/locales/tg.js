@@ -48,6 +48,8 @@ export const tg = {
     offlineHint: "Пайвастро санҷед ва «Такрор» -ро пахш кунед — маълумот аз нав бор мешавад.",
     empty: "Ҳеҷ чиз ёфт нашуд",
     required: "Майдони ҳатмӣ",
+    showPassword: "Намоиши рамз",
+    hidePassword: "Пинҳон кардани рамз",
     optional: "ихтиёрӣ",
     skipToContent: "Ба мундариҷа гузаред",
   },

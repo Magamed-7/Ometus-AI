@@ -56,6 +56,11 @@
   --color-inverse-surface: #263143;
   --color-inverse-on-surface: #ecf1ff;
 
+  --container-note: 24rem;
+  --container-form: 28rem;
+  --container-dialog: 32rem;
+  --container-hero: 36rem;
+
   --spacing-base: 4px;
   --spacing-xs: 8px;
   --spacing-sm: 16px;

@@ -6,7 +6,7 @@ export default function NotFound() {
   const t = useT();
 
   return (
-    <div className="mx-auto max-w-lg px-md py-xl md:px-lg">
+    <div className="mx-auto max-w-dialog px-md py-xl md:px-lg">
       <Card className="flex flex-col items-center p-lg text-center">
         <span aria-hidden="true" className="material-symbols-outlined text-6xl text-primary">
           troubleshoot

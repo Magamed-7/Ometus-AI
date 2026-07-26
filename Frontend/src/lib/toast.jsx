@@ -47,7 +47,7 @@ export function ToastProvider({ children }) {
             <div
               key={item.id}
               role={item.variant === "error" ? "alert" : "status"}
-              className="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-3 shadow-lg"
+              className="pointer-events-auto flex w-full max-w-note items-start gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-3 shadow-lg"
             >
               <span
                 aria-hidden="true"

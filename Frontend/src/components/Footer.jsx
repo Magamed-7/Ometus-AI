@@ -7,7 +7,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-outline-variant bg-surface-container-low">
       <div className="mx-auto flex max-w-7xl flex-col justify-between gap-lg px-lg py-xl md:flex-row">
-        <div className="max-w-sm">
+        <div className="max-w-note">
           <span className="mb-sm block text-headline-md font-bold text-primary">
             {t("brand.name")}
           </span>
