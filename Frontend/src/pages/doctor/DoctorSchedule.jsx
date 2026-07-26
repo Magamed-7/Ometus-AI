@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../lib/auth/AuthContext.jsx";
 import { findMyDoctor, getDoctorDepartments } from "../../lib/api/doctors.js";
 import { errorText } from "../../lib/api/errorText.js";
-import { createMySchedule, getMySchedule } from "../../lib/api/schedules.js";
+import {
+  createMySchedule,
+  deleteMySchedule,
+  getMySchedule,
+  updateMySchedule,
+} from "../../lib/api/schedules.js";
 import { clock } from "../../lib/format.js";
 import { useI18n } from "../../lib/i18n.jsx";
 import { useToast } from "../../lib/toast.jsx";
@@ -22,6 +27,17 @@ const EMPTY_FORM = {
   buffer_duration: "0",
 };
 
+function toForm(row) {
+  return {
+    department_id: String(row.department_id),
+    weekday: String(row.weekday),
+    start_time: clock(row.start_time),
+    end_time: clock(row.end_time),
+    slot_duration: String(row.slot_duration),
+    buffer_duration: String(row.buffer_duration),
+  };
+}
+
 export default function DoctorSchedule() {
   const { t } = useI18n();
   const { user } = useAuth();
@@ -32,8 +48,10 @@ export default function DoctorSchedule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -55,27 +73,67 @@ export default function DoctorSchedule() {
 
   const change = (name) => (e) => setForm((prev) => ({ ...prev, [name]: e.target.value }));
 
+  const startCreate = () => {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setOpen(true);
+  };
+
+  const startEdit = (row) => {
+    setEditing(row.id);
+    setForm(toForm(row));
+    setOpen(true);
+  };
+
+  const closeForm = () => {
+    setOpen(false);
+    setEditing(null);
+    setForm(EMPTY_FORM);
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
 
+    const payload = {
+      department_id: Number(form.department_id),
+      weekday: Number(form.weekday),
+      start_time: form.start_time,
+      end_time: form.end_time,
+      slot_duration: Number(form.slot_duration),
+      buffer_duration: Number(form.buffer_duration),
+    };
+
     try {
-      await createMySchedule({
-        department_id: Number(form.department_id),
-        weekday: Number(form.weekday),
-        start_time: form.start_time,
-        end_time: form.end_time,
-        slot_duration: Number(form.slot_duration),
-        buffer_duration: Number(form.buffer_duration),
-      });
+      if (editing === null) {
+        await createMySchedule(payload);
+      } else {
+        await updateMySchedule(editing, payload);
+      }
       toast.success(t("common.saved"));
-      setForm(EMPTY_FORM);
-      setOpen(false);
+      closeForm();
       await load();
     } catch (err) {
       toast.error(errorText(t, err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const remove = async (row) => {
+    if (!window.confirm(t("doctorCabinet.deleteScheduleConfirm"))) return;
+
+    setRemoving(row.id);
+
+    try {
+      await deleteMySchedule(row.id);
+      if (editing === row.id) closeForm();
+      toast.success(t("doctorCabinet.scheduleDeleted"));
+      await load();
+    } catch (err) {
+      toast.error(errorText(t, err));
+    } finally {
+      setRemoving(null);
     }
   };
 
@@ -91,21 +149,26 @@ export default function DoctorSchedule() {
           {t("doctorCabinet.scheduleTitle")}
         </h1>
         <Button
-          variant={open ? "outline" : "primary"}
-          icon={open ? "close" : "add"}
-          onClick={() => setOpen((prev) => !prev)}
+          variant={open && editing === null ? "outline" : "primary"}
+          icon={open && editing === null ? "close" : "add"}
+          onClick={open && editing === null ? closeForm : startCreate}
         >
-          {open ? t("common.cancel") : t("doctorCabinet.addSchedule")}
+          {open && editing === null ? t("common.cancel") : t("doctorCabinet.addSchedule")}
         </Button>
       </div>
 
       {open && (
         <Card as="form" onSubmit={submit} className="mb-md space-y-md p-md">
+          <p className="text-label-md font-semibold text-on-surface-variant">
+            {editing === null ? t("doctorCabinet.addSchedule") : t("doctorCabinet.editSchedule")}
+          </p>
+
           {departments.length === 0 && !loading && (
             <p className="rounded-xl bg-error-container px-4 py-3 text-body-md text-on-error-container">
               {t("doctorCabinet.noDepartments")}
             </p>
           )}
+
           <div className="grid gap-sm sm:grid-cols-2">
             <Select
               label={t("doctorCabinet.department")}
@@ -163,9 +226,17 @@ export default function DoctorSchedule() {
               onChange={change("buffer_duration")}
             />
           </div>
-          <Button type="submit" icon="save" loading={saving} disabled={!form.department_id}>
-            {t("common.save")}
-          </Button>
+
+          <div className="flex flex-wrap gap-sm">
+            <Button type="submit" icon="save" loading={saving} disabled={!form.department_id}>
+              {t("common.save")}
+            </Button>
+            {editing !== null && (
+              <Button type="button" variant="ghost" onClick={closeForm}>
+                {t("common.cancel")}
+              </Button>
+            )}
+          </div>
         </Card>
       )}
 
@@ -189,7 +260,7 @@ export default function DoctorSchedule() {
                   {clock(row.start_time)} – {clock(row.end_time)}
                 </span>
               </div>
-              <div className="flex items-center gap-sm text-label-md text-on-surface-variant">
+              <div className="flex flex-wrap items-center gap-sm text-label-md text-on-surface-variant">
                 <span className="rounded-full bg-secondary-container px-2.5 py-1 text-on-secondary-container">
                   {names[row.department_id] || `#${row.department_id}`}
                 </span>
@@ -197,6 +268,23 @@ export default function DoctorSchedule() {
                   {row.slot_duration}
                   {row.buffer_duration ? ` +${row.buffer_duration}` : ""} {t("doctorCabinet.minShort")}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => startEdit(row)}
+                  aria-label={t("common.edit")}
+                  className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+                >
+                  <span className="material-symbols-outlined text-lg">edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(row)}
+                  disabled={removing === row.id}
+                  aria-label={t("common.delete")}
+                  className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-error-container hover:text-error disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-lg">delete</span>
+                </button>
               </div>
             </Card>
           ))}
