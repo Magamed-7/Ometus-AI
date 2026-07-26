@@ -1,5 +1,6 @@
 from datetime import date, datetime, time
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -50,6 +51,36 @@ class MessageOut(BaseModel):
 class ConversationHistoryOut(BaseModel):
     conversation_id: int
     messages: list[MessageOut]
+
+
+class FeedbackIn(BaseModel):
+    message_id: int
+    feedback: Literal["helpful", "partially", "not_helpful"]
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class FeedbackOut(BaseModel):
+    id: int
+    message_id: int
+    feedback: str
+    reason: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ComplaintOut(BaseModel):
+    reply: str
+    reason: str | None = None
+    created_at: datetime
+
+
+class FeedbackSummaryOut(BaseModel):
+    total: int
+    helpful: int
+    partially: int
+    not_helpful: int
+    helpful_rate: float | None = None
+    recent_complaints: list[ComplaintOut]
 
 
 class AiTaskOut(BaseModel):

@@ -22,7 +22,7 @@ from app.schemas.schema_doctor import (
     DoctorUpdateIn,
     SpecializationIn,
 )
-from app.schemas.schema_ai import AiCostsOut, LlmMetricOut
+from app.schemas.schema_ai import AiCostsOut, FeedbackSummaryOut, LlmMetricOut
 from app.schemas.schema_patient import DependentCreateIn, PatientOut
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
 from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
@@ -30,6 +30,7 @@ from app.schemas.schema_schedule import ScheduleCreateIn, ScheduleOut, ScheduleU
 from app.schemas.schema_user import Role, RoleUpdateIn, UserOut
 from app.services import (
     crud_admin_log,
+    crud_ai_feedback,
     crud_ai_metric,
     crud_appointment,
     crud_department,
@@ -304,6 +305,23 @@ async def get_ai_metrics(
         )
 
     return await crud_ai_metric.get_metrics(db, date_from, date_to)
+
+
+@admin_router.get("/ai-feedback", response_model=FeedbackSummaryOut)
+async def get_ai_feedback(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if date_from and date_to and date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала должна быть раньше даты окончания",
+            status_code=400,
+        )
+
+    return await crud_ai_feedback.get_summary(db, date_from, date_to)
 
 
 @admin_router.get("/ai-costs", response_model=AiCostsOut)

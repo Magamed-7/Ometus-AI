@@ -16,6 +16,7 @@ from app.db.database import Base  # noqa: E402
 from app.models import (  # noqa: E402, F401
     model_absence,
     model_admin_log,
+    model_ai_feedback,
     model_ai_log,
     model_ai_metric,
     model_ai_task,

@@ -12,8 +12,10 @@ from app.schemas.schema_ai import (
     AskOut,
     CheckupSuggestionOut,
     ConversationHistoryOut,
+    FeedbackIn,
+    FeedbackOut,
 )
-from app.services import crud_ai_task, crud_conversation
+from app.services import crud_ai_feedback, crud_ai_task, crud_conversation
 
 ai_router = APIRouter(prefix="/api/ai", tags=["AI"])
 
@@ -25,6 +27,29 @@ async def ask_assistant(
     db: AsyncSession = Depends(get_db),
 ):
     return await assistant.ask(data, patient, db)
+
+
+@ai_router.post("/feedback", response_model=FeedbackOut)
+async def leave_feedback(
+    data: FeedbackIn,
+    patient=Depends(get_current_patient),
+    db: AsyncSession = Depends(get_db),
+):
+    message = await crud_ai_feedback.get_message_for_patient(data.message_id, patient.id, db)
+
+    if message is None:
+        raise AppError(code="MESSAGE_NOT_FOUND", message="Сообщение не найдено", status_code=404)
+
+    if message.role != "assistant":
+        raise AppError(
+            code="FEEDBACK_NOT_APPLICABLE",
+            message="Оценить можно только ответ ассистента",
+            status_code=400,
+        )
+
+    return await crud_ai_feedback.save_feedback(
+        data.message_id, patient.id, data.feedback, data.reason, db
+    )
 
 
 @ai_router.post("/ask-async", response_model=AiTaskOut)
