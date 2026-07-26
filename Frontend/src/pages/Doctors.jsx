@@ -6,6 +6,7 @@ import { useT } from "../lib/i18n.jsx";
 import DoctorCard from "../components/DoctorCard.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import ErrorState from "../components/ErrorState.jsx";
+import LoadingStatus from "../components/LoadingStatus.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
 export default function Doctors() {
@@ -79,7 +80,7 @@ export default function Doctors() {
         <aside className="w-full flex-shrink-0 lg:w-72">
           <div className="sticky top-24 rounded-xl border border-outline-variant bg-surface-container-lowest p-md">
             <div className="mb-md flex items-center gap-xs">
-              <span className="material-symbols-outlined text-primary">filter_list</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-primary">filter_list</span>
               <h2 className="text-headline-md font-semibold text-on-surface">
                 {t("doctors.filters")}
               </h2>
@@ -153,6 +154,7 @@ export default function Doctors() {
             <ErrorState onRetry={load} />
           ) : loading ? (
             <div className="grid grid-cols-1 gap-md sm:grid-cols-2 xl:grid-cols-3">
+              <LoadingStatus />
               {[0, 1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-64" />
               ))}

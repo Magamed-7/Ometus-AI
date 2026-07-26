@@ -38,7 +38,7 @@ export function Field({ label, error, hint, required, type = "text", className =
             aria-label={show ? "Скрыть пароль" : "Показать пароль"}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary"
           >
-            <span className="material-symbols-outlined text-lg">
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">
               {show ? "visibility_off" : "visibility"}
             </span>
           </button>

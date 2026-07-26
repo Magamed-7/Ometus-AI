@@ -33,7 +33,7 @@ export default function Modal({ title, onClose, children, footer }) {
             aria-label={t("common.close")}
             className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant hover:bg-surface-container"
           >
-            <span className="material-symbols-outlined">close</span>
+            <span aria-hidden="true" className="material-symbols-outlined">close</span>
           </button>
         </div>
 

@@ -6,6 +6,7 @@ import { workingHours } from "../lib/mocks/filials.js";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
 import ErrorState from "../components/ErrorState.jsx";
+import LoadingStatus from "../components/LoadingStatus.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
 const mapsUrl = (f) =>
@@ -107,7 +108,7 @@ export default function Home() {
               >
                 <div className="grid flex-1 grid-cols-1 gap-xs md:grid-cols-3">
                   <div className="relative">
-                    <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
+                    <span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
                       stethoscope
                     </span>
                     <select
@@ -125,7 +126,7 @@ export default function Home() {
                     </select>
                   </div>
                   <div className="relative">
-                    <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
+                    <span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
                       location_on
                     </span>
                     <select
@@ -143,7 +144,7 @@ export default function Home() {
                     </select>
                   </div>
                   <div className="relative">
-                    <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
+                    <span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
                       calendar_month
                     </span>
                     <input
@@ -159,7 +160,7 @@ export default function Home() {
                   type="submit"
                   className="flex items-center justify-center gap-2 rounded-lg bg-primary px-lg py-3 font-bold text-on-primary transition-colors hover:bg-primary-container md:py-4"
                 >
-                  <span className="material-symbols-outlined">search</span>
+                  <span aria-hidden="true" className="material-symbols-outlined">search</span>
                   {t("home.find")}
                 </button>
               </form>
@@ -168,14 +169,14 @@ export default function Home() {
             <div className="relative hidden flex-1 md:block">
               <div className="relative h-[460px] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary-container shadow-2xl">
                 <div className="absolute inset-0 grid place-items-center">
-                  <span className="material-symbols-outlined text-[160px] text-on-primary/90">
+                  <span aria-hidden="true" className="material-symbols-outlined text-[160px] text-on-primary/90">
                     health_and_safety
                   </span>
                 </div>
               </div>
               <div className="animate-bounce-slow absolute -bottom-6 -left-6 flex items-center gap-sm rounded-2xl border border-outline-variant bg-surface-container-lowest p-md shadow-xl">
                 <div className="grid h-12 w-12 place-items-center rounded-full bg-primary-container text-on-primary-container">
-                  <span className="material-symbols-outlined">verified</span>
+                  <span aria-hidden="true" className="material-symbols-outlined">verified</span>
                 </div>
                 <div>
                   <p className="font-bold text-on-surface">{t("home.badgeSpecialists")}</p>
@@ -200,13 +201,14 @@ export default function Home() {
           <ErrorState onRetry={loadFilials} />
         ) : (
         <div className="grid grid-cols-1 gap-md md:grid-cols-3">
+          {filialsLoading && <LoadingStatus />}
           {filialsLoading
             ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
             : filials.map((f) => (
                 <Card key={f.id} className="group overflow-hidden transition-all hover:shadow-xl">
                   <div className="relative h-40 overflow-hidden bg-gradient-to-br from-primary to-primary-container">
                     <div className="absolute inset-0 grid place-items-center">
-                      <span className="material-symbols-outlined text-6xl text-on-primary/90">
+                      <span aria-hidden="true" className="material-symbols-outlined text-6xl text-on-primary/90">
                         apartment
                       </span>
                     </div>
@@ -214,7 +216,7 @@ export default function Home() {
                   <div className="p-md">
                     <h3 className="mb-xs text-headline-md font-semibold text-on-surface">{f.name}</h3>
                     <div className="mb-md flex items-start gap-xs text-on-surface-variant">
-                      <span className="material-symbols-outlined mt-0.5 text-base text-primary">
+                      <span aria-hidden="true" className="material-symbols-outlined mt-0.5 text-base text-primary">
                         location_on
                       </span>
                       <span className="text-body-md">
@@ -223,7 +225,7 @@ export default function Home() {
                     </div>
                     <div className="mb-lg flex items-center gap-sm text-label-md">
                       <span className="flex items-center gap-1 text-on-surface-variant">
-                        <span className="material-symbols-outlined text-sm text-primary">schedule</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-primary">schedule</span>
                         {workingHours().open} – {workingHours().close}
                       </span>
                       <span className="text-outline-variant">|</span>
@@ -235,7 +237,7 @@ export default function Home() {
                       rel="noreferrer"
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary py-3 font-bold text-primary transition-all hover:bg-primary hover:text-on-primary"
                     >
-                      <span className="material-symbols-outlined text-lg">directions</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-lg">directions</span>
                       {t("home.route")}
                     </a>
                   </div>
@@ -265,6 +267,7 @@ export default function Home() {
             <ErrorState onRetry={loadDoctors} />
           ) : (
           <div className="grid grid-cols-1 gap-md sm:grid-cols-2 md:grid-cols-3">
+            {doctorsLoading && <LoadingStatus />}
             {doctorsLoading
               ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
               : doctors.map((d) => (

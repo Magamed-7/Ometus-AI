@@ -9,6 +9,7 @@ import Card from "../../components/Card.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
 import { Field } from "../../components/Field.jsx";
+import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 
 const today = () => isoDate(new Date());
@@ -126,6 +127,7 @@ export default function DoctorAbsences() {
         <ErrorState onRetry={load} />
       ) : loading ? (
         <div className="space-y-sm">
+          <LoadingStatus />
           {[0, 1].map((i) => (
             <Skeleton key={i} className="h-16" />
           ))}
@@ -144,7 +146,7 @@ export default function DoctorAbsences() {
               className="flex flex-wrap items-center justify-between gap-sm p-md"
             >
               <div className="flex items-center gap-md">
-                <span className="material-symbols-outlined text-tertiary">beach_access</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-tertiary">beach_access</span>
                 <div>
                   <p className="font-bold text-on-surface">
                     {formatDate(absence.date_from, lang)} – {formatDate(absence.date_to, lang)}
@@ -161,7 +163,7 @@ export default function DoctorAbsences() {
                 aria-label={t("common.delete")}
                 className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-error-container hover:text-error disabled:opacity-50"
               >
-                <span className="material-symbols-outlined text-lg">delete</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-lg">delete</span>
               </button>
             </Card>
           ))}

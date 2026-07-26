@@ -6,6 +6,7 @@ import { avatarAccent } from "../lib/mocks/doctors.js";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
 import ErrorState from "../components/ErrorState.jsx";
+import LoadingStatus from "../components/LoadingStatus.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
 function initials(name) {
@@ -47,6 +48,7 @@ export default function DoctorDetail() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl px-md py-lg md:px-lg">
+        <LoadingStatus />
         <Skeleton className="h-40" />
         <Skeleton className="mt-md h-52" />
       </div>
@@ -67,7 +69,7 @@ export default function DoctorDetail() {
         to="/doctors"
         className="mb-md inline-flex items-center gap-1 text-label-md font-semibold text-on-surface-variant transition-colors hover:text-primary"
       >
-        <span className="material-symbols-outlined text-lg">arrow_back</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-lg">arrow_back</span>
         {t("doctors.title")}
       </Link>
 
@@ -103,12 +105,12 @@ export default function DoctorDetail() {
           const filial = filials[dep.filial_id];
           return (
             <Card key={dep.id} className="flex items-start gap-sm p-md">
-              <span className="material-symbols-outlined mt-0.5 text-primary">meeting_room</span>
+              <span aria-hidden="true" className="material-symbols-outlined mt-0.5 text-primary">meeting_room</span>
               <div>
                 <p className="font-semibold text-on-surface">{dep.name}</p>
                 {filial && (
                   <p className="mt-base flex items-center gap-1 text-label-md text-on-surface-variant">
-                    <span className="material-symbols-outlined text-sm">location_on</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">location_on</span>
                     {filial.name}, {filial.city}
                   </p>
                 )}

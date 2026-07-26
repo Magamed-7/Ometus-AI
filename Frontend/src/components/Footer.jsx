@@ -42,14 +42,14 @@ export default function Footer() {
               aria-label={t("footer.hotline")}
               className="grid h-10 w-10 place-items-center rounded-full border border-outline-variant bg-surface-container-lowest text-primary transition-colors hover:bg-primary-container hover:text-on-primary-container"
             >
-              <span className="material-symbols-outlined text-lg">call</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-lg">call</span>
             </a>
             <a
               href="mailto:info@ometus.tj"
               aria-label={t("footer.contacts")}
               className="grid h-10 w-10 place-items-center rounded-full border border-outline-variant bg-surface-container-lowest text-primary transition-colors hover:bg-primary-container hover:text-on-primary-container"
             >
-              <span className="material-symbols-outlined text-lg">mail</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-lg">mail</span>
             </a>
           </div>
         </div>

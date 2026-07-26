@@ -13,6 +13,7 @@ import Card from "../../components/Card.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
 import { Select } from "../../components/Field.jsx";
+import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 import StatusPill from "../../components/StatusPill.jsx";
 
@@ -93,6 +94,7 @@ export default function DoctorToday() {
         <ErrorState onRetry={load} />
       ) : loading ? (
         <div className="space-y-sm">
+          <LoadingStatus />
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-24" />
           ))}
@@ -134,7 +136,7 @@ export default function DoctorToday() {
                       href={`tel:${appointment.patient_phone}`}
                       className="mt-0.5 inline-flex items-center gap-1 text-label-md text-on-surface-variant transition-colors hover:text-primary"
                     >
-                      <span className="material-symbols-outlined text-base">call</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-base">call</span>
                       {formatPhone(appointment.patient_phone)}
                     </a>
                   )}

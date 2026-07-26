@@ -26,7 +26,7 @@ export default function LangSwitcher() {
         aria-label="Выбрать язык"
         className="flex h-11 items-center gap-1 rounded-full border border-outline-variant px-3 text-label-md font-semibold text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
       >
-        <span className="material-symbols-outlined text-lg">language</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-lg">language</span>
         {current.label}
       </button>
       {open && (

@@ -9,7 +9,7 @@ import { useI18n } from "../lib/i18n.jsx";
 function BotAvatar() {
   return (
     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-container text-on-primary-container">
-      <span className="material-symbols-outlined filled">smart_toy</span>
+      <span aria-hidden="true" className="material-symbols-outlined filled">smart_toy</span>
     </div>
   );
 }
@@ -18,7 +18,7 @@ function UserBubble({ text }) {
   return (
     <div className="flex max-w-[85%] flex-row-reverse gap-sm self-end">
       <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-secondary text-on-secondary">
-        <span className="material-symbols-outlined">person</span>
+        <span aria-hidden="true" className="material-symbols-outlined">person</span>
       </div>
       <div className="rounded-2xl rounded-tr-none bg-primary-container p-md text-on-primary-container">
         <p className="text-body-md">{text}</p>
@@ -87,7 +87,7 @@ function BookedAnswer({ t, lang, appointment }) {
   return (
     <div className="rounded-xl border border-primary/40 bg-primary-container/10 p-md">
       <div className="mb-sm flex items-center gap-sm text-primary">
-        <span className="material-symbols-outlined filled">check_circle</span>
+        <span aria-hidden="true" className="material-symbols-outlined filled">check_circle</span>
         <p className="font-bold">{t("booking.successTitle")}</p>
       </div>
       <div className="space-y-1 text-body-md text-on-surface">
@@ -116,7 +116,7 @@ function EmergencyAnswer({ t, reply }) {
   return (
     <div className="flex max-w-[85%] gap-sm">
       <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-error-container text-on-error-container">
-        <span className="material-symbols-outlined filled">emergency</span>
+        <span aria-hidden="true" className="material-symbols-outlined filled">emergency</span>
       </div>
       <div className="flex w-full flex-col gap-sm rounded-2xl rounded-tl-none border border-error bg-error-container p-md text-on-error-container">
         <p className="font-bold uppercase tracking-wide">{t("assistant.emergencyTitle")}</p>
@@ -125,7 +125,7 @@ function EmergencyAnswer({ t, reply }) {
           href="tel:103"
           className="inline-flex w-fit items-center gap-xs rounded-lg bg-error px-md py-2 text-label-md font-bold text-on-error transition-opacity hover:opacity-90"
         >
-          <span className="material-symbols-outlined text-lg">call</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-lg">call</span>
           103
         </a>
       </div>
@@ -152,6 +152,7 @@ function AssistantBubble({ data, t, lang, onPickDoctor, onPickSlot }) {
         >
           {(isError || isClarify) && (
             <span
+              aria-hidden="true"
               className={`material-symbols-outlined text-lg ${
                 isError ? "text-error" : "text-secondary"
               }`}
@@ -180,7 +181,7 @@ function ThinkingBubble({ label }) {
     <div className="flex max-w-[85%] gap-sm">
       <BotAvatar />
       <div className="flex items-center gap-1 rounded-2xl rounded-tl-none border border-outline-variant bg-surface-container-lowest px-md py-md">
-        <span className="material-symbols-outlined animate-spin text-lg text-primary">
+        <span aria-hidden="true" className="material-symbols-outlined animate-spin text-lg text-primary">
           progress_activity
         </span>
         <span className="text-body-md text-on-surface-variant">{label}</span>
@@ -269,7 +270,7 @@ export default function Assistant() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-sm py-sm md:px-lg">
       <div className="mb-sm flex items-start gap-sm rounded-xl border border-outline-variant bg-surface-container-low p-sm">
-        <span className="material-symbols-outlined text-secondary">info</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-secondary">info</span>
         <div>
           <p className="text-label-md font-bold text-on-surface">{t("assistant.title")}</p>
           <p className="text-label-md text-on-surface-variant">{t("assistant.disclaimer")}</p>
@@ -315,7 +316,7 @@ export default function Assistant() {
           className="flex items-center gap-xs rounded-2xl border border-outline-variant bg-surface-container-lowest p-xs shadow-lg focus-within:ring-2 focus-within:ring-primary"
         >
           <div className="flex flex-grow items-center px-sm">
-            <span className="material-symbols-outlined text-outline">chat</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-outline">chat</span>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -331,7 +332,7 @@ export default function Assistant() {
             className="flex items-center gap-sm rounded-xl bg-primary px-lg py-sm font-semibold text-on-primary transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span className="hidden sm:inline">{t("assistant.send")}</span>
-            <span className="material-symbols-outlined text-sm">send</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">send</span>
           </button>
         </form>
       </div>

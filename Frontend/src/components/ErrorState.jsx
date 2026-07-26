@@ -5,8 +5,11 @@ export default function ErrorState({ message, onRetry }) {
   const t = useT();
 
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low px-md py-xl text-center">
-      <span className="material-symbols-outlined text-5xl text-error">error</span>
+    <div
+      role="alert"
+      className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low px-md py-xl text-center"
+    >
+      <span aria-hidden="true" className="material-symbols-outlined text-5xl text-error">error</span>
       <p className="max-w-md text-body-lg text-on-surface">{message || t("common.loadError")}</p>
       {onRetry && (
         <Button variant="outline" icon="refresh" onClick={onRetry}>

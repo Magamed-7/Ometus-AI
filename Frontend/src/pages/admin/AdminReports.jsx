@@ -10,6 +10,7 @@ import Card from "../../components/Card.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
 import { Field, Select } from "../../components/Field.jsx";
+import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 
 function monthStart() {
@@ -21,7 +22,7 @@ function SummaryTile({ icon, label, value, accent = false }) {
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-md">
       <div className="flex items-center gap-2 text-on-surface-variant">
-        <span className="material-symbols-outlined text-lg">{icon}</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-lg">{icon}</span>
         <span className="text-label-md">{label}</span>
       </div>
       <p
@@ -117,6 +118,7 @@ export default function AdminReports() {
 
       {loading ? (
         <div className="space-y-md">
+          <LoadingStatus />
           <div className="grid gap-sm sm:grid-cols-2 lg:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-24" />

@@ -15,7 +15,7 @@ export default function StatusPill({ status }) {
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-label-md font-semibold ${config.cls}`}
     >
-      <span className="material-symbols-outlined text-base">{config.icon}</span>
+      <span aria-hidden="true" className="material-symbols-outlined text-base">{config.icon}</span>
       {t(`status.${status}`)}
     </span>
   );

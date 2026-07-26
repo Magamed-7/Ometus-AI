@@ -12,6 +12,7 @@ import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
 import { Field, Select } from "../../components/Field.jsx";
 import Modal from "../../components/Modal.jsx";
+import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 
 const EMPTY_FORM = { name: "", city: "", address: "", phone: "" };
@@ -130,6 +131,7 @@ export default function AdminFilials() {
 
       {loading ? (
         <div className="space-y-sm">
+          <LoadingStatus />
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-14" />
           ))}
@@ -179,7 +181,7 @@ export default function AdminFilials() {
                         aria-label={t("common.edit")}
                         className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
                       >
-                        <span className="material-symbols-outlined text-lg">edit</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">edit</span>
                       </button>
                       <button
                         type="button"
@@ -187,7 +189,7 @@ export default function AdminFilials() {
                         aria-label={t("common.delete")}
                         className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-error-container hover:text-error"
                       >
-                        <span className="material-symbols-outlined text-lg">delete</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">delete</span>
                       </button>
                     </div>
                   </td>

@@ -27,7 +27,7 @@ export default function AdminShell() {
       <nav className="mb-lg flex gap-xs overflow-x-auto pb-1">
         {SECTIONS.map((section) => (
           <NavLink key={section.to} to={section.to} className={linkClass}>
-            <span className="material-symbols-outlined text-lg">{section.icon}</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">{section.icon}</span>
             {t(section.key)}
           </NavLink>
         ))}

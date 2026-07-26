@@ -12,6 +12,7 @@ import { useToast } from "../../lib/toast.jsx";
 import Button from "../../components/Button.jsx";
 import { Field, Select } from "../../components/Field.jsx";
 import Modal from "../../components/Modal.jsx";
+import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 
 function Chip({ label, onRemove, disabled }) {
@@ -25,7 +26,7 @@ function Chip({ label, onRemove, disabled }) {
         aria-label={label}
         className="grid h-6 w-6 place-items-center rounded-full transition-colors hover:bg-error hover:text-on-error disabled:opacity-50"
       >
-        <span className="material-symbols-outlined text-base">close</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-base">close</span>
       </button>
     </span>
   );
@@ -101,6 +102,7 @@ export default function DoctorAssignments({ doctor, departments, onClose }) {
     >
       {loading ? (
         <div className="space-y-sm">
+          <LoadingStatus />
           <Skeleton className="h-10" />
           <Skeleton className="h-10" />
         </div>

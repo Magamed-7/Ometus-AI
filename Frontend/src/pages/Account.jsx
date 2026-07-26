@@ -17,6 +17,7 @@ import EmptyState from "../components/EmptyState.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import { Field } from "../components/Field.jsx";
 import ProfileSidebar from "../components/ProfileSidebar.jsx";
+import LoadingStatus from "../components/LoadingStatus.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
 export default function Account() {
@@ -239,6 +240,7 @@ export default function Account() {
                 <ErrorState onRetry={loadAppointments} />
               ) : loading ? (
                 <div className="space-y-md">
+                  <LoadingStatus />
                   {[0, 1].map((i) => (
                     <Skeleton key={i} className="h-48" />
                   ))}
@@ -280,6 +282,7 @@ export default function Account() {
                 <ErrorState onRetry={loadAppointments} />
               ) : loading ? (
                 <div className="space-y-md">
+                  <LoadingStatus />
                   {[0, 1].map((i) => (
                     <Skeleton key={i} className="h-48" />
                   ))}

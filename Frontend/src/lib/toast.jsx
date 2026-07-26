@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useState } from "react";
+import { useT } from "./i18n.jsx";
 
 const ToastContext = createContext(null);
 
@@ -9,9 +10,13 @@ const META = {
 };
 
 export function ToastProvider({ children }) {
+  const t = useT();
   const [toasts, setToasts] = useState([]);
 
-  const dismiss = useCallback((id) => setToasts((list) => list.filter((t) => t.id !== id)), []);
+  const dismiss = useCallback(
+    (id) => setToasts((list) => list.filter((item) => item.id !== id)),
+    []
+  );
 
   const push = useCallback(
     (variant, message) => {
@@ -35,23 +40,29 @@ export function ToastProvider({ children }) {
         aria-live="polite"
         className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 p-4 sm:items-end"
       >
-        {toasts.map((t) => {
-          const meta = META[t.variant];
+        {toasts.map((item) => {
+          const meta = META[item.variant];
 
           return (
             <div
-              key={t.id}
+              key={item.id}
+              role={item.variant === "error" ? "alert" : "status"}
               className="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-3 shadow-lg"
             >
-              <span className={`material-symbols-outlined shrink-0 ${meta.cls}`}>{meta.icon}</span>
-              <p className="flex-1 text-body-md text-on-surface">{t.message}</p>
+              <span
+                aria-hidden="true"
+                className={`material-symbols-outlined shrink-0 ${meta.cls}`}
+              >
+                {meta.icon}
+              </span>
+              <p className="flex-1 text-body-md text-on-surface">{item.message}</p>
               <button
                 type="button"
-                onClick={() => dismiss(t.id)}
-                aria-label="Закрыть уведомление"
+                onClick={() => dismiss(item.id)}
+                aria-label={t("common.close")}
                 className="shrink-0 text-on-surface-variant transition-colors hover:text-on-surface"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
           );

@@ -13,6 +13,7 @@ import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
 import { Field, Select } from "../../components/Field.jsx";
 import Modal from "../../components/Modal.jsx";
+import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 import DoctorAssignments from "./DoctorAssignments.jsx";
 
@@ -184,6 +185,7 @@ export default function AdminDoctors() {
 
       {loading ? (
         <div className="space-y-sm">
+          <LoadingStatus />
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-14" />
           ))}
@@ -215,7 +217,7 @@ export default function AdminDoctors() {
                         aria-label={t("common.edit")}
                         className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
                       >
-                        <span className="material-symbols-outlined text-lg">edit</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">edit</span>
                       </button>
                       <button
                         type="button"
@@ -223,7 +225,7 @@ export default function AdminDoctors() {
                         aria-label={t("admin.assignDepartment")}
                         className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
                       >
-                        <span className="material-symbols-outlined text-lg">meeting_room</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">meeting_room</span>
                       </button>
                     </div>
                   </td>

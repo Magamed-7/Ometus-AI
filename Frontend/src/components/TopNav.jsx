@@ -63,7 +63,7 @@ export default function TopNav() {
 
         <div className="flex items-center gap-xs">
           <form onSubmit={onSearch} className="relative hidden items-center lg:flex">
-            <span className="material-symbols-outlined absolute left-3 text-on-surface-variant">
+            <span aria-hidden="true" className="material-symbols-outlined absolute left-3 text-on-surface-variant">
               search
             </span>
             <input
@@ -84,7 +84,7 @@ export default function TopNav() {
               onClick={onLogout}
               className="flex h-11 items-center gap-1 rounded-full bg-primary px-md text-label-md font-semibold text-on-primary transition-all hover:bg-primary-container active:scale-95"
             >
-              <span className="material-symbols-outlined text-lg">logout</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-lg">logout</span>
               <span className="hidden sm:inline">{t("nav.logout")}</span>
             </button>
           ) : (

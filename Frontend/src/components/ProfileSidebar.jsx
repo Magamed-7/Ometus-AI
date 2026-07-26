@@ -37,17 +37,17 @@ export default function ProfileSidebar({ user, editing, onToggleEdit, onLogout }
           }`}
         >
           <span className="flex items-center gap-sm">
-            <span className="material-symbols-outlined">person</span>
+            <span aria-hidden="true" className="material-symbols-outlined">person</span>
             {t("account.editProfile")}
           </span>
-          <span className="material-symbols-outlined">chevron_right</span>
+          <span aria-hidden="true" className="material-symbols-outlined">chevron_right</span>
         </button>
         <button
           type="button"
           onClick={onLogout}
           className="flex w-full items-center gap-sm rounded-lg p-sm text-error transition-colors hover:bg-error-container"
         >
-          <span className="material-symbols-outlined">logout</span>
+          <span aria-hidden="true" className="material-symbols-outlined">logout</span>
           {t("account.logout")}
         </button>
       </div>

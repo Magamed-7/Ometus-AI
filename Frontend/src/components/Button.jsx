@@ -21,9 +21,9 @@ export default function Button({
       {...props}
     >
       {loading ? (
-        <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+        <span aria-hidden="true" className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
       ) : icon ? (
-        <span className="material-symbols-outlined text-lg">{icon}</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-lg">{icon}</span>
       ) : null}
       {children}
     </button>

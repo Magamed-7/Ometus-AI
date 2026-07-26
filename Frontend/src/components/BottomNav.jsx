@@ -38,7 +38,7 @@ export default function BottomNav() {
         >
           {({ isActive }) => (
             <>
-              <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>
+              <span aria-hidden="true" className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>
                 {item.icon}
               </span>
               <span className="text-label-md font-semibold">{item.label}</span>

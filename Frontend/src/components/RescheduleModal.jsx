@@ -7,6 +7,7 @@ import { useI18n } from "../lib/i18n.jsx";
 import { nextIndex } from "../lib/roving.js";
 import { useToast } from "../lib/toast.jsx";
 import Button from "./Button.jsx";
+import LoadingStatus from "./LoadingStatus.jsx";
 import Skeleton from "./Skeleton.jsx";
 
 export default function RescheduleModal({ appointment, onClose, onDone }) {
@@ -96,7 +97,7 @@ export default function RescheduleModal({ appointment, onClose, onDone }) {
             aria-label={t("common.close")}
             className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant hover:bg-surface-container"
           >
-            <span className="material-symbols-outlined">close</span>
+            <span aria-hidden="true" className="material-symbols-outlined">close</span>
           </button>
         </div>
 
@@ -118,6 +119,7 @@ export default function RescheduleModal({ appointment, onClose, onDone }) {
 
           {loading ? (
             <div className="grid grid-cols-3 gap-sm sm:grid-cols-4">
+              <LoadingStatus />
               {[0, 1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-12" />
               ))}

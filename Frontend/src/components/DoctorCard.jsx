@@ -62,14 +62,14 @@ export default function DoctorCard({ doctor }) {
       <div className="mt-md flex flex-grow flex-col justify-end gap-md">
         {nearest ? (
           <div className="flex w-fit items-center gap-xs rounded-lg bg-tertiary-container px-2 py-1 text-on-tertiary-container">
-            <span className="material-symbols-outlined text-sm">event_available</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">event_available</span>
             <span className="text-label-md font-bold">
               {t("doctors.nearest")}: {nearestLabel}
             </span>
           </div>
         ) : nearest === null ? (
           <div className="flex w-fit items-center gap-xs rounded-lg bg-surface-container px-2 py-1 text-on-surface-variant">
-            <span className="material-symbols-outlined text-sm">event_busy</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">event_busy</span>
             <span className="text-label-md">{t("doctors.noSlots")}</span>
           </div>
         ) : null}

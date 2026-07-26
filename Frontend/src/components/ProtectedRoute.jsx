@@ -8,7 +8,7 @@ export default function ProtectedRoute({ children }) {
   if (loading) {
     return (
       <div className="grid min-h-screen place-items-center">
-        <span className="material-symbols-outlined animate-spin text-primary">progress_activity</span>
+        <span aria-hidden="true" className="material-symbols-outlined animate-spin text-primary">progress_activity</span>
       </div>
     );
   }

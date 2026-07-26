@@ -13,6 +13,7 @@ import { useToast } from "../lib/toast.jsx";
 import Card from "../components/Card.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import ErrorState from "../components/ErrorState.jsx";
+import LoadingStatus from "../components/LoadingStatus.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
 function initials(name) {
@@ -227,6 +228,7 @@ export default function Booking() {
   if (loading) {
     return (
       <div className="mx-auto max-w-7xl px-md py-lg md:px-lg">
+        <LoadingStatus />
         <Skeleton className="h-32" />
         <Skeleton className="mt-md h-64" />
       </div>
@@ -245,7 +247,7 @@ export default function Booking() {
     return (
       <div className="mx-auto max-w-lg px-md py-xl md:px-lg">
         <Card className="flex flex-col items-center p-lg text-center">
-          <span className="material-symbols-outlined text-6xl text-primary">check_circle</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-6xl text-primary">check_circle</span>
           <h1 className="mt-md text-headline-md font-bold text-on-surface">
             {t("booking.successTitle")}
           </h1>
@@ -302,7 +304,7 @@ export default function Booking() {
                   aria-label={t("booking.prevWeek")}
                   className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant transition-all hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <span className="material-symbols-outlined">chevron_left</span>
+                  <span aria-hidden="true" className="material-symbols-outlined">chevron_left</span>
                 </button>
                 <button
                   type="button"
@@ -310,7 +312,7 @@ export default function Booking() {
                   aria-label={t("booking.nextWeek")}
                   className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant transition-all hover:bg-surface-container"
                 >
-                  <span className="material-symbols-outlined">chevron_right</span>
+                  <span aria-hidden="true" className="material-symbols-outlined">chevron_right</span>
                 </button>
               </div>
             </div>
@@ -364,18 +366,19 @@ export default function Booking() {
               <ErrorState onRetry={loadSlots} />
             ) : slotsLoading ? (
               <div className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5">
+                <LoadingStatus />
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
                   <Skeleton key={i} className="h-12" />
                 ))}
               </div>
             ) : showAbsence ? (
               <div className="flex items-center gap-sm rounded-lg bg-tertiary-container p-sm text-on-tertiary-container">
-                <span className="material-symbols-outlined">info</span>
+                <span aria-hidden="true" className="material-symbols-outlined">info</span>
                 <p className="text-body-md">{t("booking.absence")}</p>
               </div>
             ) : visibleSlots.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-xl text-center">
-                <span className="material-symbols-outlined mb-sm text-6xl text-outline">
+                <span aria-hidden="true" className="material-symbols-outlined mb-sm text-6xl text-outline">
                   event_busy
                 </span>
                 <p className="text-headline-md font-semibold text-on-surface-variant">
@@ -424,14 +427,14 @@ export default function Booking() {
               </h3>
               <div className="space-y-sm">
                 <div className="flex items-start gap-sm">
-                  <span className="material-symbols-outlined text-primary">person</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-primary">person</span>
                   <div>
                     <p className="text-label-md text-on-surface-variant">{t("booking.doctor")}</p>
                     <p className="text-body-md font-bold text-on-surface">{doctor.full_name}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-sm">
-                  <span className="material-symbols-outlined text-primary">event</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-primary">event</span>
                   <div>
                     <p className="text-label-md text-on-surface-variant">{t("booking.date")}</p>
                     <p className="text-body-md font-bold text-on-surface">
@@ -440,7 +443,7 @@ export default function Booking() {
                   </div>
                 </div>
                 <div className="flex items-start gap-sm">
-                  <span className="material-symbols-outlined text-primary">schedule</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-primary">schedule</span>
                   <div>
                     <p className="text-label-md text-on-surface-variant">{t("booking.time")}</p>
                     <p className="text-body-md font-bold text-on-surface">
@@ -450,7 +453,7 @@ export default function Booking() {
                 </div>
                 {selectedSlot && departments[selectedSlot.department_id] && (
                   <div className="flex items-start gap-sm">
-                    <span className="material-symbols-outlined text-primary">meeting_room</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-primary">meeting_room</span>
                     <div>
                       <p className="text-label-md text-on-surface-variant">
                         {t("booking.department")}

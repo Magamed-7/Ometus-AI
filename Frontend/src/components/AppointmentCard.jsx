@@ -20,7 +20,7 @@ export default function AppointmentCard({ appointment, doctor, department, filia
           <StatusPill status={appointment.status} />
           {appointment.is_emergency && (
             <span className="inline-flex items-center gap-1 rounded-full bg-error-container px-2.5 py-1 text-label-md font-semibold text-on-error-container">
-              <span className="material-symbols-outlined text-base">emergency</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-base">emergency</span>
               {t("status.emergency")}
             </span>
           )}
