@@ -14,7 +14,7 @@ from app.ai.mcp_tools import (
     reschedule_appointment,
     tool_error,
 )
-from app.ai.specialization_map import match_specializations
+from app.ai.specialization_map import find_fallback_specialists, match_specializations
 from app.core.config import settings
 from app.schemas.schema_ai import AskIn
 from app.services import crud_ai_log, crud_conversation
@@ -463,6 +463,23 @@ async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, histor
         }
 
     doctors = result["data"]
+
+    if not doctors:
+        fallbacks = find_fallback_specialists(specialization)
+        if fallbacks:
+            return {
+                "action": "clarify",
+                "reply": f"К сожалению, {specialization} в клинике нет. "
+                f"Могу предложить альтернативу: {', '.join(fallbacks)}. "
+                "Выберите специалиста.",
+            }
+        return {
+            "action": "error",
+            "specialization": specialization,
+            "error_code": "NO_DOCTORS",
+            "reply": f"К сожалению, специалистов «{specialization}» в клинике нет.",
+        }
+
     fallback = (
         f"По специализации «{specialization}» принимают: {describe_doctors(doctors)}. "
         "Выберите врача, и я покажу свободное время."
