@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.model_absence import DoctorAbsence
+from app.models.model_appointment import Appointment
 from app.models.model_date_schedule import DoctorDateSchedule
 from app.models.model_schedule import DoctorSchedule
 from app.schemas.schema_schedule import (
@@ -245,3 +246,39 @@ async def find_overlapping_schedule(
 
     result = await db.execute(query.order_by(DoctorSchedule.start_time))
     return result.scalars().first()
+
+
+async def find_overlapping_absence(
+    doctor_id: int, date_from: date, date_to: date, db: AsyncSession
+):
+    result = await db.execute(
+        select(DoctorAbsence)
+        .where(DoctorAbsence.doctor_id == doctor_id)
+        .where(DoctorAbsence.date_from <= date_to)
+        .where(DoctorAbsence.date_to >= date_from)
+        .order_by(DoctorAbsence.date_from)
+    )
+    return result.scalars().first()
+
+
+async def cancel_appointments_in_range(
+    doctor_id: int, date_from: date, date_to: date, db: AsyncSession
+):
+    # врач уходит на больничный — активные записи на эти дни надо снять, иначе слоты
+    # просто исчезают из выдачи, а пациент продолжает думать, что его ждут
+    result = await db.execute(
+        select(Appointment)
+        .where(Appointment.doctor_id == doctor_id)
+        .where(Appointment.date >= date_from)
+        .where(Appointment.date <= date_to)
+        .where(Appointment.status == "booked")
+    )
+    appointments = result.scalars().all()
+
+    for appointment in appointments:
+        appointment.status = "cancelled"
+
+    if appointments:
+        await db.commit()
+
+    return appointments

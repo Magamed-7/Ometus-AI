@@ -586,3 +586,54 @@ async def test_update_rejects_department_where_doctor_does_not_work(client, db):
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "DOCTOR_NOT_IN_DEPARTMENT"
+
+
+async def test_absences_cannot_overlap(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_ABSENCES_URL,
+        json={"date_from": "2026-08-01", "date_to": "2026-08-10", "reason": "Отпуск"},
+        headers=headers,
+    )
+
+    response = await client.post(
+        MY_ABSENCES_URL,
+        json={"date_from": "2026-08-05", "date_to": "2026-08-15", "reason": "Больничный"},
+        headers=headers,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "ABSENCE_OVERLAPS"
+
+
+async def test_absence_cancels_appointments_on_those_days(client, db):
+    from datetime import date, time
+
+    from app.models.model_appointment import Appointment
+
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await register(client, "booked.patient@ometus.test")
+    patient = await client.get(
+        "/api/users/me/patient",
+        headers=await auth_headers(client, "booked.patient@ometus.test"),
+    )
+
+    appointment = Appointment(
+        patient_id=patient.json()["id"],
+        doctor_id=doctor_id,
+        department_id=department_id,
+        date=date(2026, 8, 3),
+        time=time(9, 0),
+        status="booked",
+    )
+    db.add(appointment)
+    await db.commit()
+
+    await client.post(
+        MY_ABSENCES_URL,
+        json={"date_from": "2026-08-01", "date_to": "2026-08-10", "reason": "Больничный"},
+        headers=headers,
+    )
+    await db.refresh(appointment)
+
+    assert appointment.status == "cancelled"

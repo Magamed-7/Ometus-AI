@@ -100,7 +100,25 @@ async def create_my_absence(
             status_code=400,
         )
 
-    return await crud_schedule.create_absence(doctor.id, data, db)
+    clash = await crud_schedule.find_overlapping_absence(
+        doctor.id, data.date_from, data.date_to, db
+    )
+
+    if clash is not None:
+        raise AppError(
+            code="ABSENCE_OVERLAPS",
+            message=f"Эти дни уже закрыты отсутствием с {clash.date_from} по {clash.date_to}",
+            status_code=409,
+        )
+
+    absence = await crud_schedule.create_absence(doctor.id, data, db)
+
+    # записи на эти дни снимаем сразу: слоты и так исчезнут из выдачи,
+    # а пациент без отмены остался бы с записью к врачу, которого не будет
+    await crud_schedule.cancel_appointments_in_range(
+        doctor.id, data.date_from, data.date_to, db
+    )
+    return absence
 
 
 @schedules_router.delete("/me/absences/{absence_id}")
