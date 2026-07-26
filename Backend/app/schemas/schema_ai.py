@@ -47,6 +47,18 @@ class ConversationHistoryOut(BaseModel):
     messages: list[MessageOut]
 
 
+class LlmMetricOut(BaseModel):
+    provider: str
+    model: str
+    calls: int
+    succeeded: int
+    failed: int
+    success_rate: float
+    avg_duration_ms: int
+    prompt_tokens: int
+    completion_tokens: int
+
+
 class CheckupSuggestionOut(BaseModel):
     doctor_id: int
     doctor_name: str

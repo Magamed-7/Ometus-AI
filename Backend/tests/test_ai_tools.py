@@ -59,17 +59,17 @@ async def auth_headers(client, email, password="secret1234"):
     return {"Authorization": f"Bearer {access_token}"}
 
 
-async def admin_headers(client, db):
+async def admin_headers(client, db, email="admin@ometus.test"):
     from app.models.model_user import User
 
-    await register(client, "admin@ometus.test")
+    await register(client, email)
 
-    result = await db.execute(select(User).where(User.email == "admin@ometus.test"))
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one()
     user.role = "admin"
     await db.commit()
 
-    return await auth_headers(client, "admin@ometus.test")
+    return await auth_headers(client, email)
 
 
 async def setup_doctor(client, db, email=DOCTOR_DATA["email"], with_schedule=True):
@@ -779,6 +779,75 @@ async def test_history_of_foreign_conversation_is_denied(client, db):
 
 
 SUGGESTION_URL = "/api/ai/suggestion"
+METRICS_URL = "/api/admin/ai-metrics"
+
+
+async def test_llm_calls_are_recorded(client, db, monkeypatch):
+    from app.ai import metrics
+    from app.models.model_ai_metric import AiLlmCall
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    async def fake_ask_llm(message, context, history=None, language="ru"):
+        metrics.record_call("groq", "llama-test", True, 42, 100, 20)
+        return "ответ модели"
+
+    monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
+
+    await ask(client, headers, "болит сердце")
+
+    saved = (await db.execute(select(AiLlmCall))).scalars().all()
+
+    assert len(saved) == 1
+    assert saved[0].provider == "groq"
+    assert saved[0].model == "llama-test"
+    assert saved[0].success is True
+    assert saved[0].prompt_tokens == 100
+
+
+async def test_metrics_summary_for_admin(client, db, monkeypatch):
+    from app.ai import metrics
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    async def fake_ask_llm(message, context, history=None, language="ru"):
+        metrics.record_call("groq", "llama-test", False, 10, error="boom")
+        metrics.record_call("gemini", "gemini-test", True, 30, 50, 10)
+        return "ответ модели"
+
+    monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
+
+    await ask(client, headers, "болит сердце")
+
+    admin = await admin_headers(client, db, "metrics.admin@ometus.test")
+    body = (await client.get(METRICS_URL, headers=admin)).json()
+
+    by_provider = {row["provider"]: row for row in body}
+
+    assert by_provider["groq"]["failed"] == 1
+    assert by_provider["groq"]["success_rate"] == 0.0
+    assert by_provider["gemini"]["succeeded"] == 1
+    assert by_provider["gemini"]["completion_tokens"] == 10
+    assert by_provider["gemini"]["avg_duration_ms"] == 30
+
+
+async def test_metrics_require_admin(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    assert (await client.get(METRICS_URL, headers=headers)).status_code == 403
+
+
+async def test_metrics_reject_invalid_range(client, db):
+    admin = await admin_headers(client, db, "range.admin@ometus.test")
+
+    response = await client.get(
+        f"{METRICS_URL}?date_from=2026-08-01&date_to=2026-07-01", headers=admin
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_DATE_RANGE"
 
 
 async def make_past_visit(db, patient_id, doctor_id, department_id, days_ago, status="completed"):

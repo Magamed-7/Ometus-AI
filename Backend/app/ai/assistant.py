@@ -1,7 +1,10 @@
 import json
+from time import perf_counter
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.ai import metrics
 
 from app.ai.emergency_guard import (
     EMERGENCY_MESSAGES,
@@ -25,7 +28,7 @@ from app.ai.mcp_tools import (
 from app.ai.specialization_map import find_fallback_specialists, match_specializations
 from app.core.config import settings
 from app.schemas.schema_ai import AskIn
-from app.services import crud_ai_log, crud_appointment, crud_conversation
+from app.services import crud_ai_log, crud_ai_metric, crud_appointment, crud_conversation
 
 SYSTEM_PROMPT_TEMPLATE = (
     "Ты — ассистент регистратуры клиники Ometus. Твоя единственная задача — помочь пациенту "
@@ -56,6 +59,10 @@ def build_user_prompt(message: str, context: dict, history: list | None = None):
     return prompt
 
 
+def elapsed_ms(started: float):
+    return int((perf_counter() - started) * 1000)
+
+
 def read_gemini_text(data: dict):
     parts = data["candidates"][0]["content"]["parts"]
     return "\n".join(part["text"] for part in parts if part.get("text")).strip()
@@ -74,6 +81,7 @@ async def ask_groq(message: str, context: dict, history: list | None = None, lan
                 {"role": "user", "content": build_user_prompt(message, context, history)},
             ],
         }
+        started = perf_counter()
 
         try:
             async with httpx.AsyncClient(timeout=20) as client:
@@ -83,11 +91,24 @@ async def ask_groq(message: str, context: dict, history: list | None = None, lan
                     json=payload,
                 )
                 response.raise_for_status()
-                reply = response.json()["choices"][0]["message"]["content"].strip()
+                body = response.json()
+                reply = body["choices"][0]["message"]["content"].strip()
+                usage = body.get("usage") or {}
+
+                metrics.record_call(
+                    "groq",
+                    model,
+                    bool(reply),
+                    elapsed_ms(started),
+                    usage.get("prompt_tokens"),
+                    usage.get("completion_tokens"),
+                    None if reply else "empty reply",
+                )
 
                 if reply:
                     return reply
-        except Exception:
+        except Exception as error:
+            metrics.record_call("groq", model, False, elapsed_ms(started), error=str(error)[:200])
             continue
 
     return None
@@ -104,6 +125,8 @@ async def ask_gemini(message: str, context: dict, history: list | None = None, l
     }
 
     for model in settings.GEMINI_MODELS:
+        started = perf_counter()
+
         try:
             async with httpx.AsyncClient(timeout=20) as client:
                 response = await client.post(
@@ -112,11 +135,24 @@ async def ask_gemini(message: str, context: dict, history: list | None = None, l
                     json=payload,
                 )
                 response.raise_for_status()
-                reply = read_gemini_text(response.json())
+                body = response.json()
+                reply = read_gemini_text(body)
+                usage = body.get("usageMetadata") or {}
+
+                metrics.record_call(
+                    "gemini",
+                    model,
+                    bool(reply),
+                    elapsed_ms(started),
+                    usage.get("promptTokenCount"),
+                    usage.get("candidatesTokenCount"),
+                    None if reply else "empty reply",
+                )
 
                 if reply:
                     return reply
-        except Exception:
+        except Exception as error:
+            metrics.record_call("gemini", model, False, elapsed_ms(started), error=str(error)[:200])
             continue
 
     return None
@@ -237,7 +273,13 @@ def pick_flow(data: AskIn):
 
 
 async def remember(
-    conversation, message: str, result: dict, severity: int, language: str, db: AsyncSession
+    conversation,
+    message: str,
+    result: dict,
+    severity: int,
+    language: str,
+    current_patient,
+    db: AsyncSession,
 ):
     result["conversation_id"] = conversation.id
     result["severity"] = severity
@@ -245,10 +287,12 @@ async def remember(
 
     await crud_conversation.add_message(conversation.id, "user", message, db)
     await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+    await crud_ai_metric.save_calls(current_patient.user_id, metrics.collected_calls(), db)
     return result
 
 
 async def ask(data: AskIn, current_patient, db: AsyncSession):
+    metrics.start_collecting()
     conversation = await resolve_conversation(data, current_patient, db)
     history = await crud_conversation.get_conversation_history(conversation.id, limit=10, db=db)
     severity = data.severity or assess_symptom_severity(data.message)
@@ -266,7 +310,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
         )
         emergency = {"action": "emergency", "reply": message}
         return await remember(
-            conversation, data.message, emergency, SEVERITY_CRITICAL, language, db
+            conversation, data.message, emergency, SEVERITY_CRITICAL, language, current_patient, db
         )
 
     flow = pick_flow(data)
@@ -275,7 +319,9 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
     if severity == SEVERITY_HIGH:
         result["reply"] = f"{HIGH_SEVERITY_NOTES[language]} {result['reply']}"
 
-    return await remember(conversation, data.message, result, severity, language, db)
+    return await remember(
+        conversation, data.message, result, severity, language, current_patient, db
+    )
 
 
 def tool_failure(result: dict):
