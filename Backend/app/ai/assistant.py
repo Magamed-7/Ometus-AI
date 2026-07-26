@@ -3,7 +3,7 @@ import json
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.emergency_guard import EMERGENCY_MESSAGE, is_emergency
+from app.ai.emergency_guard import EMERGENCY_MESSAGE, assess_symptom_severity, is_emergency
 from app.ai.mcp_tools import (
     book_appointment,
     cancel_appointment,
@@ -160,6 +160,8 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
 
     history = await crud_conversation.get_conversation_history(conversation.id, limit=10, db=db)
 
+    severity = data.severity or assess_symptom_severity(data.message)
+
     if is_emergency(data.message):
         await log_call(
             current_patient,
@@ -170,11 +172,12 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
         )
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
         await crud_conversation.add_message(conversation.id, "assistant", EMERGENCY_MESSAGE, db)
-        return {"action": "emergency", "reply": EMERGENCY_MESSAGE, "conversation_id": conversation.id}
+        return {"action": "emergency", "reply": EMERGENCY_MESSAGE, "conversation_id": conversation.id, "severity": severity}
 
     if data.intent == "cancel":
         result = await cancel_flow(data, current_patient, db)
         result["conversation_id"] = conversation.id
+        result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
         await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
         return result
@@ -182,6 +185,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
     if data.intent == "reschedule":
         result = await reschedule_flow(data, current_patient, db)
         result["conversation_id"] = conversation.id
+        result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
         await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
         return result
@@ -189,6 +193,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
     if data.intent == "my_appointments":
         result = await my_appointments_flow(data, current_patient, db)
         result["conversation_id"] = conversation.id
+        result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
         await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
         return result
@@ -196,6 +201,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
     if data.intent == "doctor_schedule":
         result = await doctor_schedule_flow(data, current_patient, db)
         result["conversation_id"] = conversation.id
+        result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
         await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
         return result
@@ -203,6 +209,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
     if data.confirm:
         result = await confirm_booking(data, current_patient, db, history, conversation)
         result["conversation_id"] = conversation.id
+        result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
         await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
         return result
@@ -210,12 +217,14 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
     if data.doctor_id:
         result = await show_slots(data, current_patient, db, history, conversation)
         result["conversation_id"] = conversation.id
+        result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
         await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
         return result
 
     result = await suggest_doctors(data, current_patient, db, history, conversation)
     result["conversation_id"] = conversation.id
+    result["severity"] = severity
     await crud_conversation.add_message(conversation.id, "user", data.message, db)
     await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
     return result
