@@ -1,5 +1,5 @@
 import { API_URL } from "../config.js";
-import { clearTokens, getAccessToken } from "../auth/tokens.js";
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "../auth/tokens.js";
 import { fromEnvelope, networkError } from "./errors.js";
 
 async function parseBody(response) {
@@ -44,12 +44,52 @@ async function send(path, { method = "GET", body, auth = true, signal } = {}) {
   return parsed;
 }
 
+let refreshing = null;
+
+async function refreshAccessToken() {
+  const refresh_token = getRefreshToken();
+  if (!refresh_token) return false;
+
+  if (!refreshing) {
+    refreshing = send("/api/auth/refresh", {
+      method: "POST",
+      body: { refresh_token },
+      auth: false,
+    })
+      .then((tokens) => {
+        setTokens(tokens);
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => {
+        refreshing = null;
+      });
+  }
+
+  return refreshing;
+}
+
 export async function request(path, options = {}) {
   try {
     return await send(path, options);
   } catch (e) {
-    if (e.status === 401 && options.auth !== false) clearTokens();
-    throw e;
+    const authorized = options.auth !== false;
+
+    if (e.status !== 401 || !authorized) throw e;
+
+    const renewed = await refreshAccessToken();
+
+    if (!renewed) {
+      clearTokens();
+      throw e;
+    }
+
+    try {
+      return await send(path, options);
+    } catch (retryError) {
+      if (retryError.status === 401) clearTokens();
+      throw retryError;
+    }
   }
 }
 
