@@ -50,8 +50,14 @@ class Settings:
     LLM_PRICES: str = os.getenv("LLM_PRICES", "")
     AI_MONTHLY_BUDGET_USD: str = os.getenv("AI_MONTHLY_BUDGET_USD", "0")
 
+    # localhost и 127.0.0.1 — разные origin для браузера, поэтому перечислены оба:
+    # 5173 — vite dev, 4173 — vite preview, 8080 — фронт в контейнере через nginx
     CORS_ORIGINS: list[str] = os.getenv(
-        "CORS_ORIGINS", "http://localhost:5173,http://localhost:8000"
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost:4173,http://127.0.0.1:4173,"
+        "http://localhost:8080,http://127.0.0.1:8080,"
+        "http://localhost:8000,http://127.0.0.1:8000",
     ).split(",")
 
 
