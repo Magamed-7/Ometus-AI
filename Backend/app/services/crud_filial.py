@@ -8,9 +8,14 @@ from app.schemas.schema_filial import FilialCreateIn, FilialUpdateIn
 async def create_filial(data: FilialCreateIn, db: AsyncSession):
     filial = Filial(
         name=data.name,
+        legal_name=data.legal_name,
+        inn=data.inn,
         city=data.city,
         address=data.address,
         phone=data.phone,
+        license_number=data.license_number,
+        clinic_type=data.clinic_type,
+        opening_hours=data.opening_hours,
     )
 
     db.add(filial)
@@ -36,9 +41,14 @@ async def get_by_id(filial_id: int, db: AsyncSession):
 
 async def update_filial(filial: Filial, data: FilialUpdateIn, db: AsyncSession):
     filial.name = data.name or filial.name
+    filial.legal_name = data.legal_name or filial.legal_name
+    filial.inn = data.inn or filial.inn
     filial.city = data.city or filial.city
     filial.address = data.address or filial.address
     filial.phone = data.phone or filial.phone
+    filial.license_number = data.license_number or filial.license_number
+    filial.clinic_type = data.clinic_type or filial.clinic_type
+    filial.opening_hours = data.opening_hours or filial.opening_hours
 
     await db.commit()
     await db.refresh(filial)
