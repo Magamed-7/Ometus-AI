@@ -3,6 +3,8 @@ from tests.conftest import verify_email
 REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
 ME_URL = "/api/users/me"
+PASSWORD_URL = "/api/users/me/password"
+EMAIL_URL = "/api/users/me/email"
 
 
 async def register(client, email="patient@ometus.test", password="patient1234"):
@@ -61,3 +63,112 @@ async def test_update_me_unauthenticated(client):
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "NOT_AUTHENTICATED"
+
+
+async def test_change_password_and_login_with_it(client):
+    await register(client)
+    headers = await auth_headers(client)
+
+    response = await client.put(
+        PASSWORD_URL,
+        json={"current_password": "patient1234", "new_password": "brand-new-4321"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    with_old = await client.post(
+        LOGIN_URL, json={"email": "patient@ometus.test", "password": "patient1234"}
+    )
+    with_new = await client.post(
+        LOGIN_URL, json={"email": "patient@ometus.test", "password": "brand-new-4321"}
+    )
+
+    assert with_old.status_code == 401
+    assert with_new.status_code == 200
+
+
+async def test_change_password_checks_the_current_one(client):
+    await register(client)
+    headers = await auth_headers(client)
+
+    response = await client.put(
+        PASSWORD_URL,
+        json={"current_password": "not-my-password", "new_password": "brand-new-4321"},
+        headers=headers,
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
+
+
+async def test_change_password_rejects_short_one(client):
+    await register(client)
+    headers = await auth_headers(client)
+
+    response = await client.put(
+        PASSWORD_URL,
+        json={"current_password": "patient1234", "new_password": "short"},
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+
+
+async def test_change_email_requires_new_verification(client, sent_emails):
+    await register(client)
+    headers = await auth_headers(client)
+
+    response = await client.put(
+        EMAIL_URL,
+        json={"email": "new.address@ometus.test", "password": "patient1234"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "new.address@ometus.test"
+
+    # вход закрыт, пока новая почта не подтверждена
+    blocked = await client.post(
+        LOGIN_URL, json={"email": "new.address@ometus.test", "password": "patient1234"}
+    )
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
+
+    # код ушёл именно на новый адрес
+    assert sent_emails[-1][0] == "new.address@ometus.test"
+
+    await verify_email(client, "new.address@ometus.test")
+    allowed = await client.post(
+        LOGIN_URL, json={"email": "new.address@ometus.test", "password": "patient1234"}
+    )
+    assert allowed.status_code == 200
+
+
+async def test_change_email_rejects_taken_address(client):
+    await register(client)
+    await register(client, email="someone.else@ometus.test")
+    headers = await auth_headers(client)
+
+    response = await client.put(
+        EMAIL_URL,
+        json={"email": "someone.else@ometus.test", "password": "patient1234"},
+        headers=headers,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "EMAIL_ALREADY_EXISTS"
+
+
+async def test_change_email_checks_password(client):
+    await register(client)
+    headers = await auth_headers(client)
+
+    response = await client.put(
+        EMAIL_URL,
+        json={"email": "new.address@ometus.test", "password": "not-my-password"},
+        headers=headers,
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"

@@ -66,6 +66,26 @@ async def update_user(user: User, data: UserUpdateIn, db: AsyncSession):
     return user
 
 
+async def change_password(user: User, new_password: str, db: AsyncSession):
+    user.hashed_password = hash_password(new_password)
+
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def change_email(user: User, new_email: str, db: AsyncSession):
+    # новая почта не подтверждена по определению, поэтому сбрасываем флаг и шлём код:
+    # иначе аккаунт можно было бы увести на чужой адрес и войти без подтверждения
+    user.email = new_email
+    user.is_verified = False
+
+    await db.commit()
+    await db.refresh(user)
+    await create_verification_code(user, db)
+    return user
+
+
 async def create_verification_code(user: User, db: AsyncSession):
     # один активный код на пользователя: старые гасим, иначе после трёх запросов
     # у человека на руках три рабочих кода, и отозвать их нечем

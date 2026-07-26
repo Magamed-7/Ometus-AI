@@ -24,7 +24,8 @@ async def get_or_create_active_conversation(patient_id: int, db: AsyncSession):
     result = await db.execute(
         select(Conversation)
         .where(Conversation.patient_id == patient_id)
-        .order_by(Conversation.updated_at.desc())
+        .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
+        .limit(1)
     )
     conversation = result.scalar_one_or_none()
 

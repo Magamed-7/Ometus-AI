@@ -147,15 +147,17 @@ async def log_call(current_patient, tool_name: str, params: dict, result: dict, 
 
 
 async def ask(data: AskIn, current_patient, db: AsyncSession):
+    conversation = None
+
     if data.conversation_id:
         conversation = await crud_conversation.get_conversation(data.conversation_id, db)
-        if conversation is None:
-            conversation = await crud_conversation.create_conversation(
-                current_patient.user_id, db
-            )
-    else:
+
+        if conversation is not None and conversation.patient_id != current_patient.id:
+            conversation = None
+
+    if conversation is None:
         conversation = await crud_conversation.get_or_create_active_conversation(
-            current_patient.user_id, db
+            current_patient.id, db
         )
 
     history = await crud_conversation.get_conversation_history(conversation.id, limit=10, db=db)

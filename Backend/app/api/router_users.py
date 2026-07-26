@@ -3,10 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
 from app.core.errors import AppError
+from app.core.security import verify_password
 from app.db.database import get_db
 from app.models.model_user import User
 from app.schemas.schema_patient import DependentCreateIn, PatientOut, PatientUpdateIn
-from app.schemas.schema_user import UserOut, UserUpdateIn
+from app.schemas.schema_user import EmailChangeIn, PasswordChangeIn, UserOut, UserUpdateIn
 from app.services import crud_patient, crud_user
 
 users_router = APIRouter(prefix="/api/users", tags=["Users"])
@@ -24,6 +25,46 @@ async def update_me(
     db: AsyncSession = Depends(get_db),
 ):
     return await crud_user.update_user(current_user, data, db)
+
+
+@users_router.put("/me/password", response_model=UserOut)
+async def change_my_password(
+    data: PasswordChangeIn,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise AppError(code="INVALID_CREDENTIALS", message="Текущий пароль неверен", status_code=401)
+
+    if data.current_password == data.new_password:
+        raise AppError(
+            code="PASSWORD_NOT_CHANGED",
+            message="Новый пароль совпадает со старым",
+            status_code=400,
+        )
+
+    return await crud_user.change_password(current_user, data.new_password, db)
+
+
+@users_router.put("/me/email", response_model=UserOut)
+async def change_my_email(
+    data: EmailChangeIn,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # пароль спрашиваем не для галочки: смена почты — это смена точки восстановления доступа
+    if not verify_password(data.password, current_user.hashed_password):
+        raise AppError(code="INVALID_CREDENTIALS", message="Пароль неверен", status_code=401)
+
+    if data.email == current_user.email:
+        raise AppError(
+            code="EMAIL_NOT_CHANGED", message="Это ваша текущая почта", status_code=400
+        )
+
+    if await crud_user.get_by_email(data.email, db):
+        raise AppError(code="EMAIL_ALREADY_EXISTS", message="Email уже занят", status_code=409)
+
+    return await crud_user.change_email(current_user, data.email, db)
 
 
 @users_router.get("/me/patient", response_model=PatientOut)
