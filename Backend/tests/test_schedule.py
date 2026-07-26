@@ -474,3 +474,115 @@ async def test_public_doctor_schedule(client, db):
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["weekday"] == 0
+
+
+async def add_second_department(client, db, doctor_id):
+    admin = await auth_headers(client, "admin@ometus.test")
+    filial = await client.get(ADMIN_FILIALS_URL.replace("/admin", ""))
+    second = await client.post(
+        ADMIN_DEPARTMENTS_URL,
+        json={"filial_id": filial.json()[0]["id"], "name": "Неврология"},
+        headers=admin,
+    )
+    second_id = second.json()["id"]
+    await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/departments",
+        json={"department_id": second_id},
+        headers=admin,
+    )
+    return second_id
+
+
+async def test_schedules_cannot_overlap_across_departments(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    second_id = await add_second_department(client, db, doctor_id)
+
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    clashing = await client.post(
+        MY_SCHEDULE_URL,
+        json={**WORKDAY, "department_id": second_id, "start_time": "09:30:00"},
+        headers=headers,
+    )
+
+    assert clashing.status_code == 409
+    assert clashing.json()["error"]["code"] == "SCHEDULE_OVERLAPS"
+
+
+async def test_second_department_schedule_is_fine_when_time_does_not_clash(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    second_id = await add_second_department(client, db, doctor_id)
+
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    later = await client.post(
+        MY_SCHEDULE_URL,
+        json={
+            **WORKDAY,
+            "department_id": second_id,
+            "start_time": "14:00:00",
+            "end_time": "16:00:00",
+        },
+        headers=headers,
+    )
+
+    assert later.status_code == 200
+
+
+async def test_slots_are_not_duplicated_by_time(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    second_id = await add_second_department(client, db, doctor_id)
+
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    # прямо в базу, минуя проверку пересечений: так выглядят данные,
+    # заведённые до появления этой проверки
+    from datetime import time
+
+    from app.models.model_schedule import DoctorSchedule
+
+    db.add(
+        DoctorSchedule(
+            doctor_id=doctor_id,
+            department_id=second_id,
+            weekday=WORKDAY["weekday"],
+            start_time=time(9, 0),
+            end_time=time(10, 0),
+            slot_duration=WORKDAY["slot_duration"],
+            buffer_duration=0,
+        )
+    )
+    await db.commit()
+
+    slots = await client.get(
+        f"{SCHEDULES_URL}/doctors/{doctor_id}/slots", params={"day": "2026-07-27"}
+    )
+    times = [slot["time"] for slot in slots.json()]
+
+    assert len(times) == len(set(times))
+
+
+async def test_update_rejects_department_where_doctor_does_not_work(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    admin = await auth_headers(client, "admin@ometus.test")
+    filial = await client.get(ADMIN_FILIALS_URL.replace("/admin", ""))
+    foreign = await client.post(
+        ADMIN_DEPARTMENTS_URL,
+        json={"filial_id": filial.json()[0]["id"], "name": "Чужое отделение"},
+        headers=admin,
+    )
+    created = await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+
+    response = await client.put(
+        f"{MY_SCHEDULE_URL}/{created.json()['id']}",
+        json={"department_id": foreign.json()["id"]},
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "DOCTOR_NOT_IN_DEPARTMENT"

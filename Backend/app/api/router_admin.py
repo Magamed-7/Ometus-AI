@@ -22,12 +22,14 @@ from app.schemas.schema_doctor import (
     DoctorUpdateIn,
     SpecializationIn,
 )
+from app.schemas.schema_ai import LlmMetricOut
 from app.schemas.schema_patient import DependentCreateIn, PatientOut
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
 from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
 from app.schemas.schema_schedule import ScheduleCreateIn, ScheduleOut, ScheduleUpdateIn
 from app.schemas.schema_user import RoleUpdateIn, UserOut
 from app.services import (
+    crud_ai_metric,
     crud_appointment,
     crud_department,
     crud_doctor,
@@ -286,6 +288,23 @@ async def get_workload_report(
     return await crud_report.get_doctor_workload(db, date_from, date_to, department_id)
 
 
+@admin_router.get("/ai-metrics", response_model=list[LlmMetricOut])
+async def get_ai_metrics(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if date_from and date_to and date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала должна быть раньше даты окончания",
+            status_code=400,
+        )
+
+    return await crud_ai_metric.get_metrics(db, date_from, date_to)
+
+
 @admin_router.get("/doctors/{doctor_id}/schedules", response_model=list[ScheduleOut])
 async def list_doctor_schedules(
     doctor_id: int,
@@ -368,6 +387,28 @@ async def update_doctor_schedule(
             code="INVALID_TIME_RANGE",
             message="Начало работы должно быть раньше окончания",
             status_code=400,
+        )
+
+    if data.department_id and data.department_id != schedule.department_id:
+        departments = await crud_doctor.get_departments(doctor_id, db)
+
+        if data.department_id not in [item.id for item in departments]:
+            raise AppError(
+                code="DOCTOR_NOT_IN_DEPARTMENT",
+                message="Врач не работает в этом отделении",
+                status_code=400,
+            )
+
+    weekday = schedule.weekday if data.weekday is None else data.weekday
+    clash = await crud_schedule.find_overlapping_schedule(
+        doctor_id, weekday, start_time, end_time, db, exclude_id=schedule.id
+    )
+
+    if clash is not None:
+        raise AppError(
+            code="SCHEDULE_OVERLAPS",
+            message="Это время уже занято другим расписанием врача",
+            status_code=409,
         )
 
     return await crud_schedule.update_schedule(schedule, data, db)

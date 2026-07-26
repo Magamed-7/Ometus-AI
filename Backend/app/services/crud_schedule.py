@@ -169,6 +169,7 @@ async def is_absent(doctor_id: int, day: date, db: AsyncSession):
 
 def slice_slots(day: date, schedules, taken):
     slots = []
+    seen = set()
 
     for schedule in schedules:
         current = datetime.combine(day, schedule.start_time)
@@ -177,7 +178,10 @@ def slice_slots(day: date, schedules, taken):
         stride = timedelta(minutes=schedule.slot_duration + schedule.buffer_duration)
 
         while current + length <= end:
-            if current.time() not in taken:
+            # одно и то же время из двух расписаний (например, разные отделения)
+            # это не два свободных слота: врач не может принимать двоих сразу
+            if current.time() not in taken and current.time() not in seen:
+                seen.add(current.time())
                 slots.append(
                     {
                         "date": day,
@@ -187,7 +191,7 @@ def slice_slots(day: date, schedules, taken):
                 )
             current = current + stride
 
-    return slots
+    return sorted(slots, key=lambda slot: slot["time"])
 
 
 async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
@@ -215,3 +219,29 @@ async def find_slot(doctor_id: int, day: date, slot_time: time, db: AsyncSession
             return slot
 
     return None
+
+
+async def find_overlapping_schedule(
+    doctor_id: int,
+    weekday: int,
+    start_time: time,
+    end_time: time,
+    db: AsyncSession,
+    exclude_id: int | None = None,
+):
+    # пересечения ищем по всем отделениям сразу: врач физически один, и два окна
+    # 09:00-13:00 в разных отделениях — это не два врача, а один в двух местах.
+    # Уникальный индекс ловит только полный дубль по (врач, отделение, день недели)
+    query = (
+        select(DoctorSchedule)
+        .where(DoctorSchedule.doctor_id == doctor_id)
+        .where(DoctorSchedule.weekday == weekday)
+        .where(DoctorSchedule.start_time < end_time)
+        .where(DoctorSchedule.end_time > start_time)
+    )
+
+    if exclude_id is not None:
+        query = query.where(DoctorSchedule.id != exclude_id)
+
+    result = await db.execute(query.order_by(DoctorSchedule.start_time))
+    return result.scalars().first()

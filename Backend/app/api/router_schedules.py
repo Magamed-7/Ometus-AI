@@ -66,6 +66,17 @@ async def create_my_schedule(
             status_code=409,
         )
 
+    clash = await crud_schedule.find_overlapping_schedule(
+        doctor.id, data.weekday, data.start_time, data.end_time, db
+    )
+
+    if clash is not None:
+        raise AppError(
+            code="SCHEDULE_OVERLAPS",
+            message="Это время уже занято другим расписанием врача",
+            status_code=409,
+        )
+
     return await crud_schedule.create_schedule(doctor.id, data, db)
 
 
@@ -192,6 +203,30 @@ async def update_my_schedule(
             code="INVALID_TIME_RANGE",
             message="Начало работы должно быть раньше окончания",
             status_code=400,
+        )
+
+    # при создании отделение проверяется, при правке — не проверялось:
+    # можно было перевести расписание в отделение, где врач не работает
+    if data.department_id and data.department_id != schedule.department_id:
+        departments = await crud_doctor.get_departments(doctor.id, db)
+
+        if data.department_id not in [item.id for item in departments]:
+            raise AppError(
+                code="DOCTOR_NOT_IN_DEPARTMENT",
+                message="Врач не работает в этом отделении",
+                status_code=400,
+            )
+
+    weekday = schedule.weekday if data.weekday is None else data.weekday
+    clash = await crud_schedule.find_overlapping_schedule(
+        doctor.id, weekday, start_time, end_time, db, exclude_id=schedule.id
+    )
+
+    if clash is not None:
+        raise AppError(
+            code="SCHEDULE_OVERLAPS",
+            message="Это время уже занято другим расписанием врача",
+            status_code=409,
         )
 
     return await crud_schedule.update_schedule(schedule, data, db)
