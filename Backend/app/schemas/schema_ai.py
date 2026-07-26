@@ -24,6 +24,8 @@ class AskOut(BaseModel):
     conversation_id: int
     severity: int = 0
     language: str = "ru"
+    detected_intent: str | None = None
+    intent_confidence: float | None = None
     specialization: str | None = None
     alternatives: list[str] | None = None
     error_code: str | None = None

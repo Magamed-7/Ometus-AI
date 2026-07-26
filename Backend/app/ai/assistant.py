@@ -1,4 +1,5 @@
 import json
+from datetime import date, datetime
 from time import perf_counter
 
 import httpx
@@ -68,7 +69,13 @@ def read_gemini_text(data: dict):
     return "\n".join(part["text"] for part in parts if part.get("text")).strip()
 
 
-async def ask_groq(message: str, context: dict, history: list | None = None, language: str = DEFAULT_LANGUAGE):
+async def ask_groq(
+    message: str,
+    context: dict,
+    history: list | None = None,
+    language: str = DEFAULT_LANGUAGE,
+    system_prompt: str | None = None,
+):
     if not settings.GROQ_API_KEY:
         return None
 
@@ -77,7 +84,7 @@ async def ask_groq(message: str, context: dict, history: list | None = None, lan
             "model": model,
             "temperature": 0.2,
             "messages": [
-                {"role": "system", "content": build_system_prompt(language)},
+                {"role": "system", "content": system_prompt or build_system_prompt(language)},
                 {"role": "user", "content": build_user_prompt(message, context, history)},
             ],
         }
@@ -114,12 +121,18 @@ async def ask_groq(message: str, context: dict, history: list | None = None, lan
     return None
 
 
-async def ask_gemini(message: str, context: dict, history: list | None = None, language: str = DEFAULT_LANGUAGE):
+async def ask_gemini(
+    message: str,
+    context: dict,
+    history: list | None = None,
+    language: str = DEFAULT_LANGUAGE,
+    system_prompt: str | None = None,
+):
     if not settings.GEMINI_API_KEY:
         return None
 
     payload = {
-        "system_instruction": {"parts": [{"text": build_system_prompt(language)}]},
+        "system_instruction": {"parts": [{"text": system_prompt or build_system_prompt(language)}]},
         "contents": [{"parts": [{"text": build_user_prompt(message, context, history)}]}],
         "generationConfig": {"temperature": 0.2},
     }
@@ -158,10 +171,16 @@ async def ask_gemini(message: str, context: dict, history: list | None = None, l
     return None
 
 
-async def ask_llm(message: str, context: dict, history: list | None = None, language: str = DEFAULT_LANGUAGE):
-    return await ask_groq(message, context, history, language) or await ask_gemini(
-        message, context, history, language
-    )
+async def ask_llm(
+    message: str,
+    context: dict,
+    history: list | None = None,
+    language: str = DEFAULT_LANGUAGE,
+    system_prompt: str | None = None,
+):
+    return await ask_groq(
+        message, context, history, language, system_prompt
+    ) or await ask_gemini(message, context, history, language, system_prompt)
 
 
 async def build_reply(
@@ -219,6 +238,78 @@ async def log_call(current_patient, tool_name: str, params: dict, result: dict, 
     await crud_ai_log.log_tool_call(current_patient.user_id, tool_name, params, result, db, severity)
 
 
+KNOWN_INTENTS = ["cancel", "reschedule", "my_appointments", "doctor_schedule", "find_doctor"]
+
+MIN_INTENT_CONFIDENCE = 0.6
+
+INTENT_SYSTEM_PROMPT = (
+    "Ты — классификатор намерений пациента в регистратуре клиники. "
+    "Верни ТОЛЬКО JSON без пояснений и без markdown в формате: "
+    '{"primary": "<intent>", "parameters": {"appointment_id": null, "doctor_id": null, '
+    '"date": null, "time": null}, "confidence": <0..1>}. '
+    f"Допустимые intent: {', '.join(KNOWN_INTENTS)}. "
+    "cancel — отменить запись, reschedule — перенести, my_appointments — показать свои записи, "
+    "doctor_schedule — расписание врача, find_doctor — найти врача или время приёма. "
+    "Заполняй parameters только теми значениями, которые пациент назвал явно. "
+    "Если намерение неясно, ставь низкий confidence."
+)
+
+
+def extract_json(raw: str):
+    cleaned = raw.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.split("```")[1] if "```" in cleaned[3:] else cleaned[3:]
+        cleaned = cleaned.removeprefix("json").strip()
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+
+    if start == -1 or end == -1 or end < start:
+        return None
+
+    try:
+        return json.loads(cleaned[start : end + 1])
+    except (ValueError, TypeError):
+        return None
+
+
+def parse_intent(raw: str | None):
+    if not raw:
+        return None
+
+    parsed = extract_json(raw)
+
+    if not isinstance(parsed, dict):
+        return None
+
+    primary = parsed.get("primary")
+
+    if primary not in KNOWN_INTENTS:
+        return None
+
+    try:
+        confidence = float(parsed.get("confidence", 0))
+    except (ValueError, TypeError):
+        return None
+
+    if confidence < MIN_INTENT_CONFIDENCE:
+        return None
+
+    parameters = parsed.get("parameters")
+
+    return {
+        "primary": primary,
+        "confidence": confidence,
+        "parameters": parameters if isinstance(parameters, dict) else {},
+    }
+
+
+async def classify_intent(message: str, history: list | None = None):
+    raw = await ask_llm(message, {}, history, system_prompt=INTENT_SYSTEM_PROMPT)
+    return parse_intent(raw)
+
+
 async def suggest_checkup(current_patient, db: AsyncSession, language: str = DEFAULT_LANGUAGE):
     overdue = await crud_appointment.get_overdue_checkup(current_patient.id, db)
 
@@ -250,6 +341,62 @@ async def resolve_conversation(data: AskIn, current_patient, db: AsyncSession):
             return conversation
 
     return await crud_conversation.get_or_create_active_conversation(current_patient.id, db)
+
+
+def read_int(parameters: dict, key: str):
+    value = parameters.get(key)
+
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        return None
+
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def read_date(parameters: dict):
+    value = parameters.get("date")
+
+    try:
+        return date.fromisoformat(value) if isinstance(value, str) else None
+    except ValueError:
+        return None
+
+
+def read_time(parameters: dict):
+    value = parameters.get("time")
+
+    if not isinstance(value, str):
+        return None
+
+    for fmt in ("%H:%M:%S", "%H:%M"):
+        try:
+            return datetime.strptime(value, fmt).time()
+        except ValueError:
+            continue
+
+    return None
+
+
+def apply_intent(data: AskIn, detected: dict):
+    parameters = detected["parameters"]
+
+    if detected["primary"] != "find_doctor":
+        data.intent = detected["primary"]
+
+    data.appointment_id = data.appointment_id or read_int(parameters, "appointment_id")
+    data.doctor_id = data.doctor_id or read_int(parameters, "doctor_id")
+    data.day = data.day or read_date(parameters)
+    data.slot_time = data.slot_time or read_time(parameters)
+    return data
+
+
+def needs_classification(data: AskIn, language: str):
+    if data.intent or data.confirm:
+        return False
+
+    return not match_specializations(data.message, language)
 
 
 def pick_flow(data: AskIn):
@@ -313,8 +460,21 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
             conversation, data.message, emergency, SEVERITY_CRITICAL, language, current_patient, db
         )
 
+    detected = (
+        await classify_intent(data.message, history)
+        if needs_classification(data, language)
+        else None
+    )
+
+    if detected:
+        data = apply_intent(data, detected)
+
     flow = pick_flow(data)
     result = await flow(data, current_patient, db, history, severity, language)
+
+    if detected:
+        result["detected_intent"] = detected["primary"]
+        result["intent_confidence"] = detected["confidence"]
 
     if severity == SEVERITY_HIGH:
         result["reply"] = f"{HIGH_SEVERITY_NOTES[language]} {result['reply']}"

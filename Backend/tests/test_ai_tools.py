@@ -37,7 +37,7 @@ def next_workday():
 
 @pytest.fixture(autouse=True)
 def no_llm(monkeypatch):
-    async def fake_ask_llm(message, context, history=None, language="ru"):
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
         return None
 
     monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
@@ -662,7 +662,7 @@ async def test_llm_reply_replaces_template(client, db, monkeypatch):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
 
-    async def fake_ask_llm(message, context, history=None, language="ru"):
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
         return "Нашла для вас кардиолога, подскажите удобное время."
 
     monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
@@ -732,7 +732,7 @@ async def test_history_is_passed_to_llm(client, db, monkeypatch):
 
     seen = []
 
-    async def fake_ask_llm(message, context, history=None, language="ru"):
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
         seen.append(history or [])
         return None
 
@@ -782,6 +782,127 @@ SUGGESTION_URL = "/api/ai/suggestion"
 METRICS_URL = "/api/admin/ai-metrics"
 
 
+def intent_json(primary, confidence=0.9, **parameters):
+    import json as json_module
+
+    return json_module.dumps(
+        {"primary": primary, "confidence": confidence, "parameters": parameters}
+    )
+
+
+def use_intent(monkeypatch, raw):
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
+        return raw if system_prompt else None
+
+    monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        None,
+        "",
+        "не json вовсе",
+        '{"primary": "нет такого", "confidence": 0.9}',
+        '{"primary": "cancel", "confidence": 0.2}',
+        '{"primary": "cancel", "confidence": "высокая"}',
+        "{битый json",
+    ],
+)
+def test_broken_intent_is_ignored(raw):
+    assert assistant.parse_intent(raw) is None
+
+
+def test_intent_parsed_from_markdown_block():
+    raw = '```json\n{"primary": "cancel", "confidence": 0.9, "parameters": {"appointment_id": 5}}\n```'
+
+    parsed = assistant.parse_intent(raw)
+
+    assert parsed["primary"] == "cancel"
+    assert parsed["parameters"]["appointment_id"] == 5
+
+
+async def test_detected_intent_cancels_appointment(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    booked = await ask(
+        client,
+        headers,
+        "запиши меня",
+        confirm=True,
+        doctor_id=doctor_id,
+        date=str(next_workday()),
+        time="09:00:00",
+    )
+    appointment_id = booked.json()["appointment"]["appointment_id"]
+
+    use_intent(monkeypatch, intent_json("cancel", appointment_id=appointment_id))
+
+    body = (await ask(client, headers, f"отмени запись номер {appointment_id}")).json()
+
+    assert body["action"] == "cancelled"
+    assert body["detected_intent"] == "cancel"
+    assert body["intent_confidence"] == 0.9
+
+
+async def test_detected_cancel_without_id_asks_instead_of_guessing(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    await ask(
+        client,
+        headers,
+        "запиши меня",
+        confirm=True,
+        doctor_id=doctor_id,
+        date=str(next_workday()),
+        time="09:00:00",
+    )
+
+    use_intent(monkeypatch, intent_json("cancel"))
+
+    body = (await ask(client, headers, "отмени мою запись")).json()
+
+    assert body["action"] == "clarify"
+
+
+async def test_detected_intent_never_books(client, db, monkeypatch):
+    from app.models.model_appointment import Appointment
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    use_intent(
+        monkeypatch,
+        intent_json(
+            "find_doctor",
+            doctor_id=doctor_id,
+            date=str(next_workday()),
+            time="09:00:00",
+        ),
+    )
+
+    body = (await ask(client, headers, "запиши меня к кардиологу на завтра")).json()
+
+    booked = (await db.execute(select(Appointment))).scalars().all()
+
+    assert body["action"] != "booked"
+    assert booked == []
+
+
+async def test_explicit_intent_wins_over_model(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    use_intent(monkeypatch, intent_json("cancel", appointment_id=999))
+
+    body = (await ask(client, headers, "мои записи", intent="my_appointments")).json()
+
+    assert body["action"] == "my_appointments"
+    assert body["detected_intent"] is None
+
+
 async def test_llm_calls_are_recorded(client, db, monkeypatch):
     from app.ai import metrics
     from app.models.model_ai_metric import AiLlmCall
@@ -789,7 +910,7 @@ async def test_llm_calls_are_recorded(client, db, monkeypatch):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
 
-    async def fake_ask_llm(message, context, history=None, language="ru"):
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
         metrics.record_call("groq", "llama-test", True, 42, 100, 20)
         return "ответ модели"
 
@@ -812,7 +933,7 @@ async def test_metrics_summary_for_admin(client, db, monkeypatch):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
 
-    async def fake_ask_llm(message, context, history=None, language="ru"):
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
         metrics.record_call("groq", "llama-test", False, 10, error="boom")
         metrics.record_call("gemini", "gemini-test", True, 30, 50, 10)
         return "ответ модели"
