@@ -59,12 +59,13 @@ SENT_CODES = {}
 def sent_emails(monkeypatch):
     sent = []
 
-    def fake_send(email, code):
+    async def fake_deliver(email, code):
         sent.append((email, code))
         SENT_CODES[email] = code
+        return True
 
     SENT_CODES.clear()
-    monkeypatch.setattr(crud_user, "send_verification_code", fake_send)
+    monkeypatch.setattr(crud_user, "deliver_verification_code", fake_deliver)
     return sent
 
 

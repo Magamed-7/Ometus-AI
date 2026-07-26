@@ -70,6 +70,42 @@ async def test_login_wrong_password(client):
     assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
 
 
+async def test_register_survives_broken_smtp(client, monkeypatch):
+    # SMTP лежит: аккаунт уже создан, поэтому 500 отдавать нельзя — иначе пользователь
+    # останется и без письма, и без возможности зарегистрироваться заново
+    import app.services.crud_user as crud_user_module
+    import app.services.email as email_module
+
+    def explode(email, code):
+        raise OSError("SMTP недоступен")
+
+    monkeypatch.setattr(email_module, "send_verification_code", explode)
+    monkeypatch.setattr(
+        crud_user_module, "deliver_verification_code", email_module.deliver_verification_code
+    )
+
+    response = await register(client, email="smtp.down@ometus.test")
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "smtp.down@ometus.test"
+
+
+async def test_delivery_reports_failure_instead_of_raising():
+    import app.services.email as email_module
+
+    original = email_module.send_verification_code
+
+    def explode(email, code):
+        raise OSError("SMTP недоступен")
+
+    email_module.send_verification_code = explode
+
+    try:
+        assert await email_module.deliver_verification_code("patient@ometus.test", "123456") is False
+    finally:
+        email_module.send_verification_code = original
+
+
 async def test_register_rejects_malformed_email(client):
     response = await client.post(
         REGISTER_URL, json={"email": "не почта", "password": "patient1234"}

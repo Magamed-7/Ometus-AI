@@ -22,6 +22,8 @@ class Settings:
     DEFAULT_FROM_EMAIL: str = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
     BASE_URL: str = os.getenv("BASE_URL", "http://127.0.0.1:8000")
     EMAIL_CODE_TTL_MINUTES: int = int(os.getenv("EMAIL_CODE_TTL_MINUTES", "10"))
+    # без таймаута зависший SMTP держит поток отправки бесконечно
+    EMAIL_TIMEOUT: int = int(os.getenv("EMAIL_TIMEOUT", "10"))
 
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     GROQ_MODELS: list[str] = os.getenv(

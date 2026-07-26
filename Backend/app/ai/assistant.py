@@ -47,7 +47,7 @@ def read_gemini_text(data: dict):
     return "\n".join(part["text"] for part in parts if part.get("text")).strip()
 
 
-async def ask_groq(message: str, context: dict):
+async def ask_groq(message: str, context: dict, history: list | None = None):
     if not settings.GROQ_API_KEY:
         return None
 
@@ -57,7 +57,7 @@ async def ask_groq(message: str, context: dict):
             "temperature": 0.2,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": build_user_prompt(message, context)},
+                {"role": "user", "content": build_user_prompt(message, context, history)},
             ],
         }
 
@@ -79,13 +79,13 @@ async def ask_groq(message: str, context: dict):
     return None
 
 
-async def ask_gemini(message: str, context: dict):
+async def ask_gemini(message: str, context: dict, history: list | None = None):
     if not settings.GEMINI_API_KEY:
         return None
 
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-        "contents": [{"parts": [{"text": build_user_prompt(message, context)}]}],
+        "contents": [{"parts": [{"text": build_user_prompt(message, context, history)}]}],
         "generationConfig": {"temperature": 0.2},
     }
 
@@ -108,12 +108,12 @@ async def ask_gemini(message: str, context: dict):
     return None
 
 
-async def ask_llm(message: str, context: dict):
-    return await ask_groq(message, context) or await ask_gemini(message, context)
+async def ask_llm(message: str, context: dict, history: list | None = None):
+    return await ask_groq(message, context, history) or await ask_gemini(message, context, history)
 
 
-async def build_reply(message: str, fallback: str, context: dict):
-    generated = await ask_llm(message, {**context, "черновик_ответа": fallback})
+async def build_reply(message: str, fallback: str, context: dict, history: list | None = None):
+    generated = await ask_llm(message, {**context, "черновик_ответа": fallback}, history)
     return generated or fallback
 
 
@@ -180,7 +180,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
         await crud_conversation.add_message(conversation.id, "system", warning_msg, db)
 
     if data.intent == "cancel":
-        result = await cancel_flow(data, current_patient, db)
+        result = await cancel_flow(data, current_patient, db, history, severity)
         result["conversation_id"] = conversation.id
         result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
@@ -188,7 +188,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
         return result
 
     if data.intent == "reschedule":
-        result = await reschedule_flow(data, current_patient, db)
+        result = await reschedule_flow(data, current_patient, db, history, severity)
         result["conversation_id"] = conversation.id
         result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
@@ -196,7 +196,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
         return result
 
     if data.intent == "my_appointments":
-        result = await my_appointments_flow(data, current_patient, db)
+        result = await my_appointments_flow(data, current_patient, db, history, severity)
         result["conversation_id"] = conversation.id
         result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
@@ -204,7 +204,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
         return result
 
     if data.intent == "doctor_schedule":
-        result = await doctor_schedule_flow(data, current_patient, db)
+        result = await doctor_schedule_flow(data, current_patient, db, history, severity)
         result["conversation_id"] = conversation.id
         result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
@@ -212,7 +212,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
         return result
 
     if data.confirm:
-        result = await confirm_booking(data, current_patient, db, history, conversation)
+        result = await confirm_booking(data, current_patient, db, history, severity)
         result["conversation_id"] = conversation.id
         result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
@@ -220,14 +220,14 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
         return result
 
     if data.doctor_id:
-        result = await show_slots(data, current_patient, db, history, conversation)
+        result = await show_slots(data, current_patient, db, history, severity)
         result["conversation_id"] = conversation.id
         result["severity"] = severity
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
         await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
         return result
 
-    result = await suggest_doctors(data, current_patient, db, history, conversation)
+    result = await suggest_doctors(data, current_patient, db, history, severity)
     result["conversation_id"] = conversation.id
     result["severity"] = severity
     await crud_conversation.add_message(conversation.id, "user", data.message, db)
@@ -243,7 +243,7 @@ def tool_failure(result: dict):
     }
 
 
-async def cancel_flow(data: AskIn, current_patient, db: AsyncSession):
+async def cancel_flow(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
     if not data.appointment_id:
         return {"action": "clarify", "reply": "Уточните номер записи, которую нужно отменить."}
 
@@ -260,11 +260,11 @@ async def cancel_flow(data: AskIn, current_patient, db: AsyncSession):
     return {
         "action": "cancelled",
         "appointment": result["data"],
-        "reply": await build_reply(data.message, fallback, {"отмена": result["data"]}),
+        "reply": await build_reply(data.message, fallback, {"отмена": result["data"]}, history),
     }
 
 
-async def reschedule_flow(data: AskIn, current_patient, db: AsyncSession):
+async def reschedule_flow(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
     if not data.appointment_id or not data.day or not data.slot_time:
         return {
             "action": "clarify",
@@ -299,11 +299,11 @@ async def reschedule_flow(data: AskIn, current_patient, db: AsyncSession):
     return {
         "action": "rescheduled",
         "appointment": appointment,
-        "reply": await build_reply(data.message, fallback, {"перенос": appointment}),
+        "reply": await build_reply(data.message, fallback, {"перенос": appointment}, history),
     }
 
 
-async def my_appointments_flow(data: AskIn, current_patient, db: AsyncSession):
+async def my_appointments_flow(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
     result = await get_patient_appointments(db, current_patient, current_patient.id)
     await log_call(
         current_patient,
@@ -327,11 +327,11 @@ async def my_appointments_flow(data: AskIn, current_patient, db: AsyncSession):
     return {
         "action": "my_appointments",
         "appointments": appointments,
-        "reply": await build_reply(data.message, fallback, {"записи": appointments[:10]}),
+        "reply": await build_reply(data.message, fallback, {"записи": appointments[:10]}, history),
     }
 
 
-async def doctor_schedule_flow(data: AskIn, current_patient, db: AsyncSession):
+async def doctor_schedule_flow(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
     if not data.doctor_id:
         return {"action": "clarify", "reply": "Уточните, расписание какого врача показать."}
 
@@ -349,11 +349,11 @@ async def doctor_schedule_flow(data: AskIn, current_patient, db: AsyncSession):
     return {
         "action": "doctor_schedule",
         "schedule": schedule,
-        "reply": await build_reply(data.message, fallback, {"расписание": schedule}),
+        "reply": await build_reply(data.message, fallback, {"расписание": schedule}, history),
     }
 
 
-async def confirm_booking(data: AskIn, current_patient, db: AsyncSession, history: list = None, conversation = None):
+async def confirm_booking(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
     if not data.doctor_id or not data.day or not data.slot_time:
         return {
             "action": "clarify",
@@ -395,11 +395,11 @@ async def confirm_booking(data: AskIn, current_patient, db: AsyncSession, histor
     return {
         "action": "booked",
         "appointment": appointment,
-        "reply": await build_reply(data.message, fallback, {"запись": appointment}),
+        "reply": await build_reply(data.message, fallback, {"запись": appointment}, history),
     }
 
 
-async def show_slots(data: AskIn, current_patient, db: AsyncSession, history: list = None, conversation = None):
+async def show_slots(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
     result = await get_available_time(db, data.doctor_id, data.day)
     await log_call(
         current_patient,
@@ -426,11 +426,11 @@ async def show_slots(data: AskIn, current_patient, db: AsyncSession, history: li
     return {
         "action": "slots",
         "slots": slots,
-        "reply": await build_reply(data.message, fallback, {"свободные_слоты": slots[:10]}),
+        "reply": await build_reply(data.message, fallback, {"свободные_слоты": slots[:10]}, history),
     }
 
 
-async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, history: list = None, conversation = None):
+async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
     specializations = match_specializations(data.message)
 
     if not specializations:
@@ -490,6 +490,6 @@ async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, histor
         "specialization": specialization,
         "doctors": doctors,
         "reply": await build_reply(
-            data.message, fallback, {"специализация": specialization, "врачи": doctors}
+            data.message, fallback, {"специализация": specialization, "врачи": doctors}, history
         ),
     }

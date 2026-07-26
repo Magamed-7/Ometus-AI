@@ -9,7 +9,7 @@ from app.models.model_user import User
 from app.models.model_verification import EmailVerificationCode
 from app.schemas.schema_auth import RegisterIn
 from app.schemas.schema_user import UserUpdateIn
-from app.services.email import generate_code, send_verification_code
+from app.services.email import deliver_verification_code, generate_code
 
 
 async def create_user(data: RegisterIn, db: AsyncSession):
@@ -77,7 +77,7 @@ async def create_verification_code(user: User, db: AsyncSession):
     db.add(verification)
     await db.commit()
 
-    send_verification_code(user.email, code)
+    await deliver_verification_code(user.email, code)
     return code
 
 

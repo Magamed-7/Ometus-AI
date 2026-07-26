@@ -37,7 +37,7 @@ def next_workday():
 
 @pytest.fixture(autouse=True)
 def no_llm(monkeypatch):
-    async def fake_ask_llm(message, context):
+    async def fake_ask_llm(message, context, history=None):
         return None
 
     monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
@@ -591,7 +591,7 @@ async def test_llm_reply_replaces_template(client, db, monkeypatch):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
 
-    async def fake_ask_llm(message, context):
+    async def fake_ask_llm(message, context, history=None):
         return "Нашла для вас кардиолога, подскажите удобное время."
 
     monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
