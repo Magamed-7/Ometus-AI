@@ -2,6 +2,8 @@ from datetime import date, time
 
 from app.models.model_appointment import Appointment
 
+from tests.conftest import verify_email
+
 REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
 PATIENT_URL = "/api/users/me/patient"
@@ -19,9 +21,13 @@ PERIOD = {"date_from": "2026-03-01", "date_to": "2026-03-31"}
 
 
 async def register(client, email, password="secret1234", **extra):
-    return await client.post(
+    response = await client.post(
         REGISTER_URL, json={"email": email, "password": password, **extra}
     )
+    if response.status_code == 200:
+        await verify_email(client, email)
+
+    return response
 
 
 async def auth_headers(client, email, password="secret1234"):

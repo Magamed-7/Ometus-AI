@@ -1,3 +1,5 @@
+from tests.conftest import verify_email
+
 REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
 DOCTORS_URL = "/api/doctors"
@@ -16,10 +18,14 @@ DOCTOR_DATA = {
 
 
 async def register(client, email, password="secret1234", role="patient"):
-    return await client.post(
+    response = await client.post(
         REGISTER_URL,
         json={"email": email, "password": password, "role": role},
     )
+    if response.status_code == 200:
+        await verify_email(client, email)
+
+    return response
 
 
 async def auth_headers(client, email, password="secret1234"):

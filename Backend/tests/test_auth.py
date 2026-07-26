@@ -1,3 +1,5 @@
+from tests.conftest import verify_email
+
 REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
 VERIFY_EMAIL_URL = "/api/auth/verify-email"
@@ -9,6 +11,12 @@ async def register(client, email="patient@ometus.test", password="patient1234"):
         REGISTER_URL,
         json={"email": email, "password": password, "first_name": "Aziz"},
     )
+
+
+async def register_verified(client, email="patient@ometus.test", password="patient1234"):
+    response = await register(client, email, password)
+    await verify_email(client, email)
+    return response
 
 
 async def test_register_success(client):
@@ -40,7 +48,7 @@ async def test_register_sends_verification_code(client, sent_emails):
 
 
 async def test_login_success(client):
-    await register(client)
+    await register_verified(client)
     response = await client.post(
         LOGIN_URL, json={"email": "patient@ometus.test", "password": "patient1234"}
     )
@@ -60,6 +68,28 @@ async def test_login_wrong_password(client):
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
+
+
+async def test_login_requires_verified_email(client):
+    await register(client)
+    response = await client.post(
+        LOGIN_URL, json={"email": "patient@ometus.test", "password": "patient1234"}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
+
+
+async def test_login_works_right_after_verification(client):
+    await register(client)
+    await verify_email(client, "patient@ometus.test")
+
+    response = await client.post(
+        LOGIN_URL, json={"email": "patient@ometus.test", "password": "patient1234"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["access_token"]
 
 
 async def test_verify_email_success(client, sent_emails):
@@ -115,7 +145,7 @@ async def login(client, email="patient@ometus.test", password="patient1234"):
 
 
 async def test_refresh_returns_new_access_token(client):
-    await register(client)
+    await register_verified(client)
     tokens = (await login(client)).json()
 
     response = await client.post(REFRESH_URL, json={"refresh_token": tokens["refresh_token"]})
@@ -133,7 +163,7 @@ async def test_refresh_returns_new_access_token(client):
 
 
 async def test_refresh_rejects_access_token(client):
-    await register(client)
+    await register_verified(client)
     tokens = (await login(client)).json()
 
     response = await client.post(REFRESH_URL, json={"refresh_token": tokens["access_token"]})

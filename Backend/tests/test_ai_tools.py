@@ -7,6 +7,8 @@ import app.ai.assistant as assistant
 from app.ai import mcp_tools
 from app.models.model_ai_log import AiQueryLog
 
+from tests.conftest import verify_email
+
 REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
 ASK_URL = "/api/ai/ask"
@@ -42,9 +44,13 @@ def no_llm(monkeypatch):
 
 
 async def register(client, email, password="secret1234", **extra):
-    return await client.post(
+    response = await client.post(
         REGISTER_URL, json={"email": email, "password": password, **extra}
     )
+    if response.status_code == 200:
+        await verify_email(client, email)
+
+    return response
 
 
 async def auth_headers(client, email, password="secret1234"):

@@ -1,3 +1,5 @@
+from tests.conftest import verify_email
+
 REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
 SCHEDULES_URL = "/api/schedules"
@@ -21,7 +23,11 @@ WORKDAY = {"weekday": 0, "start_time": "09:00:00", "end_time": "10:00:00", "slot
 
 
 async def register(client, email, password="secret1234"):
-    return await client.post(REGISTER_URL, json={"email": email, "password": password})
+    response = await client.post(REGISTER_URL, json={"email": email, "password": password})
+    if response.status_code == 200:
+        await verify_email(client, email)
+
+    return response
 
 
 async def auth_headers(client, email, password="secret1234"):
