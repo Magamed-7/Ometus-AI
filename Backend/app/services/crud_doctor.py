@@ -1,9 +1,11 @@
 import secrets
+from datetime import date
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
+from app.models.model_appointment import Appointment
 from app.models.model_department import Department
 from app.models.model_doctor import Doctor
 from app.models.model_doctor_department import DoctorDepartment
@@ -79,7 +81,10 @@ async def search_doctors(
     department_id: int | None = None,
     filial_id: int | None = None,
 ):
-    query = select(Doctor)
+    # уволенный врач исчезает из поиска с даты увольнения; до неё к нему ещё можно попасть
+    query = select(Doctor).where(
+        or_(Doctor.dismissed_at.is_(None), Doctor.dismissed_at > date.today())
+    )
 
     if specialization:
         query = query.outerjoin(
@@ -208,3 +213,35 @@ async def remove_specialization(doctor_id: int, name: str, db: AsyncSession):
     await db.delete(specialization)
     await db.commit()
     return specialization
+
+
+async def count_upcoming_appointments(doctor_id: int, since: date, db: AsyncSession):
+    # активные записи после даты увольнения — именно о них надо предупредить админа
+    result = await db.execute(
+        select(func.count())
+        .select_from(Appointment)
+        .where(Appointment.doctor_id == doctor_id)
+        .where(Appointment.date >= since)
+        .where(Appointment.status == "booked")
+    )
+    return result.scalar_one()
+
+
+async def dismiss_doctor(doctor: Doctor, dismissed_at: date, db: AsyncSession):
+    doctor.dismissed_at = dismissed_at
+
+    await db.commit()
+    await db.refresh(doctor)
+    return doctor
+
+
+async def restore_doctor(doctor: Doctor, db: AsyncSession):
+    doctor.dismissed_at = None
+
+    await db.commit()
+    await db.refresh(doctor)
+    return doctor
+
+
+def is_dismissed_on(doctor: Doctor, day: date):
+    return doctor.dismissed_at is not None and day >= doctor.dismissed_at

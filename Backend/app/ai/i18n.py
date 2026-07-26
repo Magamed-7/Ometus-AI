@@ -1,0 +1,124 @@
+DEFAULT_LANGUAGE = "ru"
+LANGUAGES = ["ru", "tg", "en"]
+
+TAJIK_LETTERS = "ӣӯҳқғҷ"
+
+TAJIK_MARKERS = [
+    "ман ",
+    "маро",
+    "мехоҳам",
+    "мехохам",
+    "лозим",
+    "дорам",
+    "духтур",
+    "табиб",
+    "салом",
+    "кай ",
+    "чи хел",
+    "кӯдак",
+    "дард",
+    "мекун",
+    "мешав",
+    "бемор",
+    "касал",
+    "навбат",
+]
+
+
+def detect_language(text: str):
+    lowered = text.lower()
+
+    if any(letter in lowered for letter in TAJIK_LETTERS):
+        return "tg"
+
+    if any(marker in lowered for marker in TAJIK_MARKERS):
+        return "tg"
+
+    if any("a" <= symbol <= "z" for symbol in lowered):
+        return "en"
+
+    return DEFAULT_LANGUAGE
+
+
+def pick_language(explicit: str | None, text: str):
+    if explicit in LANGUAGES:
+        return explicit
+
+    return detect_language(text)
+
+
+REPLIES = {
+    "ru": {
+        "answer_language": "русском",
+        "clarify_specialization": "Не понял, врач какой специализации нужен. Опишите, что беспокоит, "
+        "или назовите специализацию — например, кардиолог.",
+        "clarify_choice": "Уточните, пожалуйста, к какому специалисту записать: ",
+        "clarify_cancel": "Уточните номер записи, которую нужно отменить.",
+        "clarify_reschedule": "Чтобы перенести запись, нужны её номер, новая дата и время.",
+        "clarify_booking": "Чтобы записать, нужны врач, дата и время. Уточните, пожалуйста.",
+        "clarify_schedule": "Уточните, расписание какого врача показать.",
+        "doctors_found": "По специализации «{specialization}» принимают: {doctors}. "
+        "Выберите врача, и я покажу свободное время.",
+        "no_specialist_alternatives": "Врача по специализации «{specialization}» в клинике нет. "
+        "Могу предложить: {alternatives}. К кому записать?",
+        "slots_found": "Свободное время: {slots}. Скажите, какое время подходит, и я оформлю запись.",
+        "booked": "Записал вас к врачу {doctor} ({specialization}), отделение {department}, "
+        "{date} в {time}. Номер записи — {appointment_id}.",
+        "cancelled": "Запись №{appointment_id} отменена.",
+        "rescheduled": "Перенёс запись №{appointment_id} на {date} в {time}.",
+        "appointments": "Ваши записи: {appointments}.",
+        "no_appointments": "У вас пока нет записей.",
+        "schedule": "Врач принимает: {schedule}.",
+    },
+    "tg": {
+        "answer_language": "тоҷикӣ",
+        "clarify_specialization": "Нафаҳмидам, кадом мутахассис лозим аст. Шикоятатонро нависед "
+        "ё номи мутахассисро гӯед — масалан, кардиолог.",
+        "clarify_choice": "Лутфан аниқ кунед, ба кадом мутахассис навбат гирем: ",
+        "clarify_cancel": "Рақами навбатеро, ки бекор кардан мехоҳед, гӯед.",
+        "clarify_reschedule": "Барои интиқоли навбат рақам, санаи нав ва вақт лозим аст.",
+        "clarify_booking": "Барои сабти ном духтур, сана ва вақт лозим аст. Лутфан аниқ кунед.",
+        "clarify_schedule": "Аниқ кунед, ҷадвали кадом духтурро нишон диҳам.",
+        "doctors_found": "Аз рӯи мутахассисии «{specialization}» қабул мекунанд: {doctors}. "
+        "Духтурро интихоб кунед, ман вақти холиро нишон медиҳам.",
+        "no_specialist_alternatives": "Духтури «{specialization}» дар клиника нест. "
+        "Пешниҳод карда метавонам: {alternatives}. Ба кадомаш навбат гирем?",
+        "slots_found": "Вақти холӣ: {slots}. Гӯед, кадом вақт мувофиқ аст, ман навбат мегирам.",
+        "booked": "Шуморо ба духтур {doctor} ({specialization}), шӯъбаи {department}, "
+        "{date} соати {time} сабт кардам. Рақами навбат — {appointment_id}.",
+        "cancelled": "Навбати №{appointment_id} бекор карда шуд.",
+        "rescheduled": "Навбати №{appointment_id} ба {date} соати {time} гузаронида шуд.",
+        "appointments": "Навбатҳои шумо: {appointments}.",
+        "no_appointments": "Шумо ҳоло навбат надоред.",
+        "schedule": "Духтур қабул мекунад: {schedule}.",
+    },
+    "en": {
+        "answer_language": "English",
+        "clarify_specialization": "I did not catch which specialist you need. Describe what bothers you "
+        "or name the specialty — for example, cardiologist.",
+        "clarify_choice": "Please clarify which specialist to book: ",
+        "clarify_cancel": "Please tell me the number of the appointment to cancel.",
+        "clarify_reschedule": "To reschedule I need the appointment number, a new date and time.",
+        "clarify_booking": "To book I need the doctor, date and time. Please clarify.",
+        "clarify_schedule": "Please tell me whose schedule to show.",
+        "doctors_found": "Doctors for «{specialization}»: {doctors}. "
+        "Choose a doctor and I will show the available time.",
+        "no_specialist_alternatives": "There is no «{specialization}» in the clinic. "
+        "I can offer: {alternatives}. Who should I book?",
+        "slots_found": "Available time: {slots}. Tell me what suits you and I will book it.",
+        "booked": "Booked you with {doctor} ({specialization}), department {department}, "
+        "on {date} at {time}. Appointment number — {appointment_id}.",
+        "cancelled": "Appointment #{appointment_id} has been cancelled.",
+        "rescheduled": "Appointment #{appointment_id} moved to {date} at {time}.",
+        "appointments": "Your appointments: {appointments}.",
+        "no_appointments": "You have no appointments yet.",
+        "schedule": "The doctor sees patients: {schedule}.",
+    },
+}
+
+
+def translate(key: str, language: str, **values):
+    texts = REPLIES.get(language) or REPLIES[DEFAULT_LANGUAGE]
+    template = texts.get(key) or REPLIES[DEFAULT_LANGUAGE][key]
+
+    return template.format(**values) if values else template

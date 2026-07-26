@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -47,3 +49,18 @@ class SpecializationOut(BaseModel):
 
 class SpecializationIn(BaseModel):
     name: str = Field(min_length=1)
+
+
+class DoctorDismissIn(BaseModel):
+    dismissed_at: date
+    # первый запрос без confirm возвращает предупреждение, если на эти даты уже есть записи
+    confirm: bool = False
+
+
+class DoctorDismissOut(BaseModel):
+    id: int
+    full_name: str
+    dismissed_at: date | None = None
+    upcoming_appointments: int = 0
+
+    model_config = ConfigDict(from_attributes=True)

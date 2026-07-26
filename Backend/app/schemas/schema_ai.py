@@ -13,6 +13,7 @@ class AskIn(BaseModel):
     intent: str | None = None
     conversation_id: int | None = None
     severity: int | None = None
+    language: str | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -22,6 +23,7 @@ class AskOut(BaseModel):
     reply: str
     conversation_id: int
     severity: int = 0
+    language: str = "ru"
     specialization: str | None = None
     alternatives: list[str] | None = None
     error_code: str | None = None

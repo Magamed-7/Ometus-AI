@@ -4,13 +4,14 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.emergency_guard import (
-    EMERGENCY_MESSAGE,
-    HIGH_SEVERITY_NOTE,
+    EMERGENCY_MESSAGES,
+    HIGH_SEVERITY_NOTES,
     SEVERITY_CRITICAL,
     SEVERITY_HIGH,
     assess_symptom_severity,
     is_emergency,
 )
+from app.ai.i18n import DEFAULT_LANGUAGE, pick_language, translate
 from app.ai.mcp_tools import (
     book_appointment,
     cancel_appointment,
@@ -26,14 +27,20 @@ from app.core.config import settings
 from app.schemas.schema_ai import AskIn
 from app.services import crud_ai_log, crud_appointment, crud_conversation
 
-SYSTEM_PROMPT = (
+SYSTEM_PROMPT_TEMPLATE = (
     "Ты — ассистент регистратуры клиники Ometus. Твоя единственная задача — помочь пациенту "
     "найти врача нужной специализации и записаться на приём. Категорически запрещено ставить "
     "диагнозы, оценивать тяжесть состояния и давать медицинские рекомендации. Сопоставление "
-    "симптома и специализации — техническое, а не медицинское заключение. Отвечай на русском "
+    "симптома и специализации — техническое, а не медицинское заключение. Отвечай на {language} "
     "языке, коротко и по делу, опираясь только на переданные данные системы. Ничего не "
     "выдумывай: если данных нет, так и скажи."
 )
+
+SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(language="русском")
+
+
+def build_system_prompt(language: str):
+    return SYSTEM_PROMPT_TEMPLATE.format(language=translate("answer_language", language))
 
 
 def build_user_prompt(message: str, context: dict, history: list | None = None):
@@ -54,7 +61,7 @@ def read_gemini_text(data: dict):
     return "\n".join(part["text"] for part in parts if part.get("text")).strip()
 
 
-async def ask_groq(message: str, context: dict, history: list | None = None):
+async def ask_groq(message: str, context: dict, history: list | None = None, language: str = DEFAULT_LANGUAGE):
     if not settings.GROQ_API_KEY:
         return None
 
@@ -63,7 +70,7 @@ async def ask_groq(message: str, context: dict, history: list | None = None):
             "model": model,
             "temperature": 0.2,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": build_system_prompt(language)},
                 {"role": "user", "content": build_user_prompt(message, context, history)},
             ],
         }
@@ -86,12 +93,12 @@ async def ask_groq(message: str, context: dict, history: list | None = None):
     return None
 
 
-async def ask_gemini(message: str, context: dict, history: list | None = None):
+async def ask_gemini(message: str, context: dict, history: list | None = None, language: str = DEFAULT_LANGUAGE):
     if not settings.GEMINI_API_KEY:
         return None
 
     payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "system_instruction": {"parts": [{"text": build_system_prompt(language)}]},
         "contents": [{"parts": [{"text": build_user_prompt(message, context, history)}]}],
         "generationConfig": {"temperature": 0.2},
     }
@@ -115,12 +122,20 @@ async def ask_gemini(message: str, context: dict, history: list | None = None):
     return None
 
 
-async def ask_llm(message: str, context: dict, history: list | None = None):
-    return await ask_groq(message, context, history) or await ask_gemini(message, context, history)
+async def ask_llm(message: str, context: dict, history: list | None = None, language: str = DEFAULT_LANGUAGE):
+    return await ask_groq(message, context, history, language) or await ask_gemini(
+        message, context, history, language
+    )
 
 
-async def build_reply(message: str, fallback: str, context: dict, history: list | None = None):
-    generated = await ask_llm(message, {**context, "черновик_ответа": fallback}, history)
+async def build_reply(
+    message: str,
+    fallback: str,
+    context: dict,
+    history: list | None = None,
+    language: str = DEFAULT_LANGUAGE,
+):
+    generated = await ask_llm(message, {**context, "черновик_ответа": fallback}, history, language)
     return generated or fallback
 
 
@@ -198,9 +213,12 @@ def pick_flow(data: AskIn):
     return suggest_doctors
 
 
-async def remember(conversation, message: str, result: dict, severity: int, db: AsyncSession):
+async def remember(
+    conversation, message: str, result: dict, severity: int, language: str, db: AsyncSession
+):
     result["conversation_id"] = conversation.id
     result["severity"] = severity
+    result["language"] = language
 
     await crud_conversation.add_message(conversation.id, "user", message, db)
     await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
@@ -211,26 +229,30 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
     conversation = await resolve_conversation(data, current_patient, db)
     history = await crud_conversation.get_conversation_history(conversation.id, limit=10, db=db)
     severity = data.severity or assess_symptom_severity(data.message)
+    language = pick_language(data.language, data.message)
 
     if is_emergency(data.message):
+        message = EMERGENCY_MESSAGES[language]
         await log_call(
             current_patient,
             "emergency_guard",
             {"message": data.message},
-            tool_error("EMERGENCY", EMERGENCY_MESSAGE),
+            tool_error("EMERGENCY", message),
             db,
             SEVERITY_CRITICAL,
         )
-        emergency = {"action": "emergency", "reply": EMERGENCY_MESSAGE}
-        return await remember(conversation, data.message, emergency, SEVERITY_CRITICAL, db)
+        emergency = {"action": "emergency", "reply": message}
+        return await remember(
+            conversation, data.message, emergency, SEVERITY_CRITICAL, language, db
+        )
 
     flow = pick_flow(data)
-    result = await flow(data, current_patient, db, history, severity)
+    result = await flow(data, current_patient, db, history, severity, language)
 
     if severity == SEVERITY_HIGH:
-        result["reply"] = f"{HIGH_SEVERITY_NOTE} {result['reply']}"
+        result["reply"] = f"{HIGH_SEVERITY_NOTES[language]} {result['reply']}"
 
-    return await remember(conversation, data.message, result, severity, db)
+    return await remember(conversation, data.message, result, severity, language, db)
 
 
 def tool_failure(result: dict):
@@ -241,9 +263,16 @@ def tool_failure(result: dict):
     }
 
 
-async def cancel_flow(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
+async def cancel_flow(
+    data: AskIn,
+    current_patient,
+    db: AsyncSession,
+    history: list = None,
+    severity: int = 0,
+    language: str = DEFAULT_LANGUAGE,
+):
     if not data.appointment_id:
-        return {"action": "clarify", "reply": "Уточните номер записи, которую нужно отменить."}
+        return {"action": "clarify", "reply": translate("clarify_cancel", language)}
 
     result = await cancel_appointment(db, current_patient, data.appointment_id)
     await log_call(
@@ -253,21 +282,27 @@ async def cancel_flow(data: AskIn, current_patient, db: AsyncSession, history: l
     if not result["ok"]:
         return tool_failure(result)
 
-    fallback = f"Запись №{data.appointment_id} отменена."
+    fallback = translate("cancelled", language, appointment_id=data.appointment_id)
 
     return {
         "action": "cancelled",
         "appointment": result["data"],
-        "reply": await build_reply(data.message, fallback, {"отмена": result["data"]}, history),
+        "reply": await build_reply(
+            data.message, fallback, {"отмена": result["data"]}, history, language
+        ),
     }
 
 
-async def reschedule_flow(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
+async def reschedule_flow(
+    data: AskIn,
+    current_patient,
+    db: AsyncSession,
+    history: list = None,
+    severity: int = 0,
+    language: str = DEFAULT_LANGUAGE,
+):
     if not data.appointment_id or not data.day or not data.slot_time:
-        return {
-            "action": "clarify",
-            "reply": "Чтобы перенести запись, нужны её номер, новая дата и время.",
-        }
+        return {"action": "clarify", "reply": translate("clarify_reschedule", language)}
 
     result = await reschedule_appointment(
         db, current_patient, data.appointment_id, data.day, data.slot_time
@@ -289,19 +324,31 @@ async def reschedule_flow(data: AskIn, current_patient, db: AsyncSession, histor
         return tool_failure(result)
 
     appointment = result["data"]
-    fallback = (
-        f"Перенёс запись №{appointment['appointment_id']} на "
-        f"{appointment['date']} в {appointment['time'][:5]}."
+    fallback = translate(
+        "rescheduled",
+        language,
+        appointment_id=appointment["appointment_id"],
+        date=appointment["date"],
+        time=appointment["time"][:5],
     )
 
     return {
         "action": "rescheduled",
         "appointment": appointment,
-        "reply": await build_reply(data.message, fallback, {"перенос": appointment}, history),
+        "reply": await build_reply(
+            data.message, fallback, {"перенос": appointment}, history, language
+        ),
     }
 
 
-async def my_appointments_flow(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
+async def my_appointments_flow(
+    data: AskIn,
+    current_patient,
+    db: AsyncSession,
+    history: list = None,
+    severity: int = 0,
+    language: str = DEFAULT_LANGUAGE,
+):
     result = await get_patient_appointments(db, current_patient, current_patient.id)
     await log_call(
         current_patient,
@@ -317,21 +364,30 @@ async def my_appointments_flow(data: AskIn, current_patient, db: AsyncSession, h
 
     appointments = result["data"]
     fallback = (
-        f"Ваши записи: {describe_appointments(appointments)}."
+        translate("appointments", language, appointments=describe_appointments(appointments))
         if appointments
-        else "У вас пока нет записей."
+        else translate("no_appointments", language)
     )
 
     return {
         "action": "my_appointments",
         "appointments": appointments,
-        "reply": await build_reply(data.message, fallback, {"записи": appointments[:10]}, history),
+        "reply": await build_reply(
+            data.message, fallback, {"записи": appointments[:10]}, history, language
+        ),
     }
 
 
-async def doctor_schedule_flow(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
+async def doctor_schedule_flow(
+    data: AskIn,
+    current_patient,
+    db: AsyncSession,
+    history: list = None,
+    severity: int = 0,
+    language: str = DEFAULT_LANGUAGE,
+):
     if not data.doctor_id:
-        return {"action": "clarify", "reply": "Уточните, расписание какого врача показать."}
+        return {"action": "clarify", "reply": translate("clarify_schedule", language)}
 
     result = await get_doctor_schedule(db, data.doctor_id)
     await log_call(
@@ -342,21 +398,27 @@ async def doctor_schedule_flow(data: AskIn, current_patient, db: AsyncSession, h
         return tool_failure(result)
 
     schedule = result["data"]
-    fallback = f"Врач принимает: {describe_schedule(schedule)}."
+    fallback = translate("schedule", language, schedule=describe_schedule(schedule))
 
     return {
         "action": "doctor_schedule",
         "schedule": schedule,
-        "reply": await build_reply(data.message, fallback, {"расписание": schedule}, history),
+        "reply": await build_reply(
+            data.message, fallback, {"расписание": schedule}, history, language
+        ),
     }
 
 
-async def confirm_booking(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
+async def confirm_booking(
+    data: AskIn,
+    current_patient,
+    db: AsyncSession,
+    history: list = None,
+    severity: int = 0,
+    language: str = DEFAULT_LANGUAGE,
+):
     if not data.doctor_id or not data.day or not data.slot_time:
-        return {
-            "action": "clarify",
-            "reply": "Чтобы записать, нужны врач, дата и время. Уточните, пожалуйста.",
-        }
+        return {"action": "clarify", "reply": translate("clarify_booking", language)}
 
     result = await book_appointment(
         db, current_patient, data.doctor_id, current_patient.id, data.day, data.slot_time
@@ -383,21 +445,34 @@ async def confirm_booking(data: AskIn, current_patient, db: AsyncSession, histor
         }
 
     appointment = result["data"]
-    fallback = (
-        f"Записал вас к врачу {appointment['doctor_name']} "
-        f"({appointment['specialization']}), отделение {appointment['department']}, "
-        f"{appointment['date']} в {appointment['time'][:5]}. "
-        f"Номер записи — {appointment['appointment_id']}."
+    fallback = translate(
+        "booked",
+        language,
+        doctor=appointment["doctor_name"],
+        specialization=appointment["specialization"],
+        department=appointment["department"],
+        date=appointment["date"],
+        time=appointment["time"][:5],
+        appointment_id=appointment["appointment_id"],
     )
 
     return {
         "action": "booked",
         "appointment": appointment,
-        "reply": await build_reply(data.message, fallback, {"запись": appointment}, history),
+        "reply": await build_reply(
+            data.message, fallback, {"запись": appointment}, history, language
+        ),
     }
 
 
-async def show_slots(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
+async def show_slots(
+    data: AskIn,
+    current_patient,
+    db: AsyncSession,
+    history: list = None,
+    severity: int = 0,
+    language: str = DEFAULT_LANGUAGE,
+):
     result = await get_available_time(db, data.doctor_id, data.day)
     await log_call(
         current_patient,
@@ -417,15 +492,14 @@ async def show_slots(data: AskIn, current_patient, db: AsyncSession, history: li
 
     preferences = await crud_appointment.get_hour_preferences(current_patient.id, db)
     slots = sort_slots_by_preference(result["data"], preferences)
-    fallback = (
-        f"Свободное время: {describe_slots(slots)}. "
-        "Скажите, какое время подходит, и я оформлю запись."
-    )
+    fallback = translate("slots_found", language, slots=describe_slots(slots))
 
     return {
         "action": "slots",
         "slots": slots,
-        "reply": await build_reply(data.message, fallback, {"свободные_слоты": slots[:10]}, history),
+        "reply": await build_reply(
+            data.message, fallback, {"свободные_слоты": slots[:10]}, history, language
+        ),
     }
 
 
@@ -441,22 +515,26 @@ async def find_available_alternatives(db: AsyncSession, specialization: str):
     return available
 
 
-async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, history: list = None, severity: int = 0):
-    specializations = match_specializations(data.message)
+async def suggest_doctors(
+    data: AskIn,
+    current_patient,
+    db: AsyncSession,
+    history: list = None,
+    severity: int = 0,
+    language: str = DEFAULT_LANGUAGE,
+):
+    specializations = match_specializations(data.message, language)
+
+    if not specializations and language != DEFAULT_LANGUAGE:
+        specializations = match_specializations(data.message)
 
     if not specializations:
-        return {
-            "action": "clarify",
-            "reply": "Не понял, врач какой специализации нужен. Опишите, что беспокоит, "
-            "или назовите специализацию — например, кардиолог.",
-        }
+        return {"action": "clarify", "reply": translate("clarify_specialization", language)}
 
     if len(specializations) > 1:
         return {
             "action": "clarify",
-            "reply": "Уточните, пожалуйста, к какому специалисту записать: "
-            + ", ".join(specializations)
-            + ".",
+            "reply": translate("clarify_choice", language) + ", ".join(specializations) + ".",
         }
 
     specialization = specializations[0]
@@ -474,8 +552,12 @@ async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, histor
                     "action": "clarify",
                     "specialization": specialization,
                     "alternatives": alternatives,
-                    "reply": f"Врача по специализации «{specialization}» в клинике нет. "
-                    f"Могу предложить: {', '.join(alternatives)}. К кому записать?",
+                    "reply": translate(
+                        "no_specialist_alternatives",
+                        language,
+                        specialization=specialization,
+                        alternatives=", ".join(alternatives),
+                    ),
                 }
 
         return {
@@ -486,9 +568,11 @@ async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, histor
         }
 
     doctors = result["data"]
-    fallback = (
-        f"По специализации «{specialization}» принимают: {describe_doctors(doctors)}. "
-        "Выберите врача, и я покажу свободное время."
+    fallback = translate(
+        "doctors_found",
+        language,
+        specialization=specialization,
+        doctors=describe_doctors(doctors),
     )
 
     return {
@@ -496,6 +580,10 @@ async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, histor
         "specialization": specialization,
         "doctors": doctors,
         "reply": await build_reply(
-            data.message, fallback, {"специализация": specialization, "врачи": doctors}, history
+            data.message,
+            fallback,
+            {"специализация": specialization, "врачи": doctors},
+            history,
+            language,
         ),
     }

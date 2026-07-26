@@ -37,7 +37,7 @@ def next_workday():
 
 @pytest.fixture(autouse=True)
 def no_llm(monkeypatch):
-    async def fake_ask_llm(message, context, history=None):
+    async def fake_ask_llm(message, context, history=None, language="ru"):
         return None
 
     monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
@@ -662,7 +662,7 @@ async def test_llm_reply_replaces_template(client, db, monkeypatch):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
 
-    async def fake_ask_llm(message, context, history=None):
+    async def fake_ask_llm(message, context, history=None, language="ru"):
         return "Нашла для вас кардиолога, подскажите удобное время."
 
     monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
@@ -732,7 +732,7 @@ async def test_history_is_passed_to_llm(client, db, monkeypatch):
 
     seen = []
 
-    async def fake_ask_llm(message, context, history=None):
+    async def fake_ask_llm(message, context, history=None, language="ru"):
         seen.append(history or [])
         return None
 
@@ -776,6 +776,95 @@ async def test_history_of_foreign_conversation_is_denied(client, db):
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "CONVERSATION_NOT_FOUND"
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("нужен кардиолог", "ru"),
+        ("дилам дард мекунад", "tg"),
+        ("ман духтур мехоҳам", "tg"),
+        ("i need a cardiologist", "en"),
+    ],
+)
+def test_language_detection(text, expected):
+    from app.ai.i18n import detect_language
+
+    assert detect_language(text) == expected
+
+
+def test_explicit_language_wins_over_detection():
+    from app.ai.i18n import pick_language
+
+    assert pick_language("en", "нужен кардиолог") == "en"
+    assert pick_language(None, "нужен кардиолог") == "ru"
+    assert pick_language("xx", "нужен кардиолог") == "ru"
+
+
+@pytest.mark.parametrize(
+    "text, language",
+    [
+        ("дилам дард мекунад", "tg"),
+        ("my heart hurts", "en"),
+        ("болит сердце", "ru"),
+    ],
+)
+def test_specialization_matched_in_every_language(text, language):
+    from app.ai.specialization_map import match_specializations
+
+    assert match_specializations(text, language) == ["кардиолог"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["беҳуш афтод", "he is unconscious", "отец без сознания"],
+)
+def test_emergency_detected_in_every_language(text):
+    from app.ai.emergency_guard import is_emergency
+
+    assert is_emergency(text) is True
+
+
+async def test_english_request_answered_in_english(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "my heart hurts")).json()
+
+    assert body["language"] == "en"
+    assert body["specialization"] == "кардиолог"
+    assert body["reply"].startswith("Doctors for")
+
+
+async def test_tajik_request_answered_in_tajik(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "дилам дард мекунад")).json()
+
+    assert body["language"] == "tg"
+    assert body["specialization"] == "кардиолог"
+    assert "қабул мекунанд" in body["reply"]
+
+
+async def test_emergency_answered_in_patient_language(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "he is unconscious")).json()
+
+    assert body["action"] == "emergency"
+    assert body["language"] == "en"
+    assert "ambulance" in body["reply"]
+
+
+async def test_explicit_language_overrides_text(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "болит сердце", language="en")).json()
+
+    assert body["language"] == "en"
+    assert body["reply"].startswith("Doctors for")
 
 
 def test_sort_slots_by_preference_puts_liked_hours_first():
