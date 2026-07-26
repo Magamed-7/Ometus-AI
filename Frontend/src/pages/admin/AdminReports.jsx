@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getWorkloadReport } from "../../lib/api/admin.js";
+import { getSummaryReport, getWorkloadReport } from "../../lib/api/admin.js";
 import { getDepartments } from "../../lib/api/departments.js";
 import { errorText } from "../../lib/api/errorText.js";
 import { isoDate } from "../../lib/format.js";
@@ -17,6 +17,24 @@ function monthStart() {
   return isoDate(new Date(now.getFullYear(), now.getMonth(), 1));
 }
 
+function SummaryTile({ icon, label, value, accent = false }) {
+  return (
+    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-md">
+      <div className="flex items-center gap-2 text-on-surface-variant">
+        <span className="material-symbols-outlined text-lg">{icon}</span>
+        <span className="text-label-md">{label}</span>
+      </div>
+      <p
+        className={`mt-1 text-headline-lg-mobile font-bold ${
+          accent ? "text-primary" : "text-on-surface"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
 export default function AdminReports() {
   const t = useT();
   const toast = useToast();
@@ -25,18 +43,25 @@ export default function AdminReports() {
   const [dateTo, setDateTo] = useState(() => isoDate(new Date()));
   const [departmentId, setDepartmentId] = useState("");
   const [rows, setRows] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   const load = () => {
     setLoading(true);
     setError(false);
-    return getWorkloadReport({
-      date_from: dateFrom,
-      date_to: dateTo,
-      department_id: departmentId || undefined,
-    })
-      .then(setRows)
+    return Promise.all([
+      getWorkloadReport({
+        date_from: dateFrom,
+        date_to: dateTo,
+        department_id: departmentId || undefined,
+      }),
+      getSummaryReport({ date_from: dateFrom, date_to: dateTo }),
+    ])
+      .then(([workload, total]) => {
+        setRows(workload);
+        setSummary(total);
+      })
       .catch((err) => {
         setError(true);
         toast.error(errorText(t, err));
@@ -56,7 +81,6 @@ export default function AdminReports() {
   return (
     <div className="space-y-md">
       <Card className="p-md">
-        <h2 className="mb-sm text-headline-md text-on-surface">{t("admin.reportWorkload")}</h2>
         <div className="grid items-end gap-sm sm:grid-cols-2 lg:grid-cols-4">
           <Field
             label={t("admin.dateFrom")}
@@ -92,47 +116,85 @@ export default function AdminReports() {
       </Card>
 
       {loading ? (
-        <div className="space-y-sm">
+        <div className="space-y-md">
+          <div className="grid gap-sm sm:grid-cols-2 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
           {[0, 1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-12" />
           ))}
         </div>
       ) : error ? (
         <ErrorState onRetry={load} />
-      ) : rows.length === 0 ? (
-        <EmptyState icon="monitoring" title={t("admin.noDoctors")} />
       ) : (
-        <Card className="overflow-x-auto">
-          <table className="w-full min-w-[44rem] text-left text-body-md">
-            <thead className="border-b border-outline-variant text-label-md text-on-surface-variant">
-              <tr>
-                <th className="px-4 py-3 font-semibold">{t("admin.fullName")}</th>
-                <th className="px-4 py-3 font-semibold">{t("admin.specialization")}</th>
-                <th className="px-4 py-3 text-right font-semibold">{t("admin.total")}</th>
-                <th className="px-4 py-3 text-right font-semibold">{t("admin.booked")}</th>
-                <th className="px-4 py-3 text-right font-semibold">{t("admin.completed")}</th>
-                <th className="px-4 py-3 text-right font-semibold">{t("admin.cancelled")}</th>
-                <th className="px-4 py-3 text-right font-semibold">{t("admin.noShow")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={row.doctor_id}
-                  className="border-b border-outline-variant/50 last:border-0"
-                >
-                  <td className="px-4 py-3 font-semibold text-on-surface">{row.full_name}</td>
-                  <td className="px-4 py-3 text-on-surface-variant">{row.specialization}</td>
-                  <td className="px-4 py-3 text-right font-bold text-primary">{row.total}</td>
-                  <td className="px-4 py-3 text-right text-on-surface-variant">{row.booked}</td>
-                  <td className="px-4 py-3 text-right text-on-surface-variant">{row.completed}</td>
-                  <td className="px-4 py-3 text-right text-on-surface-variant">{row.cancelled}</td>
-                  <td className="px-4 py-3 text-right text-on-surface-variant">{row.no_show}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <>
+          {summary && (
+            <section className="space-y-sm">
+              <h2 className="text-headline-md text-on-surface">{t("admin.reportSummary")}</h2>
+              <div className="grid gap-sm sm:grid-cols-2 lg:grid-cols-4">
+                <SummaryTile icon="event_note" label={t("admin.total")} value={summary.total} accent />
+                <SummaryTile icon="event_available" label={t("status.booked")} value={summary.booked} />
+                <SummaryTile icon="task_alt" label={t("status.completed")} value={summary.completed} />
+                <SummaryTile icon="event_busy" label={t("status.cancelled")} value={summary.cancelled} />
+                <SummaryTile icon="person_off" label={t("status.no_show")} value={summary.no_show} />
+                <SummaryTile
+                  icon="stethoscope"
+                  label={t("admin.doctorsInvolved")}
+                  value={summary.doctors}
+                />
+                <SummaryTile
+                  icon="groups"
+                  label={t("admin.patientsUnique")}
+                  value={summary.patients}
+                />
+              </div>
+            </section>
+          )}
+
+          <h2 className="text-headline-md text-on-surface">{t("admin.reportWorkload")}</h2>
+
+          {rows.length === 0 ? (
+            <EmptyState icon="monitoring" title={t("admin.noDoctors")} />
+          ) : (
+            <Card className="overflow-x-auto">
+              <table className="w-full min-w-[44rem] text-left text-body-md">
+                <thead className="border-b border-outline-variant text-label-md text-on-surface-variant">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">{t("admin.fullName")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("admin.specialization")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("admin.total")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("admin.booked")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("admin.completed")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("admin.cancelled")}</th>
+                    <th className="px-4 py-3 text-right font-semibold">{t("admin.noShow")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr
+                      key={row.doctor_id}
+                      className="border-b border-outline-variant/50 last:border-0"
+                    >
+                      <td className="px-4 py-3 font-semibold text-on-surface">{row.full_name}</td>
+                      <td className="px-4 py-3 text-on-surface-variant">{row.specialization}</td>
+                      <td className="px-4 py-3 text-right font-bold text-primary">{row.total}</td>
+                      <td className="px-4 py-3 text-right text-on-surface-variant">{row.booked}</td>
+                      <td className="px-4 py-3 text-right text-on-surface-variant">
+                        {row.completed}
+                      </td>
+                      <td className="px-4 py-3 text-right text-on-surface-variant">
+                        {row.cancelled}
+                      </td>
+                      <td className="px-4 py-3 text-right text-on-surface-variant">{row.no_show}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );
