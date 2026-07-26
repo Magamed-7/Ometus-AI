@@ -107,3 +107,21 @@ async def test_ai_still_refuses_a_stranger(db):
     )
 
     assert result["error"]["code"] == "PERMISSION_DENIED"
+
+
+def test_denied_ambulance_is_not_an_emergency():
+    from app.ai.emergency_guard import is_emergency
+
+    assert is_emergency("мне не нужна скорая, хочу к терапевту") is False
+    assert is_emergency("без скорой, просто запишите к врачу") is False
+
+
+def test_real_emergencies_still_fire():
+    from app.ai.emergency_guard import is_emergency
+
+    assert is_emergency("вызовите скорую, плохо с сердцем") is True
+    # симптом сформулирован через «не» — отрицание к таким словам не применяется
+    assert is_emergency("ребёнок не дышит") is True
+    assert is_emergency("не могу дышать") is True
+    # «болит грудь» в списке экстренных слов нет (это HIGH_SYMPTOMS), берём то, что есть
+    assert is_emergency("мне не нужна скорая, но боль в груди") is True
