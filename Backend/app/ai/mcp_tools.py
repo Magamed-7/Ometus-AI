@@ -4,7 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import clinic_now
 from app.schemas.schema_appointment import AppointmentCreateIn, AppointmentRescheduleIn
-from app.services import crud_appointment, crud_department, crud_doctor, crud_schedule
+from app.services import (
+    crud_appointment,
+    crud_department,
+    crud_doctor,
+    crud_patient,
+    crud_schedule,
+)
 
 SEARCH_DAYS_AHEAD = 14
 
@@ -22,7 +28,10 @@ def is_future(day: date, slot_time: time):
 
 
 async def find_doctors(
-    db: AsyncSession, specialization: str | None = None, department: str | None = None
+    db: AsyncSession,
+    specialization: str | None = None,
+    department: str | None = None,
+    city: str | None = None,
 ):
     department_id = None
 
@@ -35,9 +44,28 @@ async def find_doctors(
                 "DEPARTMENT_NOT_FOUND", f"Отделение «{department}» не найдено"
             )
 
-        department_id = matched[0].id
+        # «Кардиология» есть в трёх филиалах: раньше молча бралось первое совпадение
+        # и пациент получал врачей одного филиала, не зная об этом. Точное совпадение
+        # по названию решает вопрос само, иначе честно переспрашиваем
+        exact = [item for item in matched if item.name.lower() == department.lower()]
 
-    doctors = await crud_doctor.search_doctors(db, specialization, department_id)
+        if len(matched) > 1 and len(exact) != 1:
+            return tool_error(
+                "DEPARTMENT_AMBIGUOUS",
+                "Уточните отделение: подходит несколько — "
+                + ", ".join(f"{item.name} (#{item.id})" for item in matched),
+            )
+
+        department_id = (exact or matched)[0].id
+
+    doctors = await crud_doctor.search_doctors(db, specialization, department_id, city=city)
+    # в своём городе врача может не быть, но это не повод оставлять пациента ни с чем:
+    # ищем шире и помечаем, что придётся ехать
+    other_city = False
+
+    if not doctors and city:
+        doctors = await crud_doctor.search_doctors(db, specialization, department_id)
+        other_city = bool(doctors)
 
     if not doctors:
         return tool_error("DOCTORS_NOT_FOUND", "Подходящих врачей не нашлось")
@@ -48,6 +76,7 @@ async def find_doctors(
                 "doctor_id": doctor.id,
                 "full_name": doctor.full_name,
                 "specialization": doctor.specialization,
+                "other_city": other_city,
             }
             for doctor in doctors
         ]
@@ -60,10 +89,23 @@ async def get_available_time(db: AsyncSession, doctor_id: int, day: date | None 
     if doctor is None:
         return tool_error("DOCTOR_NOT_FOUND", "Врач не найден")
 
-    days = [day] if day else [date.today() + timedelta(days=shift) for shift in range(SEARCH_DAYS_AHEAD)]
+    if day:
+        days = [day]
+    else:
+        # без даты раньше шёл цикл по 14 дням, и на каждый день — свой пакет запросов
+        # (расписание, отпуска, занятые времена). Теперь то, что не зависит от дня,
+        # читается один раз, а по дням гоняется только нарезка слотов
+        today = clinic_now().date()
+        days = [today + timedelta(days=shift) for shift in range(SEARCH_DAYS_AHEAD)]
+
     found = []
+    workdays = {schedule.weekday for schedule in await crud_schedule.get_schedules(doctor_id, db)}
 
     for current in days:
+        # день, в который врач в принципе не работает, не стоит и спрашивать у базы
+        if not day and current.weekday() not in workdays:
+            continue
+
         slots = await crud_schedule.get_available_slots(doctor_id, current, db)
         found.extend(
             {"date": str(current), "time": str(slot["time"])}
@@ -92,9 +134,14 @@ async def book_appointment(
     day: date,
     slot_time: time,
 ):
-    if current_patient.id != patient_id:
+    # через REST записать родственника можно (этап 6), а через AI было нельзя —
+    # функциональность разъезжалась между двумя входами в систему. Правило одно:
+    # свою карточку или карточку, где ты опекун
+    if current_patient.id != patient_id and not await crud_patient.is_bookable_by(
+        patient_id, current_patient.user_id, db
+    ):
         return tool_error(
-            "PERMISSION_DENIED", "Записать можно только самого себя, не другого пациента"
+            "PERMISSION_DENIED", "Записать можно только себя или своего родственника"
         )
 
     doctor = await crud_doctor.get_by_id(doctor_id, db)
