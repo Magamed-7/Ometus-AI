@@ -455,6 +455,18 @@ async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, histor
     )
 
     if not result["ok"]:
+        if result["error"]["code"] == "DOCTORS_NOT_FOUND":
+            alternatives = await find_available_alternatives(db, specialization)
+
+            if alternatives:
+                return {
+                    "action": "clarify",
+                    "specialization": specialization,
+                    "alternatives": alternatives,
+                    "reply": f"Врача по специализации «{specialization}» в клинике нет. "
+                    f"Могу предложить: {', '.join(alternatives)}. К кому записать?",
+                }
+
         return {
             "action": "error",
             "specialization": specialization,
@@ -463,23 +475,6 @@ async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, histor
         }
 
     doctors = result["data"]
-
-    if not doctors:
-        fallbacks = find_fallback_specialists(specialization)
-        if fallbacks:
-            return {
-                "action": "clarify",
-                "reply": f"К сожалению, {specialization} в клинике нет. "
-                f"Могу предложить альтернативу: {', '.join(fallbacks)}. "
-                "Выберите специалиста.",
-            }
-        return {
-            "action": "error",
-            "specialization": specialization,
-            "error_code": "NO_DOCTORS",
-            "reply": f"К сожалению, специалистов «{specialization}» в клинике нет.",
-        }
-
     fallback = (
         f"По специализации «{specialization}» принимают: {describe_doctors(doctors)}. "
         "Выберите врача, и я покажу свободное время."
