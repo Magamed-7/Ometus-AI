@@ -31,10 +31,7 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
         raise AppError(code="EMAIL_ALREADY_EXISTS", message="Email уже занят", status_code=409)
 
     user = await crud_user.create_user(data, db)
-
-    if user.role == "patient":
-        await crud_patient.create_patient(user, db)
-
+    await crud_patient.create_patient(user, db)
     await crud_user.create_verification_code(user, db)
     return user
 

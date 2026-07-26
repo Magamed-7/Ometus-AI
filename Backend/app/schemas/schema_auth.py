@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
 
@@ -9,7 +7,6 @@ class RegisterIn(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     phone: str | None = None
-    role: Literal["patient", "doctor"] = "patient"
 
 
 class LoginIn(BaseModel):

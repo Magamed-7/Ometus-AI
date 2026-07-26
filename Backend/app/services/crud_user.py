@@ -19,7 +19,7 @@ async def create_user(data: RegisterIn, db: AsyncSession):
         first_name=data.first_name,
         last_name=data.last_name,
         phone=data.phone,
-        role=data.role,
+        role="patient",
     )
 
     db.add(user)
