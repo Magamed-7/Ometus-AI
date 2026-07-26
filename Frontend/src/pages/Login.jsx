@@ -40,6 +40,14 @@ export default function Login() {
       navigate(from, { replace: true });
     } catch (err) {
       const message = errorText(t, err);
+
+      // почта не подтверждена — форма входа тут бесполезна, уводим вводить код
+      if (err.code === "EMAIL_NOT_VERIFIED") {
+        toast.info(message);
+        navigate("/verify-email", { state: { email } });
+        return;
+      }
+
       setErrors({ form: message });
       toast.error(message);
     } finally {

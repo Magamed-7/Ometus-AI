@@ -322,6 +322,7 @@ export const ru = {
     FILIAL_NOT_FOUND: "Филиал не найден",
     FORBIDDEN: "Недостаточно прав для этого действия",
     INVALID_CODE: "Неверный или просроченный код",
+    EMAIL_NOT_VERIFIED: "Почта не подтверждена — введите код из письма",
     INVALID_CREDENTIALS: "Неверная почта или пароль",
     INVALID_DATE_RANGE: "Неверный диапазон дат",
     INVALID_TIME_RANGE: "Начало приёма должно быть раньше окончания",

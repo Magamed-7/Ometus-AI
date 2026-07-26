@@ -322,6 +322,7 @@ export const en = {
     FILIAL_NOT_FOUND: "Branch not found",
     FORBIDDEN: "You don't have permission for this action",
     INVALID_CODE: "Invalid or expired code",
+    EMAIL_NOT_VERIFIED: "Email is not verified — enter the code from the letter",
     INVALID_CREDENTIALS: "Wrong email or password",
     INVALID_DATE_RANGE: "Invalid date range",
     INVALID_TIME_RANGE: "Start time must be before end time",

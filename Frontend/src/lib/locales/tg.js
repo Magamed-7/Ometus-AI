@@ -322,6 +322,7 @@ export const tg = {
     FILIAL_NOT_FOUND: "Филиал ёфт нашуд",
     FORBIDDEN: "Барои ин амал ҳуқуқ кофӣ нест",
     INVALID_CODE: "Рамзи нодуруст ё мӯҳлаташ гузашта",
+    EMAIL_NOT_VERIFIED: "Почта тасдиқ нашудааст — рамзи номаро ворид кунед",
     INVALID_CREDENTIALS: "Почта ё рамзи нодуруст",
     INVALID_DATE_RANGE: "Фосилаи санаҳо нодуруст аст",
     INVALID_TIME_RANGE: "Оғози қабул бояд пеш аз анҷом бошад",
