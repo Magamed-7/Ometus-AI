@@ -429,7 +429,7 @@ async def test_tool_calls_are_logged(client, db):
 
     assert [log.tool_name for log in logs] == ["find_doctors", "book_appointment"]
     assert [log.status for log in logs] == ["ok", "ok"]
-    assert logs[0].params_json == {"specialization": "кардиолог"}
+    assert logs[0].params_json == {"specialization": "кардиолог", "city": None}
     assert logs[1].params_json["doctor_id"] == doctor_id
 
 
@@ -781,6 +781,82 @@ async def test_history_of_foreign_conversation_is_denied(client, db):
 
 SUGGESTION_URL = "/api/ai/suggestion"
 METRICS_URL = "/api/admin/ai-metrics"
+
+
+async def setup_doctor_in_city(client, db, city, email, specialization="Кардиолог"):
+    admin = await admin_headers(client, db)
+
+    filial = await client.post(
+        ADMIN_FILIALS_URL,
+        json={"name": f"Ometus {city}", "city": city, "address": "ул. Центральная 1"},
+        headers=admin,
+    )
+    department = await client.post(
+        ADMIN_DEPARTMENTS_URL,
+        json={"filial_id": filial.json()["id"], "name": f"Кардиология {city}"},
+        headers=admin,
+    )
+    department_id = department.json()["id"]
+
+    doctor = await client.post(
+        ADMIN_DOCTORS_URL,
+        json={
+            **DOCTOR_DATA,
+            "email": email,
+            "full_name": f"Врач {city}",
+            "specialization": specialization,
+        },
+        headers=admin,
+    )
+    doctor_id = doctor.json()["id"]
+
+    await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/departments",
+        json={"department_id": department_id},
+        headers=admin,
+    )
+
+    return doctor_id
+
+
+async def test_city_filters_doctors(client, db):
+    dushanbe = await setup_doctor_in_city(client, db, "Душанбе", "d@ometus.test")
+    await setup_doctor_in_city(client, db, "Худжанд", "h@ometus.test")
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "нужен кардиолог", city="Душанбе")).json()
+
+    assert [doctor["doctor_id"] for doctor in body["doctors"]] == [dushanbe]
+    assert body["doctors"][0]["full_name"] == "Врач Душанбе"
+
+
+async def test_city_match_is_case_insensitive(client, db):
+    dushanbe = await setup_doctor_in_city(client, db, "Душанбе", "d@ometus.test")
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "нужен кардиолог", city="душанбе")).json()
+
+    assert [doctor["doctor_id"] for doctor in body["doctors"]] == [dushanbe]
+
+
+async def test_other_city_doctors_shown_with_note(client, db):
+    khujand = await setup_doctor_in_city(client, db, "Худжанд", "h@ometus.test")
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "нужен кардиолог", city="Душанбе")).json()
+
+    assert [doctor["doctor_id"] for doctor in body["doctors"]] == [khujand]
+    assert body["reply"].startswith("В городе Душанбе такого специалиста нет")
+
+
+async def test_without_city_all_doctors_returned(client, db):
+    await setup_doctor_in_city(client, db, "Душанбе", "d@ometus.test")
+    await setup_doctor_in_city(client, db, "Худжанд", "h@ometus.test")
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "нужен кардиолог")).json()
+
+    assert len(body["doctors"]) == 2
 
 
 COSTS_URL = "/api/admin/ai-costs"

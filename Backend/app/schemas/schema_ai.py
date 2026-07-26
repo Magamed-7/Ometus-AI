@@ -15,6 +15,7 @@ class AskIn(BaseModel):
     conversation_id: int | None = None
     severity: int | None = None
     language: str | None = None
+    city: str | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 

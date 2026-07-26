@@ -71,6 +71,7 @@ REPLIES = {
         "schedule": "Врач принимает: {schedule}.",
         "checkup_reminder": "Вы были у врача {doctor} ({specialization}) {months} мес. назад. "
         "Записаться на повторный приём?",
+        "other_city_note": "В городе {city} такого специалиста нет, показываю врачей из других филиалов.",
     },
     "tg": {
         "answer_language": "тоҷикӣ",
@@ -95,6 +96,7 @@ REPLIES = {
         "schedule": "Духтур қабул мекунад: {schedule}.",
         "checkup_reminder": "Шумо {months} моҳ пеш дар назди духтур {doctor} ({specialization}) будед. "
         "Ба қабули такрорӣ навбат гирем?",
+        "other_city_note": "Дар шаҳри {city} чунин мутахассис нест, духтурони филиалҳои дигарро нишон медиҳам.",
     },
     "en": {
         "answer_language": "English",
@@ -119,6 +121,7 @@ REPLIES = {
         "schedule": "The doctor sees patients: {schedule}.",
         "checkup_reminder": "You saw {doctor} ({specialization}) {months} months ago. "
         "Would you like to book a follow-up?",
+        "other_city_note": "There is no such specialist in {city}, showing doctors from other branches.",
     },
 }
 

@@ -791,9 +791,14 @@ async def suggest_doctors(
         }
 
     specialization = specializations[0]
-    result = await find_doctors(db, specialization)
+    result = await find_doctors(db, specialization, city=data.city)
     await log_call(
-        current_patient, "find_doctors", {"specialization": specialization}, result, db, severity
+        current_patient,
+        "find_doctors",
+        {"specialization": specialization, "city": data.city},
+        result,
+        db,
+        severity,
     )
 
     if not result["ok"]:
@@ -827,6 +832,9 @@ async def suggest_doctors(
         specialization=specialization,
         doctors=describe_doctors(doctors),
     )
+
+    if doctors[0].get("other_city"):
+        fallback = f"{translate('other_city_note', language, city=data.city)} {fallback}"
 
     return {
         "action": "doctors",

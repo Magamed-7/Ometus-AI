@@ -11,6 +11,7 @@ from app.models.model_department import Department
 from app.models.model_doctor import Doctor
 from app.models.model_doctor_department import DoctorDepartment
 from app.models.model_doctor_specialization import DoctorSpecialization
+from app.models.model_filial import Filial
 from app.models.model_user import User
 from app.schemas.schema_doctor import DoctorCreateIn, DoctorUpdateIn
 
@@ -81,6 +82,7 @@ async def search_doctors(
     specialization: str | None = None,
     department_id: int | None = None,
     filial_id: int | None = None,
+    city: str | None = None,
 ):
     # уволенный врач исчезает из поиска с даты увольнения; до неё к нему ещё можно попасть
     query = select(Doctor).where(
@@ -97,15 +99,21 @@ async def search_doctors(
             )
         )
 
-    if department_id or filial_id:
+    if department_id or filial_id or city:
         query = query.join(DoctorDepartment, DoctorDepartment.doctor_id == Doctor.id)
 
     if department_id:
         query = query.where(DoctorDepartment.department_id == department_id)
 
+    if filial_id or city:
+        query = query.join(Department, Department.id == DoctorDepartment.department_id)
+
     if filial_id:
-        query = query.join(Department, Department.id == DoctorDepartment.department_id).where(
-            Department.filial_id == filial_id
+        query = query.where(Department.filial_id == filial_id)
+
+    if city:
+        query = query.join(Filial, Filial.id == Department.filial_id).where(
+            Filial.city.ilike(city.strip())
         )
 
     result = await db.execute(query.distinct().order_by(Doctor.id))
