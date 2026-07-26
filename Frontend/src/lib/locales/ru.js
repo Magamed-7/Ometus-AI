@@ -212,6 +212,8 @@ export const ru = {
     noDepartments: "Вас ещё не назначили ни в одно отделение — обратитесь к администратору",
     absences: "Отпуска и больничные",
     addAbsence: "Добавить отсутствие",
+    deleteAbsenceConfirm: "Удалить это отсутствие? Дни снова станут рабочими.",
+    absenceDeleted: "Отсутствие удалено",
     dateFrom: "С",
     dateTo: "По",
     reason: "Причина",

@@ -212,6 +212,8 @@ export const en = {
     noDepartments: "You are not assigned to any department yet — ask the administrator",
     absences: "Leaves and sick days",
     addAbsence: "Add absence",
+    deleteAbsenceConfirm: "Delete this absence? Those days become working days again.",
+    absenceDeleted: "Absence deleted",
     dateFrom: "From",
     dateTo: "To",
     reason: "Reason",

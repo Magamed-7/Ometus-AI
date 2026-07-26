@@ -212,6 +212,8 @@ export const tg = {
     noDepartments: "Шумо ҳанӯз ба ягон шӯъба таъин нашудаед — ба маъмур муроҷиат кунед",
     absences: "Рухсатӣ ва бемордорӣ",
     addAbsence: "Илова кардани ғоибӣ",
+    deleteAbsenceConfirm: "Ин ғоибиро нест кунем? Рӯзҳо боз корӣ мешаванд.",
+    absenceDeleted: "Ғоибӣ нест карда шуд",
     dateFrom: "Аз",
     dateTo: "То",
     reason: "Сабаб",

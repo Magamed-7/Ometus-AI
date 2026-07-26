@@ -17,6 +17,7 @@ import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
 import { Field, Select } from "../../components/Field.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
+import DoctorAbsences from "./DoctorAbsences.jsx";
 
 const EMPTY_FORM = {
   department_id: "",
@@ -290,6 +291,8 @@ export default function DoctorSchedule() {
           ))}
         </div>
       )}
+
+      <DoctorAbsences />
     </div>
   );
 }
