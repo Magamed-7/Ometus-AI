@@ -131,7 +131,11 @@ export default function DoctorAbsences() {
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <EmptyState icon="beach_access" title={t("doctorCabinet.noAbsences")} />
+        <EmptyState
+          icon="beach_access"
+          title={t("doctorCabinet.noAbsences")}
+          text={t("doctorCabinet.noAbsencesText")}
+        />
       ) : (
         <div className="space-y-sm">
           {sorted.map((absence) => (

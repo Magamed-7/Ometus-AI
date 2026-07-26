@@ -218,7 +218,11 @@ export const en = {
     dateTo: "To",
     reason: "Reason",
     noSchedule: "No schedule set yet",
+    noScheduleText: "Without a schedule patients see no free time and cannot book you.",
     noAbsences: "No absences",
+    noAbsencesText: "Mark a leave or a sick day — booking closes automatically for those days.",
+    noDay: "No visits on this day",
+    noDayText: "Try another day or reset the filters.",
   },
   admin: {
     filials: "Branches",

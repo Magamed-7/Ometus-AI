@@ -250,7 +250,18 @@ export default function DoctorSchedule() {
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <EmptyState icon="calendar_month" title={t("doctorCabinet.noSchedule")} />
+        <EmptyState
+          icon="calendar_month"
+          title={t("doctorCabinet.noSchedule")}
+          text={t("doctorCabinet.noScheduleText")}
+          action={
+            !open && (
+              <Button icon="add" onClick={startCreate}>
+                {t("doctorCabinet.addSchedule")}
+              </Button>
+            )
+          }
+        />
       ) : (
         <div className="space-y-sm">
           {sorted.map((row) => (

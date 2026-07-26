@@ -98,7 +98,25 @@ export default function DoctorToday() {
           ))}
         </div>
       ) : appointments.length === 0 ? (
-        <EmptyState icon="event_available" title={t("doctorCabinet.noToday")} />
+        <EmptyState
+          icon="event_available"
+          title={day === isoDate(new Date()) ? t("doctorCabinet.noToday") : t("doctorCabinet.noDay")}
+          text={t("doctorCabinet.noDayText")}
+          action={
+            (day || status) && (
+              <Button
+                variant="outline"
+                icon="refresh"
+                onClick={() => {
+                  setDay("");
+                  setStatus("");
+                }}
+              >
+                {t("common.reset")}
+              </Button>
+            )
+          }
+        />
       ) : (
         <div className="space-y-sm">
           {appointments.map((appointment) => (
