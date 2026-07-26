@@ -39,13 +39,23 @@ async def get_by_id(user_id: int, db: AsyncSession):
     return result.scalar_one_or_none()
 
 
-async def get_all_users(db: AsyncSession, role: str | None = None):
+async def get_all_users(
+    db: AsyncSession,
+    role: str | None = None,
+    email: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+):
     query = select(User)
 
     if role:
         query = query.where(User.role == role)
 
-    result = await db.execute(query.order_by(User.id))
+    # поиск по почте: без него в списке из тысяч пользователей нужного не найти
+    if email:
+        query = query.where(User.email.ilike(f"%{email.strip()}%"))
+
+    result = await db.execute(query.order_by(User.id).limit(limit).offset(offset))
     return result.scalars().all()
 
 

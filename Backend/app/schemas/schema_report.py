@@ -23,4 +23,5 @@ class AppointmentsSummaryOut(BaseModel):
     cancelled: int
     no_show: int
     doctors: int
+    doctors_total: int = 0
     patients: int

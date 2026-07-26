@@ -577,3 +577,90 @@ async def test_admin_users_forbidden_for_patient(client, db):
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+AUDIT_URL = "/api/admin/audit"
+
+
+async def test_admin_actions_are_written_to_the_audit_log(client, db):
+    headers = await admin_headers(client, db)
+
+    await client.post(ADMIN_FILIALS_URL, json=FILIAL_DATA, headers=headers)
+    audit = await client.get(AUDIT_URL, headers=headers)
+
+    assert audit.status_code == 200
+    entries = audit.json()
+    assert entries
+    assert entries[0]["action"] == "POST"
+    assert entries[0]["entity"] == ADMIN_FILIALS_URL
+
+
+async def test_reading_admin_lists_leaves_no_audit_trail(client, db):
+    headers = await admin_headers(client, db)
+
+    await client.get(USERS_URL, headers=headers)
+    audit = await client.get(AUDIT_URL, headers=headers)
+
+    assert audit.json() == []
+
+
+async def test_workload_report_keeps_doctors_without_appointments(client, db):
+    headers = await admin_headers(client, db)
+    filial = await client.post(ADMIN_FILIALS_URL, json=FILIAL_DATA, headers=headers)
+    department = await client.post(
+        "/api/admin/departments",
+        json={"filial_id": filial.json()["id"], "name": "Кардиология"},
+        headers=headers,
+    )
+    doctor = await client.post(
+        ADMIN_DOCTORS_URL,
+        json={
+            "email": "idle@ometus.test",
+            "full_name": "Простаивающий Врач",
+            "specialization": "Кардиолог",
+        },
+        headers=headers,
+    )
+    await client.post(
+        f"{ADMIN_DOCTORS_URL}/{doctor.json()['id']}/departments",
+        json={"department_id": department.json()["id"]},
+        headers=headers,
+    )
+
+    report = await client.get(
+        WORKLOAD_URL,
+        params={**PERIOD, "department_id": department.json()["id"]},
+        headers=headers,
+    )
+
+    assert report.status_code == 200
+    rows = report.json()
+    assert len(rows) == 1
+    assert rows[0]["total"] == 0
+
+
+async def test_summary_reports_how_many_doctors_there_are(client, db):
+    headers = await admin_headers(client, db)
+    await client.post(
+        ADMIN_DOCTORS_URL,
+        json={
+            "email": "counted@ometus.test",
+            "full_name": "Считаемый Врач",
+            "specialization": "Терапевт",
+        },
+        headers=headers,
+    )
+
+    summary = await client.get(SUMMARY_URL, params=PERIOD, headers=headers)
+
+    assert summary.json()["doctors"] == 0
+    assert summary.json()["doctors_total"] == 1
+
+
+async def test_users_can_be_searched_by_email(client, db):
+    headers = await admin_headers(client, db)
+    await register(client, "findme@ometus.test")
+
+    found = await client.get(f"{USERS_URL}?email=findme", headers=headers)
+
+    assert [user["email"] for user in found.json()] == ["findme@ometus.test"]
