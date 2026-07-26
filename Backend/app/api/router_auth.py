@@ -43,6 +43,13 @@ async def login(data: LoginIn, db: AsyncSession = Depends(get_db)):
     if not user or not verify_password(data.password, user.hashed_password):
         raise AppError(code="INVALID_CREDENTIALS", message="Неверный email или пароль", status_code=401)
 
+    if not user.is_verified:
+        raise AppError(
+            code="EMAIL_NOT_VERIFIED",
+            message="Почта не подтверждена. Введите код из письма",
+            status_code=403,
+        )
+
     token_data = {"sub": str(user.id), "email": user.email, "role": user.role}
 
     return TokenPair(

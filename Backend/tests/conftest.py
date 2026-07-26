@@ -44,12 +44,28 @@ async def prepare_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
+# последний код, выданный каждой почте: письма в тестах никуда не уходят,
+# а подтвердить почту нужно — вход без этого теперь запрещён
+SENT_CODES = {}
+
+
 @pytest.fixture(autouse=True)
 def sent_emails(monkeypatch):
     sent = []
-    fake_send = lambda email, code: sent.append((email, code))
+
+    def fake_send(email, code):
+        sent.append((email, code))
+        SENT_CODES[email] = code
+
+    SENT_CODES.clear()
     monkeypatch.setattr(crud_user, "send_verification_code", fake_send)
     return sent
+
+
+async def verify_email(client, email):
+    return await client.post(
+        "/api/auth/verify-email", json={"email": email, "code": SENT_CODES[email]}
+    )
 
 
 @pytest.fixture

@@ -142,8 +142,8 @@ def describe_schedule(schedule: list):
     )
 
 
-async def log_call(current_patient, tool_name: str, params: dict, result: dict, db: AsyncSession):
-    await crud_ai_log.log_tool_call(current_patient.user_id, tool_name, params, result, db)
+async def log_call(current_patient, tool_name: str, params: dict, result: dict, db: AsyncSession, severity: int = 0):
+    await crud_ai_log.log_tool_call(current_patient.user_id, tool_name, params, result, db, severity)
 
 
 async def ask(data: AskIn, current_patient, db: AsyncSession):
@@ -169,6 +169,7 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
             {"message": data.message},
             tool_error("EMERGENCY", EMERGENCY_MESSAGE),
             db,
+            severity,
         )
         await crud_conversation.add_message(conversation.id, "user", data.message, db)
         await crud_conversation.add_message(conversation.id, "assistant", EMERGENCY_MESSAGE, db)
@@ -248,7 +249,7 @@ async def cancel_flow(data: AskIn, current_patient, db: AsyncSession):
 
     result = await cancel_appointment(db, current_patient, data.appointment_id)
     await log_call(
-        current_patient, "cancel_appointment", {"appointment_id": data.appointment_id}, result, db
+        current_patient, "cancel_appointment", {"appointment_id": data.appointment_id}, result, db, severity
     )
 
     if not result["ok"]:
@@ -283,6 +284,7 @@ async def reschedule_flow(data: AskIn, current_patient, db: AsyncSession):
         },
         result,
         db,
+        severity,
     )
 
     if not result["ok"]:
@@ -309,6 +311,7 @@ async def my_appointments_flow(data: AskIn, current_patient, db: AsyncSession):
         {"patient_id": current_patient.id},
         result,
         db,
+        severity,
     )
 
     if not result["ok"]:
@@ -334,7 +337,7 @@ async def doctor_schedule_flow(data: AskIn, current_patient, db: AsyncSession):
 
     result = await get_doctor_schedule(db, data.doctor_id)
     await log_call(
-        current_patient, "get_doctor_schedule", {"doctor_id": data.doctor_id}, result, db
+        current_patient, "get_doctor_schedule", {"doctor_id": data.doctor_id}, result, db, severity
     )
 
     if not result["ok"]:
@@ -371,6 +374,7 @@ async def confirm_booking(data: AskIn, current_patient, db: AsyncSession, histor
         },
         result,
         db,
+        severity,
     )
 
     if not result["ok"]:
@@ -403,6 +407,7 @@ async def show_slots(data: AskIn, current_patient, db: AsyncSession, history: li
         {"doctor_id": data.doctor_id, "date": str(data.day) if data.day else None},
         result,
         db,
+        severity,
     )
 
     if not result["ok"]:
@@ -446,7 +451,7 @@ async def suggest_doctors(data: AskIn, current_patient, db: AsyncSession, histor
     specialization = specializations[0]
     result = await find_doctors(db, specialization)
     await log_call(
-        current_patient, "find_doctors", {"specialization": specialization}, result, db
+        current_patient, "find_doctors", {"specialization": specialization}, result, db, severity
     )
 
     if not result["ok"]:

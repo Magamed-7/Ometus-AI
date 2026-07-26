@@ -5,7 +5,7 @@ from app.models.model_ai_log import AiQueryLog
 
 
 async def log_tool_call(
-    user_id: int, tool_name: str, params: dict, result: dict, db: AsyncSession
+    user_id: int, tool_name: str, params: dict, result: dict, db: AsyncSession, severity: int = 0
 ):
     entry = AiQueryLog(
         user_id=user_id,
@@ -13,6 +13,7 @@ async def log_tool_call(
         params_json=params,
         status="ok" if result["ok"] else "error",
         message=None if result["ok"] else result["error"]["code"],
+        severity=severity,
     )
 
     db.add(entry)
