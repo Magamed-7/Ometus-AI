@@ -56,3 +56,13 @@ def detect_specialization(text: str):
         return matched[0]
 
     return None
+
+
+def find_fallback_specialists(requested: str) -> list:
+    requested_norm = normalize(requested)
+
+    for specialization in SPECIALIZATION_KEYWORDS:
+        if specialization == requested_norm or requested_norm in SPECIALIZATION_KEYWORDS.get(specialization, []):
+            return SPECIALIST_HIERARCHY.get(specialization, [])
+
+    return []
