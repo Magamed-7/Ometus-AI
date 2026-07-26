@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.permissions import get_current_doctor
@@ -16,7 +16,8 @@ from app.schemas.schema_schedule import (
     ScheduleUpdateIn,
     SlotOut,
 )
-from app.services import crud_department, crud_doctor, crud_schedule
+from app.services import crud_department, crud_doctor, crud_patient, crud_schedule
+from app.services import email as email_service
 
 schedules_router = APIRouter(prefix="/api/schedules", tags=["Schedules"])
 
@@ -90,6 +91,7 @@ async def get_my_absences(
 @schedules_router.post("/me/absences", response_model=AbsenceOut)
 async def create_my_absence(
     data: AbsenceCreateIn,
+    background: BackgroundTasks,
     doctor=Depends(get_current_doctor),
     db: AsyncSession = Depends(get_db),
 ):
@@ -115,9 +117,25 @@ async def create_my_absence(
 
     # записи на эти дни снимаем сразу: слоты и так исчезнут из выдачи,
     # а пациент без отмены остался бы с записью к врачу, которого не будет
-    await crud_schedule.cancel_appointments_in_range(
+    cancelled = await crud_schedule.cancel_appointments_in_range(
         doctor.id, data.date_from, data.date_to, db
     )
+
+    # и предупреждаем каждого письмом — молча отменённая запись это худшее из двух зол:
+    # человек приедет к назначенному времени. Письма уходят после ответа, врач не ждёт SMTP
+    for appointment in cancelled:
+        email, patient_name = await crud_patient.get_contact(appointment.patient_id, db)
+
+        if email:
+            background.add_task(
+                email_service.deliver_appointment_cancelled,
+                email,
+                doctor.full_name,
+                appointment.date,
+                appointment.time,
+                patient_name,
+            )
+
     return absence
 
 

@@ -117,3 +117,24 @@ async def is_bookable_by(patient_id: int, user_id: int, db: AsyncSession):
         return False
 
     return patient.user_id == user_id or patient.guardian_user_id == user_id
+
+
+async def get_contact(patient_id: int, db: AsyncSession):
+    # у карточки родственника своего аккаунта нет, писать некому — значит пишем опекуну,
+    # он эту запись и создавал
+    patient = await get_by_id(patient_id, db)
+
+    if patient is None:
+        return None, None
+
+    owner_id = patient.user_id or patient.guardian_user_id
+
+    if owner_id is None:
+        return None, patient.full_name
+
+    user = await db.get(User, owner_id)
+
+    if user is None:
+        return None, patient.full_name
+
+    return user.email, patient.full_name
