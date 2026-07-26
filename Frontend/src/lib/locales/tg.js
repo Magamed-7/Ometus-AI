@@ -114,6 +114,7 @@ export const tg = {
     book: "Навбат гирифтан",
     workingHours: "08:00 – 20:00",
     noDaysOff: "Бе рӯзҳои истироҳат",
+    hoursUnknown: "Соатҳои кориро пурсед",
   },
   doctors: {
     title: "Табибон",

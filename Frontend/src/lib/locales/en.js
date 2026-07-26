@@ -114,6 +114,7 @@ export const en = {
     book: "Book",
     workingHours: "08:00 – 20:00",
     noDaysOff: "Open daily",
+    hoursUnknown: "Call to check opening hours",
   },
   doctors: {
     title: "Doctors",

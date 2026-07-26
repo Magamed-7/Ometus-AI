@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getFilials } from "../lib/api/filials.js";
 import { searchDoctors } from "../lib/api/doctors.js";
-import { workingHours } from "../lib/mocks/filials.js";
+import { phone } from "../lib/format.js";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
 import ErrorState from "../components/ErrorState.jsx";
@@ -223,13 +223,31 @@ export default function Home() {
                         {f.city}, {f.address}
                       </span>
                     </div>
+                    {/* Заглушка STUBS #4: часов работы и выходных в таблице `filials` нет.
+                        Раньше здесь для всех трёх филиалов стояло выдуманное «08:00 – 20:00,
+                        без выходных» — по такому расписанию пациент мог приехать к закрытым
+                        дверям, поэтому показываем настоящий телефон филиала вместо выдумки. */}
                     <div className="mb-lg flex items-center gap-sm text-label-md">
                       <span className="flex items-center gap-1 text-on-surface-variant">
-                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-primary">schedule</span>
-                        {workingHours().open} – {workingHours().close}
+                        <span
+                          aria-hidden="true"
+                          className="material-symbols-outlined text-sm text-primary"
+                        >
+                          schedule
+                        </span>
+                        {t("home.hoursUnknown")}
                       </span>
-                      <span className="text-outline-variant">|</span>
-                      <span className="text-on-surface-variant">{t("home.noDaysOff")}</span>
+                      {f.phone && (
+                        <>
+                          <span className="text-outline-variant">|</span>
+                          <a
+                            href={`tel:${f.phone}`}
+                            className="text-on-surface-variant transition-colors hover:text-primary"
+                          >
+                            {phone(f.phone)}
+                          </a>
+                        </>
+                      )}
                     </div>
                     <a
                       href={mapsUrl(f)}

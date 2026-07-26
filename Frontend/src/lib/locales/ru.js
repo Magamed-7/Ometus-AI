@@ -114,6 +114,7 @@ export const ru = {
     book: "Записаться",
     workingHours: "08:00 – 20:00",
     noDaysOff: "Без выходных",
+    hoursUnknown: "Часы работы уточняйте",
   },
   doctors: {
     title: "Врачи",
