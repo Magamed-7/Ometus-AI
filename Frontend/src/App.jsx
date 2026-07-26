@@ -1,9 +1,14 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import DocumentTitle from "./components/DocumentTitle.jsx";
 import Layout from "./components/Layout.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
 import Account from "./pages/Account.jsx";
+import AdminDepartments from "./pages/admin/AdminDepartments.jsx";
+import AdminDoctors from "./pages/admin/AdminDoctors.jsx";
+import AdminFilials from "./pages/admin/AdminFilials.jsx";
+import AdminReports from "./pages/admin/AdminReports.jsx";
+import AdminShell from "./pages/admin/AdminShell.jsx";
 import Assistant from "./pages/Assistant.jsx";
 import Booking from "./pages/Booking.jsx";
 import DoctorDetail from "./pages/DoctorDetail.jsx";
@@ -55,10 +60,20 @@ export default function App() {
               </RoleRoute>
             }
           />
-          <Route path="/admin/filials" element={<Placeholder name="AdminFilials" />} />
-          <Route path="/admin/departments" element={<Placeholder name="AdminDepartments" />} />
-          <Route path="/admin/doctors" element={<Placeholder name="AdminDoctors" />} />
-          <Route path="/admin/reports" element={<Placeholder name="AdminReports" />} />
+          <Route
+            path="/admin"
+            element={
+              <RoleRoute role="admin">
+                <AdminShell />
+              </RoleRoute>
+            }
+          >
+            <Route index element={<Navigate to="/admin/filials" replace />} />
+            <Route path="filials" element={<AdminFilials />} />
+            <Route path="departments" element={<AdminDepartments />} />
+            <Route path="doctors" element={<AdminDoctors />} />
+            <Route path="reports" element={<AdminReports />} />
+          </Route>
           <Route path="*" element={<Placeholder name="NotFound" />} />
         </Route>
         <Route path="/login" element={<Login />} />

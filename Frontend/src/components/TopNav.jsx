@@ -22,7 +22,7 @@ export default function TopNav() {
     links.push({ to: "/doctor/today", label: t("nav.doctorToday") });
     links.push({ to: "/doctor/schedule", label: t("nav.doctorSchedule") });
   } else if (user?.role === "admin") {
-    links.push({ to: "/admin/filials", label: t("nav.admin") });
+    links.push({ to: "/admin", label: t("nav.admin") });
   } else {
     links.push({ to: "/account", label: t("nav.account") });
   }

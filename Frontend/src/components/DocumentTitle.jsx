@@ -17,6 +17,7 @@ const TITLES = {
   "/admin/departments": "nav.adminDepartments",
   "/admin/doctors": "nav.adminDoctors",
   "/admin/reports": "nav.adminReports",
+  "/admin": "nav.admin",
 };
 
 function titleKey(pathname) {
