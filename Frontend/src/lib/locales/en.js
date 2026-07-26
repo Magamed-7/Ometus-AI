@@ -269,6 +269,12 @@ export const en = {
     deleteDepartmentConfirm: "Delete «{name}»? Doctor schedules in it go with it.",
     departmentDeleted: "Department deleted",
     department: "Department",
+    passwordHint: "The password is generated automatically — no need to type one. The doctor email counts as verified right away.",
+    doctorCreated: "Doctor created",
+    passwordOnce: "Hand these credentials to the doctor. The password is shown once and cannot be recovered later.",
+    copyCredentials: "Copy",
+    credentialsCopied: "Credentials copied",
+    copyFailed: "Copy failed — select the text manually",
   },
   status: {
     booked: "Booked",
