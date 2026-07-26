@@ -125,6 +125,11 @@ async def book_emergency_appointment(
     current_user=Depends(require_staff),
     db: AsyncSession = Depends(get_db),
 ):
+    # Отпуск врача здесь СОЗНАТЕЛЬНО не проверяется, это не забытая проверка:
+    # экстренная запись и существует ради случаев, когда сетка и отпуска не важны —
+    # регистратор сажает пациента к врачу, который сегодня вышел разово. Всё остальное
+    # (существование врача, отделение, прошедшее время, увольнение) проверяется как обычно,
+    # а сама запись помечается is_emergency и видна в отчётах отдельно.
     patient = await crud_patient.get_by_id(data.patient_id, db)
 
     if patient is None:
@@ -134,6 +139,13 @@ async def book_emergency_appointment(
 
     if doctor is None:
         raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    if crud_doctor.is_dismissed_on(doctor, data.date):
+        raise AppError(
+            code="DOCTOR_DISMISSED",
+            message=f"Врач не принимает с {doctor.dismissed_at:%d.%m.%Y}",
+            status_code=409,
+        )
 
     departments = await crud_doctor.get_departments(data.doctor_id, db)
 
