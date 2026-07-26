@@ -5,7 +5,7 @@ import { searchDoctors } from "../../lib/api/doctors.js";
 import { errorText } from "../../lib/api/errorText.js";
 import { getFilials } from "../../lib/api/filials.js";
 import { useT } from "../../lib/i18n.jsx";
-import { copyToClipboard, generatePassword } from "../../lib/password.js";
+import { copyToClipboard } from "../../lib/password.js";
 import { useToast } from "../../lib/toast.jsx";
 import Button from "../../components/Button.jsx";
 import Card from "../../components/Card.jsx";
@@ -80,19 +80,18 @@ export default function AdminDoctors() {
     e.preventDefault();
     setSaving(true);
 
-    const password = generatePassword();
-
     try {
+      // пароль не шлём: бэкенд генерирует его сам (20 символов) и возвращает
+      // в `DoctorCreateOut.password` — показываем админу ровно то, что записано в базе
       const doctor = await createDoctor({
         email: form.email.trim(),
-        password,
         full_name: form.full_name.trim(),
         specialization: form.specialization.trim(),
         phone: form.phone.trim() || null,
       });
       setCreating(false);
       setForm(EMPTY_FORM);
-      setCreated({ ...doctor, email: form.email.trim(), password });
+      setCreated({ ...doctor, email: form.email.trim() });
       await load();
     } catch (err) {
       toast.error(errorText(t, err));
