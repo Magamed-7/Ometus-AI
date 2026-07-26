@@ -22,14 +22,14 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 z-40 flex w-full items-center justify-around rounded-t-xl border-t border-outline-variant bg-surface px-2 py-2 shadow-lg md:hidden">
+    <nav className="fixed bottom-0 left-0 z-40 flex w-full items-stretch gap-0.5 rounded-t-xl border-t border-outline-variant bg-surface px-1 py-2 shadow-lg md:hidden">
       {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
           end={item.end}
           className={({ isActive }) =>
-            `flex flex-col items-center justify-center rounded-full px-3 py-1 transition-colors ${
+            `flex min-w-0 flex-1 flex-col items-center justify-center rounded-full px-1 py-1 transition-colors ${
               isActive
                 ? "bg-primary-container text-on-primary-container"
                 : "text-on-surface-variant"
@@ -38,10 +38,15 @@ export default function BottomNav() {
         >
           {({ isActive }) => (
             <>
-              <span aria-hidden="true" className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>
+              <span
+                aria-hidden="true"
+                className={`material-symbols-outlined text-xl ${isActive ? "filled" : ""}`}
+              >
                 {item.icon}
               </span>
-              <span className="text-label-md font-semibold">{item.label}</span>
+              <span className="w-full truncate text-center text-[11px] font-semibold leading-tight">
+                {item.label}
+              </span>
             </>
           )}
         </NavLink>

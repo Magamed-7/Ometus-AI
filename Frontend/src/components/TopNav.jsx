@@ -47,9 +47,9 @@ export default function TopNav() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-outline-variant bg-surface/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-md px-sm py-xs md:px-lg">
-        <div className="flex items-center gap-md">
-          <NavLink to="/" className="text-headline-md font-bold text-primary">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-xs px-sm py-xs md:gap-md md:px-lg">
+        <div className="flex min-w-0 items-center gap-md">
+          <NavLink to="/" className="truncate text-xl font-bold text-primary md:text-headline-md">
             {t("brand.name")}
           </NavLink>
           <nav className="ml-lg hidden gap-md md:flex">
@@ -61,7 +61,7 @@ export default function TopNav() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-xs">
+        <div className="flex shrink-0 items-center gap-xs">
           <form onSubmit={onSearch} className="relative hidden items-center lg:flex">
             <span aria-hidden="true" className="material-symbols-outlined absolute left-3 text-on-surface-variant">
               search

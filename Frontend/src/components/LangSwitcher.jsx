@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { LANGS, useI18n } from "../lib/i18n.jsx";
 
 export default function LangSwitcher() {
-  const { lang, setLang } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -23,10 +23,12 @@ export default function LangSwitcher() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Выбрать язык"
-        className="flex h-11 items-center gap-1 rounded-full border border-outline-variant px-3 text-label-md font-semibold text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
+        aria-label={t("nav.pickLanguage")}
+        className="flex h-11 items-center gap-1 rounded-full border border-outline-variant px-2 text-label-md font-semibold text-on-surface-variant transition-colors hover:border-primary hover:text-primary sm:px-3"
       >
-        <span aria-hidden="true" className="material-symbols-outlined text-lg">language</span>
+        <span aria-hidden="true" className="material-symbols-outlined hidden text-lg sm:inline">
+          language
+        </span>
         {current.label}
       </button>
       {open && (
