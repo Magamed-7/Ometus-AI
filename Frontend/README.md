@@ -43,12 +43,18 @@ npm run preview           # раздать собранное локально
 
 ```bash
 docker build -t ometus-frontend --build-arg VITE_API_URL=http://127.0.0.1:8000 .
-docker run -p 8080:80 ometus-frontend
+docker run -d --name ometus-frontend --restart unless-stopped -p 8080:80 ometus-frontend
 ```
 
 Двухступенчатая сборка: `node:22-alpine` собирает, `nginx:alpine` раздаёт. В `nginx.conf` есть
 `try_files … /index.html` — без него перезагрузка страницы на вложенном маршруте вроде
-`/admin/appointments` вернула бы 404 от nginx.
+`/admin/appointments` вернула бы 404 от nginx. Образ получается ~93 МБ.
+
+> **Из контейнера страница открывается на `http://localhost:8080`, и бэкенд её запросы отклонит:**
+> в `Backend/.env` в `CORS_ORIGINS` перечислены только `http://localhost:5173` и
+> `http://localhost:8000`. Чтобы контейнер заработал с API, нужно добавить туда
+> `http://localhost:8080` и перезапустить бэкенд. Это правка на стороне бэкенда — фронтенд
+> тут ни при чём.
 
 ## Что где лежит
 
