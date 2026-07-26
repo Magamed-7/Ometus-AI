@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -70,6 +71,16 @@ class LlmMetricOut(BaseModel):
     avg_duration_ms: int
     prompt_tokens: int
     completion_tokens: int
+    cost_usd: Decimal
+
+
+class AiCostsOut(BaseModel):
+    total_usd: Decimal
+    budget_usd: Decimal
+    budget_used_percent: float | None = None
+    over_budget: bool
+    prices_configured: bool
+    by_model: list[LlmMetricOut]
 
 
 class CheckupSuggestionOut(BaseModel):

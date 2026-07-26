@@ -3,6 +3,9 @@ from datetime import date
 from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from decimal import Decimal
+
+from app.ai.pricing import MONTHLY_BUDGET, PRICES, calculate_cost
 from app.models.model_ai_metric import AiLlmCall
 
 
@@ -20,6 +23,12 @@ async def save_calls(user_id: int, calls: list, db: AsyncSession):
             prompt_tokens=call.get("prompt_tokens"),
             completion_tokens=call.get("completion_tokens"),
             error=call.get("error"),
+            cost_usd=calculate_cost(
+                call["provider"],
+                call["model"],
+                call.get("prompt_tokens"),
+                call.get("completion_tokens"),
+            ),
         )
         for call in calls
     ]
@@ -38,6 +47,7 @@ async def get_metrics(db: AsyncSession, date_from: date | None = None, date_to: 
         func.avg(AiLlmCall.duration_ms),
         func.sum(AiLlmCall.prompt_tokens),
         func.sum(AiLlmCall.completion_tokens),
+        func.sum(AiLlmCall.cost_usd),
     ).group_by(AiLlmCall.provider, AiLlmCall.model)
 
     if date_from:
@@ -59,6 +69,24 @@ async def get_metrics(db: AsyncSession, date_from: date | None = None, date_to: 
             "avg_duration_ms": int(avg_duration or 0),
             "prompt_tokens": prompt_tokens or 0,
             "completion_tokens": completion_tokens or 0,
+            "cost_usd": cost or Decimal("0"),
         }
-        for provider, model, calls, successes, avg_duration, prompt_tokens, completion_tokens in result.all()
+        for provider, model, calls, successes, avg_duration, prompt_tokens, completion_tokens, cost in result.all()
     ]
+
+
+async def get_costs(db: AsyncSession, date_from: date | None = None, date_to: date | None = None):
+    rows = await get_metrics(db, date_from, date_to)
+    total = sum((row["cost_usd"] for row in rows), Decimal("0"))
+    budget = MONTHLY_BUDGET
+
+    return {
+        "total_usd": total,
+        "budget_usd": budget,
+        "budget_used_percent": (
+            round(float(total / budget * 100), 2) if budget > 0 else None
+        ),
+        "over_budget": bool(budget > 0 and total > budget),
+        "prices_configured": bool(PRICES),
+        "by_model": rows,
+    }

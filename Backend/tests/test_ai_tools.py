@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import select
@@ -780,6 +781,90 @@ async def test_history_of_foreign_conversation_is_denied(client, db):
 
 SUGGESTION_URL = "/api/ai/suggestion"
 METRICS_URL = "/api/admin/ai-metrics"
+
+
+COSTS_URL = "/api/admin/ai-costs"
+
+
+def test_prices_parsed_from_config_string():
+    from app.ai.pricing import parse_prices
+
+    prices = parse_prices("groq:llama=0.59/0.79, gemini:flash=0.30/2.50, битая строка")
+
+    assert prices["groq:llama"] == (Decimal("0.59"), Decimal("0.79"))
+    assert prices["gemini:flash"] == (Decimal("0.30"), Decimal("2.50"))
+    assert "битая строка" not in prices
+
+
+def test_cost_is_zero_for_unpriced_model():
+    from app.ai.pricing import calculate_cost
+
+    assert calculate_cost("groq", "неизвестная-модель", 1000, 500) == Decimal("0")
+
+
+def test_cost_calculated_per_million_tokens(monkeypatch):
+    from app.ai import pricing
+
+    monkeypatch.setitem(pricing.PRICES, "groq:test", (Decimal("1.00"), Decimal("2.00")))
+
+    cost = pricing.calculate_cost("groq", "test", 1_000_000, 500_000)
+
+    assert cost == Decimal("2.000000")
+
+
+async def test_costs_endpoint_sums_spending(client, db, monkeypatch):
+    from app.ai import metrics, pricing
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    monkeypatch.setitem(pricing.PRICES, "groq:priced", (Decimal("3.00"), Decimal("6.00")))
+
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
+        metrics.record_call("groq", "priced", True, 20, 1_000_000, 1_000_000)
+        return "ответ"
+
+    monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
+
+    await ask(client, headers, "болит сердце")
+
+    admin = await admin_headers(client, db, "costs.admin@ometus.test")
+    body = (await client.get(COSTS_URL, headers=admin)).json()
+
+    assert Decimal(body["total_usd"]) == Decimal("9.000000")
+    assert body["prices_configured"] is True
+    assert body["by_model"][0]["model"] == "priced"
+
+
+async def test_costs_flag_budget_overrun(client, db, monkeypatch):
+    from app.ai import metrics, pricing
+    from app.services import crud_ai_metric
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    monkeypatch.setitem(pricing.PRICES, "groq:priced", (Decimal("10.00"), Decimal("10.00")))
+    monkeypatch.setattr(crud_ai_metric, "MONTHLY_BUDGET", Decimal("5"))
+
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
+        metrics.record_call("groq", "priced", True, 20, 1_000_000, 0)
+        return "ответ"
+
+    monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
+
+    await ask(client, headers, "болит сердце")
+
+    admin = await admin_headers(client, db, "budget.admin@ometus.test")
+    body = (await client.get(COSTS_URL, headers=admin)).json()
+
+    assert body["over_budget"] is True
+    assert body["budget_used_percent"] == 200.0
+
+
+async def test_costs_require_admin(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    assert (await client.get(COSTS_URL, headers=headers)).status_code == 403
 
 
 ASK_ASYNC_URL = "/api/ai/ask-async"

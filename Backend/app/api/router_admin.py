@@ -22,13 +22,14 @@ from app.schemas.schema_doctor import (
     DoctorUpdateIn,
     SpecializationIn,
 )
-from app.schemas.schema_ai import LlmMetricOut
+from app.schemas.schema_ai import AiCostsOut, LlmMetricOut
 from app.schemas.schema_patient import DependentCreateIn, PatientOut
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
 from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
 from app.schemas.schema_schedule import ScheduleCreateIn, ScheduleOut, ScheduleUpdateIn
-from app.schemas.schema_user import RoleUpdateIn, UserOut
+from app.schemas.schema_user import Role, RoleUpdateIn, UserOut
 from app.services import (
+    crud_admin_log,
     crud_ai_metric,
     crud_appointment,
     crud_department,
@@ -305,6 +306,23 @@ async def get_ai_metrics(
     return await crud_ai_metric.get_metrics(db, date_from, date_to)
 
 
+@admin_router.get("/ai-costs", response_model=AiCostsOut)
+async def get_ai_costs(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if date_from and date_to and date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала должна быть раньше даты окончания",
+            status_code=400,
+        )
+
+    return await crud_ai_metric.get_costs(db, date_from, date_to)
+
+
 @admin_router.get("/doctors/{doctor_id}/schedules", response_model=list[ScheduleOut])
 async def list_doctor_schedules(
     doctor_id: int,
@@ -481,11 +499,14 @@ async def get_summary_report(
 
 @admin_router.get("/users", response_model=list[UserOut])
 async def list_users(
-    role: str | None = None,
+    role: Role | None = None,
+    email: str | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_role("admin")),
 ):
-    return await crud_user.get_all_users(db, role)
+    return await crud_user.get_all_users(db, role, email, limit, offset)
 
 
 @admin_router.put("/users/{user_id}/role", response_model=UserOut)
@@ -637,3 +658,13 @@ async def cancel_appointment_by_admin(
 
     await crud_appointment.set_status(appointment, "cancelled", db)
     return {"message": "Запись отменена"}
+
+
+@admin_router.get("/audit")
+async def list_admin_actions(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    return await crud_admin_log.get_actions(db, limit, offset)

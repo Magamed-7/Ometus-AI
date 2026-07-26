@@ -44,6 +44,12 @@ class Settings:
         "GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta/models"
     )
 
+    # цены за миллион токенов в формате "провайдер:модель=вход/выход", через запятую.
+    # по умолчанию пусто: тарифы зависят от плана и меняются, поэтому пока их не впишут,
+    # стоимость считается нулевой — лучше ноль, чем выдуманное число в отчёте о деньгах
+    LLM_PRICES: str = os.getenv("LLM_PRICES", "")
+    AI_MONTHLY_BUDGET_USD: str = os.getenv("AI_MONTHLY_BUDGET_USD", "0")
+
     CORS_ORIGINS: list[str] = os.getenv(
         "CORS_ORIGINS", "http://localhost:5173,http://localhost:8000"
     ).split(",")
