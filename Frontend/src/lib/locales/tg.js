@@ -286,6 +286,12 @@ export const tg = {
     noDoctorDepartments: "Табиб ҳанӯз ба ягон шӯъба таъин нашудааст",
     extraSpecializations: "Ихтисосҳои иловагӣ",
     noExtraSpecializations: "Ихтисосҳои иловагӣ нест",
+    appointments: "Ҳамаи навбатҳо",
+    doctor: "Табиб",
+    patient: "Бемор",
+    noAppointments: "Дар давраи интихобшуда навбат нест",
+    found: "Навбатҳо ёфт шуд: {count}",
+    emergency: "Фаврӣ",
   },
   status: {
     booked: "Навбат",

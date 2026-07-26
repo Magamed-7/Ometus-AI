@@ -5,6 +5,7 @@ const SECTIONS = [
   { to: "/admin/filials", icon: "apartment", key: "nav.adminFilials" },
   { to: "/admin/departments", icon: "meeting_room", key: "nav.adminDepartments" },
   { to: "/admin/doctors", icon: "stethoscope", key: "nav.adminDoctors" },
+  { to: "/admin/appointments", icon: "event_note", key: "admin.appointments" },
   { to: "/admin/reports", icon: "monitoring", key: "nav.adminReports" },
 ];
 

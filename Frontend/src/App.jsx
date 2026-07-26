@@ -4,6 +4,7 @@ import Layout from "./components/Layout.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
 import Account from "./pages/Account.jsx";
+import AdminAppointments from "./pages/admin/AdminAppointments.jsx";
 import AdminDepartments from "./pages/admin/AdminDepartments.jsx";
 import AdminDoctors from "./pages/admin/AdminDoctors.jsx";
 import AdminFilials from "./pages/admin/AdminFilials.jsx";
@@ -69,6 +70,7 @@ export default function App() {
             <Route path="filials" element={<AdminFilials />} />
             <Route path="departments" element={<AdminDepartments />} />
             <Route path="doctors" element={<AdminDoctors />} />
+            <Route path="appointments" element={<AdminAppointments />} />
             <Route path="reports" element={<AdminReports />} />
           </Route>
           <Route path="*" element={<NotFound />} />

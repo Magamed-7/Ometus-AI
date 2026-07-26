@@ -286,6 +286,12 @@ export const en = {
     noDoctorDepartments: "The doctor is not assigned to any department yet",
     extraSpecializations: "Extra specializations",
     noExtraSpecializations: "No extra specializations",
+    appointments: "All appointments",
+    doctor: "Doctor",
+    patient: "Patient",
+    noAppointments: "No appointments for the selected period",
+    found: "Appointments found: {count}",
+    emergency: "Urgent",
   },
   status: {
     booked: "Booked",

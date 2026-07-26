@@ -286,6 +286,12 @@ export const ru = {
     noDoctorDepartments: "Врач ещё не назначен ни в одно отделение",
     extraSpecializations: "Дополнительные специализации",
     noExtraSpecializations: "Дополнительных специализаций нет",
+    appointments: "Все записи",
+    doctor: "Врач",
+    patient: "Пациент",
+    noAppointments: "Записей за выбранный период нет",
+    found: "Найдено записей: {count}",
+    emergency: "Срочная",
   },
   status: {
     booked: "Записан",
