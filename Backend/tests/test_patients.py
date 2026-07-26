@@ -174,3 +174,102 @@ async def test_dependents_isolated_between_guardians(client):
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+ADMIN_DEPENDENTS_URL = "/api/admin/patients"
+
+
+async def test_dependents_are_patients_only(client, db):
+    headers = await admin_headers(client, db)
+
+    listing = await client.get(DEPENDENTS_URL, headers=headers)
+    creating = await client.post(DEPENDENTS_URL, json={"full_name": "Малыш"}, headers=headers)
+
+    assert listing.status_code == 403
+    assert creating.status_code == 403
+    assert creating.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def test_dependents_are_limited_to_five(client):
+    await register(client)
+    headers = await auth_headers(client)
+
+    for number in range(5):
+        created = await client.post(
+            DEPENDENTS_URL, json={"full_name": f"Родственник {number}"}, headers=headers
+        )
+        assert created.status_code == 200
+
+    sixth = await client.post(DEPENDENTS_URL, json={"full_name": "Лишний"}, headers=headers)
+
+    assert sixth.status_code == 409
+    assert sixth.json()["error"]["code"] == "DEPENDENTS_LIMIT_REACHED"
+
+
+async def test_dependent_can_be_edited(client):
+    await register(client)
+    headers = await auth_headers(client)
+    created = await client.post(
+        DEPENDENTS_URL, json={"full_name": "Бабушка Оля"}, headers=headers
+    )
+    dependent_id = created.json()["id"]
+
+    response = await client.put(
+        f"{DEPENDENTS_URL}/{dependent_id}",
+        json={"full_name": "Бабушка Ольга", "phone": "+992900000001"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["full_name"] == "Бабушка Ольга"
+    assert response.json()["phone"] == "+992900000001"
+
+
+async def test_dependent_can_be_deleted(client):
+    await register(client)
+    headers = await auth_headers(client)
+    created = await client.post(DEPENDENTS_URL, json={"full_name": "Дедушка"}, headers=headers)
+    dependent_id = created.json()["id"]
+
+    response = await client.delete(f"{DEPENDENTS_URL}/{dependent_id}", headers=headers)
+    left = await client.get(DEPENDENTS_URL, headers=headers)
+
+    assert response.status_code == 200
+    assert left.json() == []
+
+
+async def test_dependent_of_another_guardian_is_untouchable(client):
+    await register(client)
+    await register(client, "other@ometus.test")
+    mine = await client.post(
+        DEPENDENTS_URL, json={"full_name": "Малыш"}, headers=await auth_headers(client)
+    )
+    dependent_id = mine.json()["id"]
+    stranger = await auth_headers(client, "other@ometus.test")
+
+    edited = await client.put(
+        f"{DEPENDENTS_URL}/{dependent_id}", json={"full_name": "Чужой"}, headers=stranger
+    )
+    deleted = await client.delete(f"{DEPENDENTS_URL}/{dependent_id}", headers=stranger)
+
+    assert edited.status_code == 404
+    assert deleted.status_code == 404
+
+
+async def test_admin_adds_dependent_in_patient_account(client, db):
+    await register(client)
+    patient_user = (await client.get("/api/users/me", headers=await auth_headers(client))).json()
+    headers = await admin_headers(client, db)
+
+    created = await client.post(
+        f"{ADMIN_DEPENDENTS_URL}/{patient_user['id']}/dependents",
+        json={"full_name": "Мама"},
+        headers=headers,
+    )
+    listing = await client.get(
+        f"{ADMIN_DEPENDENTS_URL}/{patient_user['id']}/dependents", headers=headers
+    )
+
+    assert created.status_code == 200
+    assert created.json()["guardian_user_id"] == patient_user["id"]
+    assert len(listing.json()) == 1

@@ -24,3 +24,9 @@ class DependentCreateIn(BaseModel):
     full_name: str
     date_of_birth: date | None = None
     phone: str | None = None
+
+
+class DependentUpdateIn(BaseModel):
+    full_name: str | None = None
+    date_of_birth: date | None = None
+    phone: str | None = None

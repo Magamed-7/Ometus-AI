@@ -1,9 +1,14 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.model_appointment import Appointment
 from app.models.model_patient import Patient
 from app.models.model_user import User
-from app.schemas.schema_patient import DependentCreateIn, PatientUpdateIn
+from app.schemas.schema_patient import DependentCreateIn, DependentUpdateIn, PatientUpdateIn
+
+# папа, мама, бабушка, дедушка, старший брат или сестра — больше одному аккаунту не нужно,
+# а без потолка один пользователь может наплодить тысячу валидных patient_id для записи
+DEPENDENTS_LIMIT = 5
 
 
 async def create_patient(user: User, db: AsyncSession):
@@ -54,6 +59,46 @@ async def create_dependent(guardian: User, data: DependentCreateIn, db: AsyncSes
     await db.commit()
     await db.refresh(patient)
     return patient
+
+
+async def count_dependents(guardian_user_id: int, db: AsyncSession):
+    result = await db.execute(
+        select(func.count())
+        .select_from(Patient)
+        .where(Patient.guardian_user_id == guardian_user_id)
+    )
+    return result.scalar_one()
+
+
+async def get_dependent(dependent_id: int, guardian_user_id: int, db: AsyncSession):
+    result = await db.execute(
+        select(Patient)
+        .where(Patient.id == dependent_id)
+        .where(Patient.guardian_user_id == guardian_user_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def update_dependent(patient: Patient, data: DependentUpdateIn, db: AsyncSession):
+    patient.full_name = data.full_name or patient.full_name
+    patient.date_of_birth = data.date_of_birth or patient.date_of_birth
+    patient.phone = data.phone or patient.phone
+
+    await db.commit()
+    await db.refresh(patient)
+    return patient
+
+
+async def delete_dependent(patient: Patient, db: AsyncSession):
+    await db.delete(patient)
+    await db.commit()
+
+
+async def has_appointments(patient_id: int, db: AsyncSession):
+    result = await db.execute(
+        select(func.count()).select_from(Appointment).where(Appointment.patient_id == patient_id)
+    )
+    return result.scalar_one() > 0
 
 
 async def get_dependents(guardian_user_id: int, db: AsyncSession):

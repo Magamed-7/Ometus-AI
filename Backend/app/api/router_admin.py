@@ -20,6 +20,7 @@ from app.schemas.schema_doctor import (
     DoctorUpdateIn,
     SpecializationIn,
 )
+from app.schemas.schema_patient import DependentCreateIn, PatientOut
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
 from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
 from app.schemas.schema_schedule import ScheduleCreateIn, ScheduleOut, ScheduleUpdateIn
@@ -470,3 +471,48 @@ async def change_user_role(
         await crud_patient.create_patient(user, db)
 
     return await crud_user.set_role(user, data.role, db)
+
+
+# админ заводит родственника «в аккаунте пациента» — тот же лимит и те же правила,
+# что и у самого пациента, просто действие выполняется от лица администратора
+@admin_router.get("/patients/{user_id}/dependents", response_model=list[PatientOut])
+async def list_patient_dependents(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    user = await crud_user.get_by_id(user_id, db)
+
+    if user is None:
+        raise AppError(code="USER_NOT_FOUND", message="Пользователь не найден", status_code=404)
+
+    return await crud_patient.get_dependents(user_id, db)
+
+
+@admin_router.post("/patients/{user_id}/dependents", response_model=PatientOut)
+async def add_patient_dependent(
+    user_id: int,
+    data: DependentCreateIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    user = await crud_user.get_by_id(user_id, db)
+
+    if user is None:
+        raise AppError(code="USER_NOT_FOUND", message="Пользователь не найден", status_code=404)
+
+    if user.role != "patient":
+        raise AppError(
+            code="NOT_A_PATIENT",
+            message="Родственников можно заводить только в аккаунте пациента",
+            status_code=400,
+        )
+
+    if await crud_patient.count_dependents(user_id, db) >= crud_patient.DEPENDENTS_LIMIT:
+        raise AppError(
+            code="DEPENDENTS_LIMIT_REACHED",
+            message=f"Больше {crud_patient.DEPENDENTS_LIMIT} родственников добавить нельзя",
+            status_code=409,
+        )
+
+    return await crud_patient.create_dependent(user, data, db)

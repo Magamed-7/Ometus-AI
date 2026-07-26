@@ -2,11 +2,17 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
+from app.api.permissions import require_role
 from app.core.errors import AppError
 from app.core.security import verify_password
 from app.db.database import get_db
 from app.models.model_user import User
-from app.schemas.schema_patient import DependentCreateIn, PatientOut, PatientUpdateIn
+from app.schemas.schema_patient import (
+    DependentCreateIn,
+    DependentUpdateIn,
+    PatientOut,
+    PatientUpdateIn,
+)
 from app.schemas.schema_user import EmailChangeIn, PasswordChangeIn, UserOut, UserUpdateIn
 from app.services import crud_patient, crud_user
 
@@ -98,9 +104,11 @@ async def update_my_patient_profile(
     return await crud_patient.update_patient(patient, data, db)
 
 
+# карточки родственников заводит только сам пациент: врачу, регистратору и админу
+# в своём аккаунте они не нужны, а get_current_user пускал сюда кого угодно
 @users_router.get("/me/dependents", response_model=list[PatientOut])
 async def get_my_dependents(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("patient")),
     db: AsyncSession = Depends(get_db),
 ):
     return await crud_patient.get_dependents(current_user.id, db)
@@ -109,7 +117,52 @@ async def get_my_dependents(
 @users_router.post("/me/dependents", response_model=PatientOut)
 async def add_my_dependent(
     data: DependentCreateIn,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("patient")),
     db: AsyncSession = Depends(get_db),
 ):
+    if await crud_patient.count_dependents(current_user.id, db) >= crud_patient.DEPENDENTS_LIMIT:
+        raise AppError(
+            code="DEPENDENTS_LIMIT_REACHED",
+            message=f"Больше {crud_patient.DEPENDENTS_LIMIT} родственников добавить нельзя",
+            status_code=409,
+        )
+
     return await crud_patient.create_dependent(current_user, data, db)
+
+
+@users_router.put("/me/dependents/{dependent_id}", response_model=PatientOut)
+async def update_my_dependent(
+    dependent_id: int,
+    data: DependentUpdateIn,
+    current_user: User = Depends(require_role("patient")),
+    db: AsyncSession = Depends(get_db),
+):
+    dependent = await crud_patient.get_dependent(dependent_id, current_user.id, db)
+
+    if dependent is None:
+        raise AppError(code="PATIENT_NOT_FOUND", message="Родственник не найден", status_code=404)
+
+    return await crud_patient.update_dependent(dependent, data, db)
+
+
+@users_router.delete("/me/dependents/{dependent_id}")
+async def delete_my_dependent(
+    dependent_id: int,
+    current_user: User = Depends(require_role("patient")),
+    db: AsyncSession = Depends(get_db),
+):
+    dependent = await crud_patient.get_dependent(dependent_id, current_user.id, db)
+
+    if dependent is None:
+        raise AppError(code="PATIENT_NOT_FOUND", message="Родственник не найден", status_code=404)
+
+    # записи на приём ссылаются на карточку: снести её — значит потерять историю визитов
+    if await crud_patient.has_appointments(dependent_id, db):
+        raise AppError(
+            code="PATIENT_HAS_APPOINTMENTS",
+            message="У родственника есть записи на приём — карточку нельзя удалить",
+            status_code=409,
+        )
+
+    await crud_patient.delete_dependent(dependent, db)
+    return {"message": "Карточка родственника удалена"}
