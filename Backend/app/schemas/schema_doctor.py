@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class DoctorOut(BaseModel):
@@ -11,7 +11,7 @@ class DoctorOut(BaseModel):
 
 
 class DoctorCreateIn(BaseModel):
-    email: str
+    email: EmailStr
     password: str | None = None
     full_name: str
     specialization: str

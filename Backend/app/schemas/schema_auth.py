@@ -1,8 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class RegisterIn(BaseModel):
-    email: str
+    email: EmailStr
     password: str = Field(min_length=8)
     first_name: str | None = None
     last_name: str | None = None
@@ -10,12 +10,12 @@ class RegisterIn(BaseModel):
 
 
 class LoginIn(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
 class VerifyEmailIn(BaseModel):
-    email: str
+    email: EmailStr
     code: str
 
 

@@ -1,5 +1,11 @@
+import email_validator
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+# после перехода схем на EmailStr домен `.test` перестал проходить валидацию:
+# email-validator по умолчанию режет зарезервированные домены (.test/.example/.invalid).
+# Тесты как раз для того их и используют, поэтому в тестовой среде разрешаем
+email_validator.TEST_ENVIRONMENT = True
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool

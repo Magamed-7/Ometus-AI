@@ -70,6 +70,30 @@ async def test_login_wrong_password(client):
     assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
 
 
+async def test_register_rejects_malformed_email(client):
+    response = await client.post(
+        REGISTER_URL, json={"email": "не почта", "password": "patient1234"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_login_rejects_malformed_email(client):
+    response = await client.post(LOGIN_URL, json={"email": "user@", "password": "patient1234"})
+
+    assert response.status_code == 422
+
+
+async def test_register_normalizes_email_domain(client):
+    response = await register(client, email="Patient@Ometus.TEST")
+
+    assert response.status_code == 200
+    # EmailStr приводит домен к нижнему регистру, но локальную часть не трогает —
+    # по RFC это разные почтовые ящики
+    assert response.json()["email"] == "Patient@ometus.test"
+
+
 async def test_login_requires_verified_email(client):
     await register(client)
     response = await client.post(
