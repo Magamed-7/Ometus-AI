@@ -11,6 +11,7 @@ class AskIn(BaseModel):
     slot_time: time | None = Field(default=None, alias="time")
     confirm: bool = False
     intent: str | None = None
+    conversation_id: int | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -18,6 +19,7 @@ class AskIn(BaseModel):
 class AskOut(BaseModel):
     action: str
     reply: str
+    conversation_id: int
     specialization: str | None = None
     error_code: str | None = None
     doctors: list[dict] | None = None
