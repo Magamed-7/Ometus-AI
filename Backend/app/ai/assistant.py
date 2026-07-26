@@ -310,6 +310,30 @@ async def classify_intent(message: str, history: list | None = None):
     return parse_intent(raw)
 
 
+def serialise_result(result: dict):
+    return json.loads(json.dumps(result, ensure_ascii=False, default=str))
+
+
+async def run_ask_task(task_id: str, data: AskIn, patient_id: int):
+    from app.db.database import get_session_factory
+    from app.services import crud_ai_task, crud_patient
+
+    factory = get_session_factory()
+
+    async with factory() as db:
+        try:
+            patient = await crud_patient.get_by_id(patient_id, db)
+
+            if patient is None:
+                await crud_ai_task.fail_task(task_id, "Пациент не найден", db)
+                return
+
+            result = await ask(data, patient, db)
+            await crud_ai_task.finish_task(task_id, serialise_result(result), db)
+        except Exception as error:
+            await crud_ai_task.fail_task(task_id, str(error), db)
+
+
 async def suggest_checkup(current_patient, db: AsyncSession, language: str = DEFAULT_LANGUAGE):
     overdue = await crud_appointment.get_overdue_checkup(current_patient.id, db)
 

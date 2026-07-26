@@ -17,6 +17,7 @@ from app.models import (  # noqa: E402, F401
     model_absence,
     model_ai_log,
     model_ai_metric,
+    model_ai_task,
     model_appointment,
     model_conversation,
     model_date_schedule,

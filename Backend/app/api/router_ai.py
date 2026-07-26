@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai import assistant
@@ -7,12 +7,13 @@ from app.core.errors import AppError
 from app.db.database import get_db
 from app.ai.i18n import DEFAULT_LANGUAGE
 from app.schemas.schema_ai import (
+    AiTaskOut,
     AskIn,
     AskOut,
     CheckupSuggestionOut,
     ConversationHistoryOut,
 )
-from app.services import crud_conversation
+from app.services import crud_ai_task, crud_conversation
 
 ai_router = APIRouter(prefix="/api/ai", tags=["AI"])
 
@@ -24,6 +25,34 @@ async def ask_assistant(
     db: AsyncSession = Depends(get_db),
 ):
     return await assistant.ask(data, patient, db)
+
+
+@ai_router.post("/ask-async", response_model=AiTaskOut)
+async def ask_assistant_async(
+    data: AskIn,
+    background_tasks: BackgroundTasks,
+    patient=Depends(get_current_patient),
+    db: AsyncSession = Depends(get_db),
+):
+    task = await crud_ai_task.create_task(
+        patient.id, data.model_dump(mode="json", by_alias=True), db
+    )
+    background_tasks.add_task(assistant.run_ask_task, task.id, data, patient.id)
+    return task
+
+
+@ai_router.get("/tasks/{task_id}", response_model=AiTaskOut)
+async def get_ai_task(
+    task_id: str,
+    patient=Depends(get_current_patient),
+    db: AsyncSession = Depends(get_db),
+):
+    task = await crud_ai_task.get_task(task_id, db)
+
+    if task is None or task.patient_id != patient.id:
+        raise AppError(code="TASK_NOT_FOUND", message="Задача не найдена", status_code=404)
+
+    return task
 
 
 @ai_router.get("/suggestion", response_model=CheckupSuggestionOut | None)

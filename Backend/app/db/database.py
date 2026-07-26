@@ -15,3 +15,9 @@ class Base(DeclarativeBase):
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
+
+
+# фоновым задачам нужна своя сессия: сессия запроса закрывается сразу после ответа,
+# а задача живёт дольше. Отдельная функция — чтобы тесты подменили фабрику на свою
+def get_session_factory():
+    return AsyncSessionLocal

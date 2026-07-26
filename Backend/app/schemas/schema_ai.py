@@ -49,6 +49,17 @@ class ConversationHistoryOut(BaseModel):
     messages: list[MessageOut]
 
 
+class AiTaskOut(BaseModel):
+    id: str
+    status: str
+    result_json: dict | None = None
+    error: str | None = None
+    created_at: datetime
+    finished_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class LlmMetricOut(BaseModel):
     provider: str
     model: str

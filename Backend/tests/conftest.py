@@ -38,6 +38,12 @@ async def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
+# фоновые задачи берут сессию не через Depends, а через фабрику — её тоже уводим
+# на тестовую базу, иначе задача пойдёт в настоящий Postgres
+import app.db.database as database_module  # noqa: E402
+
+database_module.get_session_factory = lambda: TestSessionLocal
+
 
 @pytest.fixture(autouse=True)
 async def prepare_db():

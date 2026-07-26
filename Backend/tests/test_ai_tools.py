@@ -782,6 +782,73 @@ SUGGESTION_URL = "/api/ai/suggestion"
 METRICS_URL = "/api/admin/ai-metrics"
 
 
+ASK_ASYNC_URL = "/api/ai/ask-async"
+TASKS_URL = "/api/ai/tasks"
+
+
+async def test_async_ask_returns_task_and_completes(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    created = await client.post(
+        ASK_ASYNC_URL, json={"message": "болит сердце"}, headers=headers
+    )
+
+    task_id = created.json()["id"]
+    assert created.status_code == 200
+
+    task = (await client.get(f"{TASKS_URL}/{task_id}", headers=headers)).json()
+
+    assert task["status"] == "done"
+    assert task["result_json"]["action"] == "doctors"
+    assert task["result_json"]["specialization"] == "кардиолог"
+    assert task["finished_at"] is not None
+
+
+async def test_async_task_records_failure(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    async def boom(data, patient, session):
+        raise RuntimeError("модель недоступна")
+
+    monkeypatch.setattr(assistant, "ask", boom)
+
+    created = await client.post(
+        ASK_ASYNC_URL, json={"message": "болит сердце"}, headers=headers
+    )
+    task_id = created.json()["id"]
+
+    task = (await client.get(f"{TASKS_URL}/{task_id}", headers=headers)).json()
+
+    assert task["status"] == "failed"
+    assert "модель недоступна" in task["error"]
+
+
+async def test_foreign_task_is_not_visible(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    owner_id, owner_headers = await setup_patient(client, "owner@ometus.test")
+    other_id, other_headers = await setup_patient(client, "other@ometus.test")
+
+    created = await client.post(
+        ASK_ASYNC_URL, json={"message": "болит сердце"}, headers=owner_headers
+    )
+    task_id = created.json()["id"]
+
+    response = await client.get(f"{TASKS_URL}/{task_id}", headers=other_headers)
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "TASK_NOT_FOUND"
+
+
+async def test_unknown_task_returns_404(client, db):
+    patient_id, headers = await setup_patient(client)
+
+    response = await client.get(f"{TASKS_URL}/does-not-exist", headers=headers)
+
+    assert response.status_code == 404
+
+
 def intent_json(primary, confidence=0.9, **parameters):
     import json as json_module
 
