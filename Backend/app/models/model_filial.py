@@ -11,9 +11,14 @@ class Filial(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    legal_name: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    inn: Mapped[str | None] = mapped_column(String, unique=True, nullable=True, index=True)
     city: Mapped[str] = mapped_column(String, nullable=False)
     address: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    license_number: Mapped[str | None] = mapped_column(String, nullable=True)
+    clinic_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    opening_hours: Mapped[str | None] = mapped_column(String, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
