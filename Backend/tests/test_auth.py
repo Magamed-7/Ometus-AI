@@ -4,6 +4,7 @@ REGISTER_URL = "/api/auth/register"
 LOGIN_URL = "/api/auth/login"
 VERIFY_EMAIL_URL = "/api/auth/verify-email"
 REFRESH_URL = "/api/auth/refresh"
+RESEND_URL = "/api/auth/resend-code"
 
 
 async def register(client, email="patient@ometus.test", password="patient1234"):
@@ -96,8 +97,6 @@ async def test_new_code_kills_the_previous_one(client, db, sent_emails):
 
 
 async def test_register_survives_broken_smtp(client, monkeypatch):
-    # SMTP лежит: аккаунт уже создан, поэтому 500 отдавать нельзя — иначе пользователь
-    # останется и без письма, и без возможности зарегистрироваться заново
     import app.services.crud_user as crud_user_module
     import app.services.email as email_module
 
@@ -160,8 +159,6 @@ async def test_register_normalizes_email_domain(client):
     response = await register(client, email="Patient@Ometus.TEST")
 
     assert response.status_code == 200
-    # EmailStr приводит домен к нижнему регистру, но локальную часть не трогает —
-    # по RFC это разные почтовые ящики
     assert response.json()["email"] == "Patient@ometus.test"
 
 
@@ -272,3 +269,68 @@ async def test_refresh_rejects_garbage_token(client):
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "INVALID_TOKEN"
+
+
+async def age_last_code(db, email, seconds):
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import select, update
+
+    from app.models.model_user import User
+    from app.models.model_verification import EmailVerificationCode
+
+    user = (await db.execute(select(User).where(User.email == email))).scalar_one()
+    await db.execute(
+        update(EmailVerificationCode)
+        .where(EmailVerificationCode.user_id == user.id)
+        .values(created_at=datetime.now(UTC) - timedelta(seconds=seconds))
+    )
+    await db.commit()
+
+
+async def test_resend_code_sends_a_new_one_and_kills_the_old(client, db, sent_emails):
+    await register(client)
+    first_code = sent_emails[0][1]
+    await age_last_code(db, "patient@ometus.test", 120)
+
+    response = await client.post(RESEND_URL, json={"email": "patient@ometus.test"})
+
+    assert response.status_code == 200
+    assert len(sent_emails) == 2
+    second_code = sent_emails[1][1]
+
+    stale = await client.post(
+        VERIFY_EMAIL_URL, json={"email": "patient@ometus.test", "code": first_code}
+    )
+    fresh = await client.post(
+        VERIFY_EMAIL_URL, json={"email": "patient@ometus.test", "code": second_code}
+    )
+
+    assert stale.status_code == 400
+    assert fresh.status_code == 200
+
+
+async def test_resend_code_is_rate_limited(client, sent_emails):
+    await register(client)
+
+    response = await client.post(RESEND_URL, json={"email": "patient@ometus.test"})
+
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "CODE_REQUESTED_TOO_OFTEN"
+    assert len(sent_emails) == 1
+
+
+async def test_resend_code_says_nothing_about_unknown_addresses(client, sent_emails):
+    response = await client.post(RESEND_URL, json={"email": "nobody@ometus.test"})
+
+    assert response.status_code == 200
+    assert sent_emails == []
+
+
+async def test_resend_code_does_not_write_to_a_verified_address(client, sent_emails):
+    await register_verified(client)
+
+    response = await client.post(RESEND_URL, json={"email": "patient@ometus.test"})
+
+    assert response.status_code == 200
+    assert len(sent_emails) == 1

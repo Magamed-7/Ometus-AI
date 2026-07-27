@@ -14,6 +14,7 @@ from app.schemas.schema_auth import (
     LoginIn,
     RefreshIn,
     RegisterIn,
+    ResendCodeIn,
     TokenPair,
     VerifyEmailIn,
 )
@@ -36,16 +37,12 @@ async def register(
     await crud_patient.create_patient(user, db)
     code = await crud_user.create_verification_code(user, db)
 
-    # ответ уходит сразу, письмо отправляется после него; как оно дошло —
-    # клиент узнаёт из websocket `/api/auth/verification/{email}`
     background.add_task(crud_user.deliver_verification_code, user.email, code)
     return user
 
 
 @auth_router.websocket("/verification/{email}")
 async def verification_status(websocket: WebSocket, email: str):
-    # канал статуса отправки кода: sending → sent либо failed.
-    # Ни кода, ни данных пользователя сюда не уходит — только чем закончилась отправка
     await websocket.accept()
     queue = notifications.subscribe(email)
 
@@ -96,6 +93,32 @@ async def refresh_token(data: RefreshIn, db: AsyncSession = Depends(get_db)):
     token_data = {"sub": str(user.id), "email": user.email, "role": user.role}
 
     return AccessToken(access_token=create_access_token(token_data))
+
+
+RESEND_ACCEPTED = {"message": "Если адрес зарегистрирован, код отправлен"}
+
+
+@auth_router.post("/resend-code")
+async def resend_code(
+    data: ResendCodeIn, background: BackgroundTasks, db: AsyncSession = Depends(get_db)
+):
+    user = await crud_user.get_by_email(data.email, db)
+
+    if user is None or user.is_verified:
+        return RESEND_ACCEPTED
+
+    elapsed = await crud_user.seconds_since_last_code(user, db)
+
+    if elapsed is not None and elapsed < crud_user.RESEND_COOLDOWN_SECONDS:
+        raise AppError(
+            code="CODE_REQUESTED_TOO_OFTEN",
+            message="Код уже отправлен. Повторить можно через минуту",
+            status_code=429,
+        )
+
+    code = await crud_user.create_verification_code(user, db)
+    background.add_task(crud_user.deliver_verification_code, user.email, code)
+    return RESEND_ACCEPTED
 
 
 @auth_router.post("/verify-email", response_model=UserOut)

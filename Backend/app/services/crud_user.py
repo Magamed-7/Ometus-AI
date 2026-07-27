@@ -51,7 +51,6 @@ async def get_all_users(
     if role:
         query = query.where(User.role == role)
 
-    # поиск по почте: без него в списке из тысяч пользователей нужного не найти
     if email:
         query = query.where(User.email.ilike(f"%{email.strip()}%"))
 
@@ -72,9 +71,6 @@ async def update_user(user: User, data: UserUpdateIn, db: AsyncSession):
     user.last_name = data.last_name or user.last_name
     user.phone = data.phone or user.phone
 
-    # имя владельца аккаунта живёт в users и нигде больше: карточка пациента только
-    # отражает его. Иначе после правки профиля в карточке остаётся старое имя,
-    # и врач на приёме видит одно, а пациент у себя — другое
     patient = await crud_patient.get_by_user_id(user.id, db)
 
     if patient is not None:
@@ -97,9 +93,6 @@ async def change_password(user: User, new_password: str, db: AsyncSession):
 
 
 async def change_email(user: User, new_email: str, db: AsyncSession):
-    # новая почта не подтверждена по определению, поэтому сбрасываем флаг:
-    # иначе аккаунт можно было бы увести на чужой адрес и войти без подтверждения.
-    # Код на новый адрес выпускает и ставит в очередь отправки сам эндпоинт
     user.email = new_email
     user.is_verified = False
 
@@ -108,9 +101,28 @@ async def change_email(user: User, new_email: str, db: AsyncSession):
     return user
 
 
+RESEND_COOLDOWN_SECONDS = 60
+
+
+async def seconds_since_last_code(user: User, db: AsyncSession):
+    result = await db.execute(
+        select(EmailVerificationCode.created_at)
+        .where(EmailVerificationCode.user_id == user.id)
+        .order_by(EmailVerificationCode.created_at.desc())
+        .limit(1)
+    )
+    issued_at = result.scalar_one_or_none()
+
+    if issued_at is None:
+        return None
+
+    if issued_at.tzinfo is None:
+        issued_at = issued_at.replace(tzinfo=UTC)
+
+    return (datetime.now(UTC) - issued_at).total_seconds()
+
+
 async def create_verification_code(user: User, db: AsyncSession):
-    # один активный код на пользователя: старые гасим, иначе после трёх запросов
-    # у человека на руках три рабочих кода, и отозвать их нечем
     await db.execute(
         delete(EmailVerificationCode).where(EmailVerificationCode.user_id == user.id)
     )
@@ -125,8 +137,6 @@ async def create_verification_code(user: User, db: AsyncSession):
     db.add(verification)
     await db.commit()
 
-    # саму отправку здесь не ждём: письмо уходит фоновой задачей, а её статус
-    # прилетает клиенту по websocket. Ответ эндпоинта не должен зависеть от Gmail
     return code
 
 

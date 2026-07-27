@@ -19,6 +19,10 @@ class VerifyEmailIn(BaseModel):
     code: str
 
 
+class ResendCodeIn(BaseModel):
+    email: EmailStr
+
+
 class RefreshIn(BaseModel):
     refresh_token: str
 
