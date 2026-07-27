@@ -42,9 +42,22 @@ function UserBubble({ text }) {
   );
 }
 
+function AnswerHeading({ text }) {
+  return (
+    <p className="px-xs text-label-md font-bold uppercase tracking-wide text-on-surface-variant">
+      {text}
+    </p>
+  );
+}
+
 function DoctorsAnswer({ t, data, onPickDoctor }) {
+  const heading = data.specialization
+    ? t("assistant.doctorsHeading", { specialization: data.specialization })
+    : t("assistant.doctorsHeadingPlain");
+
   return (
     <div className="flex flex-col gap-xs">
+      <AnswerHeading text={heading} />
       {data.doctors.map((doctor) => (
         <div
           key={doctor.doctor_id}
@@ -92,8 +105,17 @@ function SlotsAnswer({ t, lang, data, onPickSlot }) {
     byDate[date].sort((a, b) => a.time.localeCompare(b.time));
   }
 
+  const firstDate = data.slots[0]?.date;
+  const heading = data._doctorName
+    ? t("assistant.slotsHeadingDoctor", {
+        doctor: data._doctorName,
+        date: formatDate(firstDate, lang),
+      })
+    : t("assistant.slotsHeading", { date: formatDate(firstDate, lang) });
+
   return (
     <div className="flex flex-col gap-sm rounded-xl border border-outline-variant bg-surface-container-low p-sm">
+      <AnswerHeading text={heading} />
       {Object.entries(byDate).map(([date, slots]) => (
         <div key={date}>
           <p className="mb-xs text-label-md font-semibold text-on-surface-variant">
@@ -213,7 +235,7 @@ function Rating({ t, rating, onRate }) {
   );
 }
 
-function AssistantBubble({ data, t, lang, rating, onRate, onPickDoctor, onPickSlot }) {
+function AssistantBubble({ data, t, lang, rating, onRate, onPickDoctor, onPickSlot, onAsk }) {
   if (data.action === "emergency") return <EmergencyAnswer t={t} reply={data.reply} />;
 
   const isError = data.action === "error";
@@ -223,27 +245,45 @@ function AssistantBubble({ data, t, lang, rating, onRate, onPickDoctor, onPickSl
     <div className="flex max-w-[85%] gap-sm">
       <BotAvatar />
       <div className="flex w-full flex-col gap-sm">
-        <div
-          className={`flex gap-sm rounded-2xl rounded-tl-none border p-md ${
-            isError
-              ? "border-error/40 bg-error-container/30"
-              : "border-outline-variant bg-surface-container-lowest"
-          }`}
-        >
-          {(isError || isClarify) && (
-            <span
-              aria-hidden="true"
-              className={`material-symbols-outlined text-lg ${
-                isError ? "text-error" : "text-secondary"
-              }`}
-            >
-              {isError ? "error" : "help"}
-            </span>
-          )}
-          <p className="whitespace-pre-line text-body-md text-on-surface">{data.reply}</p>
-        </div>
-        {data.action === "doctors" && data.doctors?.length > 0 && (
+        {data.reply && (
+          <div
+            className={`flex gap-sm rounded-2xl rounded-tl-none border p-md ${
+              isError
+                ? "border-error/40 bg-error-container/30"
+                : "border-outline-variant bg-surface-container-lowest"
+            }`}
+          >
+            {(isError || isClarify) && (
+              <span
+                aria-hidden="true"
+                className={`material-symbols-outlined text-lg ${
+                  isError ? "text-error" : "text-secondary"
+                }`}
+              >
+                {isError ? "error" : "help"}
+              </span>
+            )}
+            <p className="whitespace-pre-line text-body-md text-on-surface">{data.reply}</p>
+          </div>
+        )}
+        {/* врачи приходят не только с action doctors: уточняющий вопрос по нескольким
+            специализациям тоже несёт карточки, чтобы пациент сразу видел, кто есть */}
+        {data.doctors?.length > 0 && (
           <DoctorsAnswer t={t} data={data} onPickDoctor={onPickDoctor} />
+        )}
+        {data.suggestions?.length > 0 && (
+          <div className="flex flex-wrap gap-xs">
+            {data.suggestions.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => onAsk(name)}
+                className="rounded-full border border-outline-variant bg-surface-container-low px-md py-1.5 text-label-md font-semibold text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
         )}
         {data.action === "slots" && data.slots?.length > 0 && (
           <SlotsAnswer t={t} lang={lang} data={data} onPickSlot={onPickSlot} />
@@ -365,7 +405,7 @@ export default function Assistant() {
     };
   }, [isPatient, loadChats, openChat]);
 
-  const runAsk = async (payload, userText) => {
+  const runAsk = async (payload, userText, meta) => {
     if (sending) return;
 
     if (!user) {
@@ -388,6 +428,7 @@ export default function Assistant() {
         language: lang,
       });
       if (payload.doctor_id) answer._doctorId = payload.doctor_id;
+      if (meta) Object.assign(answer, meta);
       setChatId(answer.conversation_id);
       setMessages((list) => [
         ...list,
@@ -416,7 +457,11 @@ export default function Assistant() {
   };
 
   const onPickDoctor = (doctor) => {
-    runAsk({ message: t("assistant.showSlots"), doctor_id: doctor.doctor_id }, doctor.full_name);
+    runAsk(
+      { message: t("assistant.showSlots"), doctor_id: doctor.doctor_id },
+      doctor.full_name,
+      { _doctorName: doctor.full_name }
+    );
   };
 
   const onPickSlot = (data, slot) => {
@@ -591,6 +636,7 @@ export default function Assistant() {
                 onRate={(feedback) => onRate(msg.data.message_id, feedback)}
                 onPickDoctor={onPickDoctor}
                 onPickSlot={onPickSlot}
+                onAsk={send}
               />
             )
           )}
