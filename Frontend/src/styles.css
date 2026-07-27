@@ -187,6 +187,15 @@ body {
   border-radius: 8px;
 }
 
+/* Это правило лежит вне @layer, а значит бьёт любую утилиту Tailwind (утилиты
+   живут в слое, а неслоёный css в каскаде сильнее). Поэтому focus:outline-none
+   на поле его НЕ снимает, и у составных полей, где обводку рисует контейнер
+   через focus-within, появлялась вторая рамка внутри первой. Такому полю
+   ставим .focus-in-parent — обводку показывает родитель */
+.focus-in-parent:focus-visible {
+  outline: none;
+}
+
 .skip-link {
   position: absolute;
   left: 50%;

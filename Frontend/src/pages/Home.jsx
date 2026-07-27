@@ -115,7 +115,7 @@ export default function Home() {
                       value={spec}
                       onChange={(e) => setSpec(e.target.value)}
                       aria-label={t("home.specialty")}
-                      className="w-full appearance-none rounded-lg bg-surface-container-low py-3 pl-10 pr-4 text-body-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full appearance-none rounded-lg bg-surface-container-low py-3 pl-10 pr-4 text-body-md"
                     >
                       <option value="">{t("home.specialty")}</option>
                       {SPECIALIZATIONS.map((s) => (
@@ -133,7 +133,7 @@ export default function Home() {
                       value={filialId}
                       onChange={(e) => setFilialId(e.target.value)}
                       aria-label={t("home.filial")}
-                      className="w-full appearance-none rounded-lg bg-surface-container-low py-3 pl-10 pr-4 text-body-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full appearance-none rounded-lg bg-surface-container-low py-3 pl-10 pr-4 text-body-md"
                     >
                       <option value="">{t("home.filial")}</option>
                       {filials.map((f) => (
@@ -152,7 +152,7 @@ export default function Home() {
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       aria-label={t("home.date")}
-                      className="w-full rounded-lg bg-surface-container-low py-3 pl-10 pr-4 text-body-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full rounded-lg bg-surface-container-low py-3 pl-10 pr-4 text-body-md"
                     />
                   </div>
                 </div>

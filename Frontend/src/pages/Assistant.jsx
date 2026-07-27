@@ -322,7 +322,7 @@ export default function Assistant() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={sending}
-              className="w-full bg-transparent px-sm py-sm text-body-md focus:outline-none disabled:opacity-60"
+              className="focus-in-parent w-full bg-transparent px-sm py-sm text-body-md disabled:opacity-60"
               placeholder={t("assistant.placeholder")}
               aria-label={t("assistant.placeholder")}
             />
