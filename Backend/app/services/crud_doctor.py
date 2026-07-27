@@ -54,6 +54,7 @@ async def create_doctor(data: DoctorCreateIn, db: AsyncSession):
         user_id=user.id,
         full_name=data.full_name,
         specialization=data.specialization,
+        photo_url=data.photo_url,
     )
 
     db.add(doctor)
@@ -119,6 +120,9 @@ async def search_doctors(
 async def update_doctor(doctor: Doctor, data: DoctorUpdateIn, db: AsyncSession):
     doctor.full_name = data.full_name or doctor.full_name
     doctor.specialization = data.specialization or doctor.specialization
+
+    if data.photo_url is not None:
+        doctor.photo_url = data.photo_url or None
 
     if data.full_name:
         user = await db.get(User, doctor.user_id)

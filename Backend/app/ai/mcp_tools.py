@@ -71,6 +71,7 @@ async def find_doctors(
                 "doctor_id": doctor.id,
                 "full_name": doctor.full_name,
                 "specialization": doctor.specialization,
+                "photo_url": doctor.photo_url,
                 "other_city": other_city,
             }
             for doctor in doctors

@@ -8,6 +8,7 @@ class DoctorOut(BaseModel):
     user_id: int
     full_name: str
     specialization: str
+    photo_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -18,6 +19,7 @@ class DoctorCreateIn(BaseModel):
     full_name: str
     specialization: str
     phone: str | None = None
+    photo_url: str | None = Field(default=None, max_length=255)
 
 
 class DoctorCreateOut(BaseModel):
@@ -33,6 +35,7 @@ class DoctorCreateOut(BaseModel):
 class DoctorUpdateIn(BaseModel):
     full_name: str | None = None
     specialization: str | None = None
+    photo_url: str | None = Field(default=None, max_length=255)
 
 
 class DoctorDepartmentIn(BaseModel):

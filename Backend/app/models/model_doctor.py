@@ -15,6 +15,7 @@ class Doctor(Base):
     )
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     specialization: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    photo_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     dismissed_at: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(
