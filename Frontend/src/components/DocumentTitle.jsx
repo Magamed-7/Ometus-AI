@@ -4,6 +4,7 @@ import { useT } from "../lib/i18n.jsx";
 
 const TITLES = {
   "/": "nav.home",
+  "/about": "nav.about",
   "/doctors": "nav.doctors",
   "/booking": "nav.booking",
   "/assistant": "nav.assistant",

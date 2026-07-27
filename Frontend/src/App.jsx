@@ -3,6 +3,7 @@ import DocumentTitle from "./components/DocumentTitle.jsx";
 import Layout from "./components/Layout.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
+import About from "./pages/About.jsx";
 import Account from "./pages/Account.jsx";
 import AdminAppointments from "./pages/admin/AdminAppointments.jsx";
 import AdminDepartments from "./pages/admin/AdminDepartments.jsx";
@@ -29,6 +30,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
           <Route path="/doctors" element={<Doctors />} />
           <Route path="/doctors/:id" element={<DoctorDetail />} />
           <Route path="/booking" element={<Booking />} />

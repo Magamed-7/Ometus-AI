@@ -17,6 +17,9 @@ export default function Footer() {
 
         <div className="flex flex-col gap-xs">
           <p className="mb-xs text-label-md font-bold text-on-surface">{t("footer.info")}</p>
+          <Link to="/about" className="text-label-md text-on-surface-variant hover:text-primary">
+            {t("nav.about")}
+          </Link>
           <Link to="/doctors" className="text-label-md text-on-surface-variant hover:text-primary">
             {t("nav.doctors")}
           </Link>
