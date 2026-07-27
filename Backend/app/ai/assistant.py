@@ -875,6 +875,76 @@ async def find_available_alternatives(db: AsyncSession, specialization: str):
     return available
 
 
+async def specialties_with_doctors(db: AsyncSession, specializations: list, city: str | None):
+    found = {}
+
+    for name in specializations:
+        result = await find_doctors(db, name, city=city)
+
+        if result["ok"] and result["data"]:
+            found[name] = result["data"]
+
+    return found
+
+
+# один врач может подойти сразу по двум специализациям (поиск идёт по подстроке),
+# и в списке он не должен появиться дважды
+def merge_doctors(found: dict):
+    merged = {}
+
+    for doctors in found.values():
+        for doctor in doctors:
+            merged.setdefault(doctor["doctor_id"], doctor)
+
+    return list(merged.values())
+
+
+async def collect_alternatives(db: AsyncSession, specializations: list):
+    alternatives = []
+
+    for name in specializations:
+        for candidate in await find_available_alternatives(db, name):
+            if candidate not in alternatives:
+                alternatives.append(candidate)
+
+    return alternatives
+
+
+# раньше при нескольких подходящих специализациях врачи не искались вовсе: пациент
+# читал «уточните, к какому специалисту» и не знал, есть ли такие врачи в клинике
+async def clarify_between_specialties(
+    db: AsyncSession, specializations: list, found: dict, language: str
+):
+    if found:
+        return {
+            "action": "clarify",
+            "suggestions": list(found),
+            "doctors": merge_doctors(found),
+            "reply": translate("clarify_choice", language) + ", ".join(found) + ".",
+        }
+
+    alternatives = await collect_alternatives(db, specializations)
+
+    if alternatives:
+        return {
+            "action": "clarify",
+            "specialization": specializations[0],
+            "alternatives": alternatives,
+            "reply": translate(
+                "no_specialist_alternatives",
+                language,
+                specialization=", ".join(specializations),
+                alternatives=", ".join(alternatives),
+            ),
+        }
+
+    return {
+        "action": "clarify",
+        "suggestions": specializations,
+        "reply": translate("clarify_choice", language) + ", ".join(specializations) + ".",
+    }
+
+
 async def suggest_doctors(
     data: AskIn,
     current_patient,
@@ -906,10 +976,14 @@ async def suggest_doctors(
         }
 
     if len(specializations) > 1:
-        return {
-            "action": "clarify",
-            "reply": translate("clarify_choice", language) + ", ".join(specializations) + ".",
-        }
+        found = await specialties_with_doctors(db, specializations, data.city)
+
+        # если врачи нашлись ровно по одной специализации, уточнять нечего:
+        # остальные варианты в клинике всё равно недоступны
+        if len(found) == 1:
+            specializations = list(found)
+        else:
+            return await clarify_between_specialties(db, specializations, found, language)
 
     specialization = specializations[0]
     emr = await load_emr_context(current_patient, db)

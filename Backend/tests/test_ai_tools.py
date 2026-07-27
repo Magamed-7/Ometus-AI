@@ -264,6 +264,33 @@ async def test_ambiguous_symptoms_ask_for_clarification(client, db):
     assert "офтальмолог" in body["reply"]
 
 
+async def test_ambiguous_specialties_show_real_doctors(client, db):
+    await setup_doctor(client, db, email="gastro@ometus.test", specialization="Гастроэнтеролог")
+    await setup_doctor(client, db, email="eyes@ometus.test", specialization="Офтальмолог")
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "болит живот и глаза")
+
+    body = response.json()
+    assert body["action"] == "clarify"
+    assert sorted(body["suggestions"]) == ["гастроэнтеролог", "офтальмолог"]
+    assert sorted(doctor["specialization"] for doctor in body["doctors"]) == [
+        "Гастроэнтеролог",
+        "Офтальмолог",
+    ]
+
+
+async def test_specialty_without_doctors_drops_out(client, db):
+    await setup_doctor(client, db, email="gastro@ometus.test", specialization="Гастроэнтеролог")
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "болит живот и глаза")
+
+    body = response.json()
+    assert body["action"] == "doctors"
+    assert body["specialization"] == "гастроэнтеролог"
+
+
 async def test_symptom_maps_to_specialization_and_finds_doctors(client, db):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
