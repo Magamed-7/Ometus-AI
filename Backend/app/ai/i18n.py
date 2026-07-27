@@ -57,11 +57,13 @@ REPLIES = {
         "clarify_reschedule": "Чтобы перенести запись, нужны её номер, новая дата и время.",
         "clarify_booking": "Чтобы записать, нужны врач, дата и время. Уточните, пожалуйста.",
         "clarify_schedule": "Уточните, расписание какого врача показать.",
-        "doctors_found": "По специализации «{specialization}» принимают: {doctors}. "
-        "Выберите врача, и я покажу свободное время.",
+        "doctors_found": "По специализации «{specialization}» нашёл врачей: {count}. "
+        "Выберите, кто удобнее, — покажу свободное время.",
         "no_specialist_alternatives": "Врача по специализации «{specialization}» в клинике нет. "
         "Могу предложить: {alternatives}. К кому записать?",
-        "slots_found": "Свободное время: {slots}. Скажите, какое время подходит, и я оформлю запись.",
+        "slots_found": "Вот свободное время у врача {doctor} на {date}. "
+        "Выберите удобное, и я запишу.",
+        "no_slots_today": "На {date} свободного времени нет, показываю ближайшие дни.",
         "booked": "Записал вас к врачу {doctor} ({specialization}), отделение {department}, "
         "{date} в {time}. Номер записи — {appointment_id}.",
         "cancelled": "Запись №{appointment_id} отменена.",
@@ -82,11 +84,13 @@ REPLIES = {
         "clarify_reschedule": "Барои интиқоли навбат рақам, санаи нав ва вақт лозим аст.",
         "clarify_booking": "Барои сабти ном духтур, сана ва вақт лозим аст. Лутфан аниқ кунед.",
         "clarify_schedule": "Аниқ кунед, ҷадвали кадом духтурро нишон диҳам.",
-        "doctors_found": "Аз рӯи мутахассисии «{specialization}» қабул мекунанд: {doctors}. "
-        "Духтурро интихоб кунед, ман вақти холиро нишон медиҳам.",
+        "doctors_found": "Аз рӯи мутахассисии «{specialization}» духтурон ёфтам: {count}. "
+        "Интихоб кунед, кадомаш қулай аст, — вақти холиро нишон медиҳам.",
         "no_specialist_alternatives": "Духтури «{specialization}» дар клиника нест. "
         "Пешниҳод карда метавонам: {alternatives}. Ба кадомаш навбат гирем?",
-        "slots_found": "Вақти холӣ: {slots}. Гӯед, кадом вақт мувофиқ аст, ман навбат мегирам.",
+        "slots_found": "Вақти холии духтур {doctor} барои {date}. "
+        "Вақти қулайро интихоб кунед, ман сабт мекунам.",
+        "no_slots_today": "Барои {date} вақти холӣ нест, рӯзҳои наздиктаринро нишон медиҳам.",
         "booked": "Шуморо ба духтур {doctor} ({specialization}), шӯъбаи {department}, "
         "{date} соати {time} сабт кардам. Рақами навбат — {appointment_id}.",
         "cancelled": "Навбати №{appointment_id} бекор карда шуд.",
@@ -107,11 +111,13 @@ REPLIES = {
         "clarify_reschedule": "To reschedule I need the appointment number, a new date and time.",
         "clarify_booking": "To book I need the doctor, date and time. Please clarify.",
         "clarify_schedule": "Please tell me whose schedule to show.",
-        "doctors_found": "Doctors for «{specialization}»: {doctors}. "
-        "Choose a doctor and I will show the available time.",
+        "doctors_found": "Found doctors for «{specialization}»: {count}. "
+        "Pick the one that suits you — I will show the available time.",
         "no_specialist_alternatives": "There is no «{specialization}» in the clinic. "
         "I can offer: {alternatives}. Who should I book?",
-        "slots_found": "Available time: {slots}. Tell me what suits you and I will book it.",
+        "slots_found": "Here is the available time with {doctor} on {date}. "
+        "Pick a slot and I will book it.",
+        "no_slots_today": "There is no free time on {date}, showing the nearest days.",
         "booked": "Booked you with {doctor} ({specialization}), department {department}, "
         "on {date} at {time}. Appointment number — {appointment_id}.",
         "cancelled": "Appointment #{appointment_id} has been cancelled.",

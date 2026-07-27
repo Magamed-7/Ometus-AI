@@ -1,3 +1,4 @@
+import re
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -863,8 +864,10 @@ async def test_template_reply_used_when_llm_unavailable(client, db):
 
     response = await ask(client, headers, "болит сердце")
 
-    assert "Иванова Мария" in response.json()["reply"]
-    assert "кардиолог" in response.json()["reply"]
+    reply = response.json()["reply"]
+    assert "кардиолог" in reply
+    # имя врача в тексте не перечисляется: его показывает карточка
+    assert "Иванова Мария" not in reply
 
 
 async def test_conversation_belongs_to_patient_not_user(client, db):
@@ -1525,7 +1528,7 @@ async def test_english_request_answered_in_english(client, db):
 
     assert body["language"] == "en"
     assert body["specialization"] == "кардиолог"
-    assert body["reply"].startswith("Doctors for")
+    assert body["reply"].startswith("Found doctors for")
 
 
 async def test_tajik_request_answered_in_tajik(client, db):
@@ -1536,7 +1539,7 @@ async def test_tajik_request_answered_in_tajik(client, db):
 
     assert body["language"] == "tg"
     assert body["specialization"] == "кардиолог"
-    assert "қабул мекунанд" in body["reply"]
+    assert "духтурон ёфтам" in body["reply"]
 
 
 async def test_emergency_answered_in_patient_language(client, db):
@@ -1556,7 +1559,46 @@ async def test_explicit_language_overrides_text(client, db):
     body = (await ask(client, headers, "болит сердце", language="en")).json()
 
     assert body["language"] == "en"
-    assert body["reply"].startswith("Doctors for")
+    assert body["reply"].startswith("Found doctors for")
+
+
+async def test_reply_does_not_enumerate_slots(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "покажите время", doctor_id=doctor_id)).json()
+
+    assert body["action"] == "slots"
+    assert len(body["slots"]) > 1
+    # время встречается только в карточках, в тексте его быть не должно
+    assert not re.search(r"\d{2}:\d{2}", body["reply"])
+    assert "Иванова Мария" in body["reply"]
+
+
+async def test_patient_name_reaches_the_prompt(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    await client.put(
+        "/api/users/me", json={"first_name": "Марям", "last_name": "Саидова"}, headers=headers
+    )
+    seen = {}
+
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
+        seen.update(context)
+        return None
+
+    monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
+
+    await ask(client, headers, "болит сердце")
+
+    assert seen["имя_пациента"] == "Марям"
+
+
+def test_the_prompt_forbids_listing_and_markdown():
+    prompt = assistant.build_system_prompt("ru")
+
+    assert "НЕ перечисляй" in prompt
+    assert "markdown" in prompt
 
 
 def test_sort_slots_by_preference_puts_liked_hours_first():

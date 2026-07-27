@@ -43,7 +43,12 @@ SYSTEM_PROMPT_TEMPLATE = (
     "диагнозы, оценивать тяжесть состояния и давать медицинские рекомендации. Сопоставление "
     "симптома и специализации — техническое, а не медицинское заключение. Отвечай на {language} "
     "языке, коротко и по делу, опираясь только на переданные данные системы. Ничего не "
-    "выдумывай: если данных нет, так и скажи."
+    "выдумывай: если данных нет, так и скажи. "
+    "Пиши тепло и коротко, 1–2 предложения, как живой администратор клиники. "
+    "Списки врачей, времени и дат НЕ перечисляй: их показывает интерфейс карточками. "
+    "Если знаешь имя пациента, обратись по нему. "
+    "Не повторяй одну и ту же фразу подряд — смотри историю диалога. "
+    "Не используй markdown, звёздочки и эмодзи."
 )
 
 SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(language="русском")
@@ -211,14 +216,27 @@ async def ask_llm(
     ) or await ask_gemini(message, context, history, language, system_prompt)
 
 
+# в карточке пациента full_name собран как «Имя Фамилия», поэтому обращение — первое слово
+def first_name_of(current_patient):
+    full_name = (current_patient.full_name or "").strip()
+    return full_name.split()[0] if full_name else None
+
+
 async def build_reply(
     message: str,
     fallback: str,
     context: dict,
     history: list | None = None,
     language: str = DEFAULT_LANGUAGE,
+    current_patient=None,
 ):
-    generated = await ask_llm(message, {**context, "черновик_ответа": fallback}, history, language)
+    context = {**context, "черновик_ответа": fallback}
+    name = first_name_of(current_patient) if current_patient else None
+
+    if name:
+        context["имя_пациента"] = name
+
+    generated = await ask_llm(message, context, history, language)
     return generated or fallback
 
 
@@ -231,12 +249,11 @@ def state_change_reply(fallback: str):
     return fallback
 
 
-def describe_doctors(doctors: list):
-    return ", ".join(f"{doctor['full_name']} (#{doctor['doctor_id']})" for doctor in doctors)
-
-
-def describe_slots(slots: list):
-    return ", ".join(f"{slot['date']} {slot['time'][:5]}" for slot in slots[:10])
+# врачи и слоты в текст ответа больше не перечисляются: их рисует интерфейс карточками,
+# а дублирование списком делало ответ простынёй. Модели они по-прежнему нужны в контексте,
+# иначе она начинает выдумывать имена и время, но короткого списка ей достаточно
+CONTEXT_DOCTORS_LIMIT = 5
+CONTEXT_SLOTS_LIMIT = 6
 
 
 def slot_hour(slot: dict):
@@ -715,7 +732,12 @@ async def my_appointments_flow(
         "action": "my_appointments",
         "appointments": appointments,
         "reply": await build_reply(
-            data.message, fallback, {"записи": appointments[:10]}, history, language
+            data.message,
+            fallback,
+            {"записи": appointments[:10]},
+            history,
+            language,
+            current_patient,
         ),
     }
 
@@ -746,7 +768,12 @@ async def doctor_schedule_flow(
         "action": "doctor_schedule",
         "schedule": schedule,
         "reply": await build_reply(
-            data.message, fallback, {"расписание": schedule}, history, language
+            data.message,
+            fallback,
+            {"расписание": schedule},
+            history,
+            language,
+            current_patient,
         ),
     }
 
@@ -814,6 +841,17 @@ async def show_slots(
     language: str = DEFAULT_LANGUAGE,
 ):
     result = await get_available_time(db, data.doctor_id, data.day)
+    note = ""
+
+    # на конкретный день врача может не быть свободного времени, но это не повод
+    # заканчивать разговор ошибкой: смотрим ближайшие дни и честно об этом говорим
+    if not result["ok"] and data.day and result["error"]["code"] == "NO_SLOTS":
+        nearest = await get_available_time(db, data.doctor_id)
+
+        if nearest["ok"]:
+            result = nearest
+            note = translate("no_slots_today", language, date=data.day) + " "
+
     await log_call(
         current_patient,
         "get_available_time",
@@ -832,13 +870,24 @@ async def show_slots(
 
     preferences = await crud_appointment.get_hour_preferences(current_patient.id, db)
     slots = sort_slots_by_preference(result["data"], preferences)
-    fallback = translate("slots_found", language, slots=describe_slots(slots))
+    doctor = await crud_doctor.get_by_id(data.doctor_id, db)
+    fallback = note + translate(
+        "slots_found",
+        language,
+        doctor=doctor.full_name if doctor else "",
+        date=slots[0]["date"],
+    )
 
     return {
         "action": "slots",
         "slots": slots,
         "reply": await build_reply(
-            data.message, fallback, {"свободные_слоты": slots[:10]}, history, language
+            data.message,
+            fallback,
+            {"свободные_слоты": slots[:CONTEXT_SLOTS_LIMIT]},
+            history,
+            language,
+            current_patient,
         ),
     }
 
@@ -1025,16 +1074,13 @@ async def suggest_doctors(
 
     doctors = result["data"]
     fallback = translate(
-        "doctors_found",
-        language,
-        specialization=specialization,
-        doctors=describe_doctors(doctors),
+        "doctors_found", language, specialization=specialization, count=len(doctors)
     )
 
     if doctors[0].get("other_city"):
         fallback = f"{translate('other_city_note', language, city=data.city)} {fallback}"
 
-    context = {"специализация": specialization, "врачи": doctors}
+    context = {"специализация": specialization, "врачи": doctors[:CONTEXT_DOCTORS_LIMIT]}
 
     if emr:
         context[EMR_CONTEXT_KEY] = emr
@@ -1044,5 +1090,7 @@ async def suggest_doctors(
         "specialization": specialization,
         "doctors": doctors,
         "emr_used": bool(emr),
-        "reply": await build_reply(data.message, fallback, context, history, language),
+        "reply": await build_reply(
+            data.message, fallback, context, history, language, current_patient
+        ),
     }
