@@ -175,7 +175,37 @@ body {
   color: var(--color-on-primary-container);
 }
 
+/* Шрифт иконок лежит у нас, а не на Google Fonts, и это принципиально.
+   Material Symbols рисует иконку лигатурой: в разметке написано слово
+   `search`, а глиф подставляет шрифт. Пока шрифт не приехал, в вёрстке
+   висят сами слова — «search», «logout», «health_and_safety» во весь hero.
+   На Google Fonts отваливались обе половины сразу: и css с font-family,
+   и woff2. Ctrl+F5 сбрасывает кэш и показывал это каждый раз.
+   `font-display: block` прячет текст на время загрузки, а локальный файл
+   убирает саму зависимость от сети.
+
+   Файл — сабсет только под используемые иконки (61 штука, 59 КБ вместо
+   3,5 МБ полного шрифта). Добавляешь новую иконку — пересобери сабсет,
+   иначе вместо неё снова будет слово. Список и команда: public/fonts/README.md */
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url("/fonts/material-symbols-subset.woff2") format("woff2");
+}
+
 .material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: "liga";
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
   display: inline-block;
   vertical-align: middle;
