@@ -140,6 +140,16 @@ async def test_register_rejects_malformed_email(client):
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
+async def test_validation_error_names_the_broken_field(client):
+    response = await client.post(
+        REGISTER_URL, json={"email": "не почта", "password": "short"}
+    )
+    error = response.json()["error"]
+
+    assert error["fields"] == ["email", "password"]
+    assert "email" in error["message"]
+
+
 async def test_login_rejects_malformed_email(client):
     response = await client.post(LOGIN_URL, json={"email": "user@", "password": "patient1234"})
 
