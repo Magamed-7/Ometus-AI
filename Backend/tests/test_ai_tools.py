@@ -579,7 +579,12 @@ async def test_cancel_frees_the_slot(client, db):
     appointment_id = await book(client, headers, doctor_id)
 
     await ask(client, headers, "отмени запись", intent="cancel", appointment_id=appointment_id)
-    slots = await ask(client, headers, "когда можно прийти", doctor_id=doctor_id)
+    # спрашиваем именно тот день, на который была запись: без даты ассистент отдаёт
+    # ближайший рабочий день, и если тест запускается после 09:00, слот отсеивается
+    # как прошедший — тест падал по часам, а не по делу
+    slots = await ask(
+        client, headers, "когда можно прийти", doctor_id=doctor_id, date=str(next_workday())
+    )
 
     times = [slot["time"] for slot in slots.json()["slots"]]
     assert "09:00:00" in times
