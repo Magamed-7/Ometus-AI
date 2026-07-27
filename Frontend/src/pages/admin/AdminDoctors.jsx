@@ -17,7 +17,7 @@ import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 import DoctorAssignments from "./DoctorAssignments.jsx";
 
-const EMPTY_FORM = { email: "", full_name: "", specialization: "", phone: "" };
+const EMPTY_FORM = { email: "", full_name: "", specialization: "", phone: "", photo_url: "" };
 
 export default function AdminDoctors() {
   const t = useT();
@@ -36,7 +36,7 @@ export default function AdminDoctors() {
   const [saving, setSaving] = useState(false);
   const [created, setCreated] = useState(null);
   const [editing, setEditing] = useState(null);
-  const [editForm, setEditForm] = useState({ full_name: "", specialization: "" });
+  const [editForm, setEditForm] = useState({ full_name: "", specialization: "", photo_url: "" });
   const [updating, setUpdating] = useState(false);
   const [assigning, setAssigning] = useState(null);
 
@@ -88,6 +88,7 @@ export default function AdminDoctors() {
         full_name: form.full_name.trim(),
         specialization: form.specialization.trim(),
         phone: form.phone.trim() || null,
+        photo_url: form.photo_url.trim() || null,
       });
       setCreating(false);
       setForm(EMPTY_FORM);
@@ -101,7 +102,11 @@ export default function AdminDoctors() {
   };
 
   const openEdit = (doctor) => {
-    setEditForm({ full_name: doctor.full_name, specialization: doctor.specialization });
+    setEditForm({
+      full_name: doctor.full_name,
+      specialization: doctor.specialization,
+      photo_url: doctor.photo_url || "",
+    });
     setEditing(doctor);
   };
 
@@ -113,6 +118,7 @@ export default function AdminDoctors() {
       await updateDoctor(editing.id, {
         full_name: editForm.full_name.trim(),
         specialization: editForm.specialization.trim(),
+        photo_url: editForm.photo_url.trim(),
       });
       toast.success(t("common.saved"));
       setEditing(null);
@@ -293,6 +299,13 @@ export default function AdminDoctors() {
               value={form.phone}
               onChange={change("phone")}
             />
+            <Field
+              label={t("admin.photoUrl")}
+              hint={t("common.optional")}
+              placeholder="/img/doctors/doc-01.webp"
+              value={form.photo_url}
+              onChange={change("photo_url")}
+            />
           </form>
         </Modal>
       )}
@@ -342,6 +355,13 @@ export default function AdminDoctors() {
               list="specialization-options"
               value={editForm.specialization}
               onChange={(e) => setEditForm((prev) => ({ ...prev, specialization: e.target.value }))}
+            />
+            <Field
+              label={t("admin.photoUrl")}
+              hint={t("common.optional")}
+              placeholder="/img/doctors/doc-01.webp"
+              value={editForm.photo_url}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, photo_url: e.target.value }))}
             />
             <datalist id="specialization-options">
               {specializations.map((name) => (

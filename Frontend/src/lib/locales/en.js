@@ -118,6 +118,7 @@ export const en = {
     hoursUnknown: "Call to check opening hours",
   },
   doctors: {
+    photoAlt: "Image of doctor {name}",
     title: "Doctors",
     subtitle: "Find a specialist and book a visit",
     filters: "Filters",
@@ -267,6 +268,7 @@ export const en = {
     filial: "Branch",
     fullName: "Full name",
     specialization: "Specialization",
+    photoUrl: "Photo URL",
     email: "Email",
     password: "Password",
     assignDepartment: "Assign department",

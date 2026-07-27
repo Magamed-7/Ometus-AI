@@ -5,6 +5,7 @@ import { searchDoctors } from "../lib/api/doctors.js";
 import { phone } from "../lib/format.js";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
+import DoctorAvatar from "../components/DoctorAvatar.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingStatus from "../components/LoadingStatus.jsx";
 import Skeleton from "../components/Skeleton.jsx";
@@ -13,15 +14,6 @@ const mapsUrl = (f) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     `${f.name} ${f.city} ${f.address}`
   )}`;
-
-const initials = (name) =>
-  (name || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
 
 const SPECIALIZATIONS = [
   "Кардиолог",
@@ -291,9 +283,11 @@ export default function Home() {
               ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
               : doctors.map((d) => (
                   <Card key={d.id} className="flex flex-col items-center p-md text-center">
-                    <div className="mb-md grid h-28 w-28 place-items-center rounded-full border-4 border-surface-container bg-primary-container text-on-primary-container">
-                      <span className="text-headline-lg font-bold">{initials(d.full_name)}</span>
-                    </div>
+                    <DoctorAvatar
+                      doctor={d}
+                      className="mb-md h-28 w-28 rounded-full border-4 border-surface-container"
+                      textClass="text-headline-lg"
+                    />
                     <h4 className="mb-base text-headline-md font-semibold text-on-surface">
                       {d.full_name}
                     </h4>

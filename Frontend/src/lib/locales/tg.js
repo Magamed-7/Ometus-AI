@@ -118,6 +118,7 @@ export const tg = {
     hoursUnknown: "Соатҳои кориро пурсед",
   },
   doctors: {
+    photoAlt: "Тасвири духтур {name}",
     title: "Табибон",
     subtitle: "Мутахассисро ёбед ва навбат гиред",
     filters: "Филтрҳо",
@@ -267,6 +268,7 @@ export const tg = {
     filial: "Филиал",
     fullName: "Ному насаб",
     specialization: "Ихтисос",
+    photoUrl: "Пайванди сурат",
     email: "Почта",
     password: "Рамз",
     assignDepartment: "Таъини шӯъба",

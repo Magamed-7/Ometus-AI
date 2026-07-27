@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ChatHistoryList from "../components/ChatHistoryList.jsx";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
+import DoctorAvatar from "../components/DoctorAvatar.jsx";
 import { Field } from "../components/Field.jsx";
 import Button from "../components/Button.jsx";
 import Modal from "../components/Modal.jsx";
@@ -63,9 +64,12 @@ function DoctorsAnswer({ t, data, onPickDoctor }) {
           key={doctor.doctor_id}
           className="flex items-center justify-between gap-sm rounded-xl border border-outline-variant bg-surface-container-low p-sm"
         >
-          <div className="min-w-0">
-            <p className="truncate font-bold text-on-surface">{doctor.full_name}</p>
-            <p className="text-label-md text-on-surface-variant">{doctor.specialization}</p>
+          <div className="flex min-w-0 items-center gap-sm">
+            <DoctorAvatar doctor={doctor} className="h-10 w-10 rounded-full" textClass="text-sm" />
+            <div className="min-w-0">
+              <p className="truncate font-bold text-on-surface">{doctor.full_name}</p>
+              <p className="text-label-md text-on-surface-variant">{doctor.specialization}</p>
+            </div>
           </div>
           <button
             type="button"

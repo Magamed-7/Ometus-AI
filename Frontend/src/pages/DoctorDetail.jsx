@@ -2,22 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getDoctor, getDoctorDepartments } from "../lib/api/doctors.js";
 import { getFilials } from "../lib/api/filials.js";
-import { avatarAccent } from "../lib/avatar.js";
+import DoctorAvatar from "../components/DoctorAvatar.jsx";
 import { useT } from "../lib/i18n.jsx";
 import Card from "../components/Card.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingStatus from "../components/LoadingStatus.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
-function initials(name) {
-  return (name || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
 
 export default function DoctorDetail() {
   const t = useT();
@@ -74,13 +65,11 @@ export default function DoctorDetail() {
       </Link>
 
       <Card className="flex flex-col items-center gap-md p-lg text-center sm:flex-row sm:text-left">
-        <div
-          className={`grid h-24 w-24 shrink-0 place-items-center rounded-full bg-gradient-to-br text-on-primary ${avatarAccent(
-            doctor.id
-          )}`}
-        >
-          <span className="text-headline-lg font-bold">{initials(doctor.full_name)}</span>
-        </div>
+        <DoctorAvatar
+          doctor={doctor}
+          className="h-24 w-24 rounded-full"
+          textClass="text-headline-lg"
+        />
         <div className="flex-grow">
           <h1 className="text-headline-lg-mobile font-bold text-on-surface md:text-headline-lg">
             {doctor.full_name}

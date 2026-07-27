@@ -118,6 +118,7 @@ export const ru = {
     hoursUnknown: "Часы работы уточняйте",
   },
   doctors: {
+    photoAlt: "Изображение врача {name}",
     title: "Врачи",
     subtitle: "Найдите специалиста и запишитесь на приём",
     filters: "Фильтры",
@@ -267,6 +268,7 @@ export const ru = {
     filial: "Филиал",
     fullName: "ФИО",
     specialization: "Специализация",
+    photoUrl: "Ссылка на фото",
     email: "Почта",
     password: "Пароль",
     assignDepartment: "Назначить отделение",

@@ -2,19 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { findNearestSlot } from "../lib/api/schedules.js";
 import { clock, formatDateShort, isoDate } from "../lib/format.js";
-import { avatarAccent } from "../lib/avatar.js";
+import DoctorAvatar from "./DoctorAvatar.jsx";
 import { useI18n } from "../lib/i18n.jsx";
 import Card from "./Card.jsx";
 
-function initials(name) {
-  return (name || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
 
 export default function DoctorCard({ doctor }) {
   const { t, lang } = useI18n();
@@ -39,13 +30,7 @@ export default function DoctorCard({ doctor }) {
   return (
     <Card className="flex flex-col p-md">
       <div className="flex items-center gap-md">
-        <div
-          className={`grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br text-on-primary ${avatarAccent(
-            doctor.id
-          )}`}
-        >
-          <span className="text-headline-md font-bold">{initials(doctor.full_name)}</span>
-        </div>
+        <DoctorAvatar doctor={doctor} className="h-16 w-16 rounded-full" />
         <div className="min-w-0">
           <Link
             to={`/doctors/${doctor.id}`}

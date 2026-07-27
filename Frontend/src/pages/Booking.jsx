@@ -6,7 +6,7 @@ import { getDoctorSchedule, getSlots } from "../lib/api/schedules.js";
 import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { clock, formatDate, isoDate, weekdayIndex } from "../lib/format.js";
-import { avatarAccent } from "../lib/avatar.js";
+import DoctorAvatar from "../components/DoctorAvatar.jsx";
 import { useI18n } from "../lib/i18n.jsx";
 import { nextIndex } from "../lib/roving.js";
 import { useToast } from "../lib/toast.jsx";
@@ -16,15 +16,6 @@ import ErrorState from "../components/ErrorState.jsx";
 import LoadingStatus from "../components/LoadingStatus.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
-function initials(name) {
-  return (name || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
 
 function startOfWeek(value) {
   const date = new Date(value);
@@ -290,13 +281,11 @@ export default function Booking() {
       <div className="grid grid-cols-1 gap-md lg:grid-cols-3">
         <div className="flex flex-col gap-md lg:col-span-2">
           <Card className="flex flex-col items-center gap-md p-md sm:flex-row sm:items-start">
-            <div
-              className={`grid h-24 w-24 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-on-primary ${avatarAccent(
-                doctor.id
-              )}`}
-            >
-              <span className="text-headline-lg font-bold">{initials(doctor.full_name)}</span>
-            </div>
+            <DoctorAvatar
+              doctor={doctor}
+              className="h-24 w-24 rounded-xl"
+              textClass="text-headline-lg"
+            />
             <div className="text-center sm:text-left">
               <span className="mb-xs inline-block w-fit rounded-full bg-secondary-container px-3 py-1 text-label-md font-semibold text-on-secondary-container">
                 {doctor.specialization}
