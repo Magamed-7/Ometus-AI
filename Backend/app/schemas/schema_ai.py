@@ -34,6 +34,7 @@ class AskOut(BaseModel):
     emr_used: bool = False
     specialization: str | None = None
     alternatives: list[str] | None = None
+    suggestions: list[str] | None = None
     error_code: str | None = None
     doctors: list[dict] | None = None
     slots: list[dict] | None = None

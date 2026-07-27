@@ -29,7 +29,13 @@ from app.ai.mcp_tools import (
 from app.ai.specialization_map import find_fallback_specialists, match_specializations
 from app.core.config import settings
 from app.schemas.schema_ai import AskIn
-from app.services import crud_ai_log, crud_ai_metric, crud_appointment, crud_conversation
+from app.services import (
+    crud_ai_log,
+    crud_ai_metric,
+    crud_appointment,
+    crud_conversation,
+    crud_doctor,
+)
 
 SYSTEM_PROMPT_TEMPLATE = (
     "Ты — ассистент регистратуры клиники Ometus. Твоя единственная задача — помочь пациенту "
@@ -339,6 +345,59 @@ def parse_intent(raw: str | None):
 async def classify_intent(message: str, history: list | None = None):
     raw = await ask_llm(message, {}, history, system_prompt=INTENT_SYSTEM_PROMPT)
     return parse_intent(raw)
+
+
+MIN_SPECIALTY_CONFIDENCE = 0.5
+
+SPECIALTY_SYSTEM_PROMPT = (
+    "Ты сопоставляешь жалобу пациента со специализацией врача из списка. "
+    "Это техническое сопоставление, а не диагноз: болезнь не называй, лечение не предлагай. "
+    "Верни ТОЛЬКО JSON без пояснений и без markdown в формате: "
+    '{"specialization": "<название>", "confidence": <0..1>}. '
+    "Бери значение строго из списка допустимых специализаций. "
+    "Если подходящей в списке нет или ты не уверен — ставь confidence ниже 0.5."
+)
+
+
+def parse_specialty(raw: str | None, known: list):
+    if not raw:
+        return None
+
+    parsed = extract_json(raw)
+
+    if not isinstance(parsed, dict):
+        return None
+
+    name = parsed.get("specialization")
+
+    if not isinstance(name, str):
+        return None
+
+    # модель охотно называет специализацию, которой в клинике нет, — и пациент идёт
+    # записываться к врачу-призраку. Ответ принимаем только из списка живых специализаций
+    name = name.strip().lower()
+
+    if name not in known:
+        return None
+
+    try:
+        confidence = float(parsed.get("confidence", 0))
+    except (ValueError, TypeError):
+        return None
+
+    if confidence < MIN_SPECIALTY_CONFIDENCE:
+        return None
+
+    return name
+
+
+async def classify_specialization(message: str, known: list, history: list | None = None):
+    if not known:
+        return None
+
+    prompt = f"{SPECIALTY_SYSTEM_PROMPT} Допустимые специализации: {', '.join(known)}."
+    raw = await ask_llm(message, {}, history, system_prompt=prompt)
+    return parse_specialty(raw, known)
 
 
 def serialise_result(result: dict):
@@ -829,8 +888,22 @@ async def suggest_doctors(
     if not specializations and language != DEFAULT_LANGUAGE:
         specializations = match_specializations(data.message)
 
+    # словарь ключевых слов быстрый, бесплатный и предсказуемый, поэтому он идёт первым,
+    # но он же и узкий: «болит спина» держится на том, что кто-то вписал нужное слово.
+    # Если словарь промолчал — спрашиваем модель, а не сдаёмся сразу
     if not specializations:
-        return {"action": "clarify", "reply": translate("clarify_specialization", language)}
+        known = await crud_doctor.list_specializations(db)
+        guessed = await classify_specialization(data.message, known, history)
+
+        if guessed:
+            specializations = [guessed]
+
+    if not specializations:
+        return {
+            "action": "clarify",
+            "suggestions": await crud_doctor.popular_specializations(db),
+            "reply": translate("clarify_specialization", language),
+        }
 
     if len(specializations) > 1:
         return {

@@ -187,6 +187,34 @@ async def get_specializations(doctor_id: int, db: AsyncSession):
     return result.scalars().all()
 
 
+# список специализаций, к которым в клинике реально можно попасть: он уходит в промпт
+# модели как закрытый перечень, иначе она предложит пациенту врача, которого у нас нет
+async def list_specializations(db: AsyncSession):
+    working = or_(Doctor.dismissed_at.is_(None), Doctor.dismissed_at > clinic_today())
+
+    main = await db.execute(select(Doctor.specialization).where(working))
+    extra = await db.execute(
+        select(DoctorSpecialization.name)
+        .join(Doctor, Doctor.id == DoctorSpecialization.doctor_id)
+        .where(working)
+    )
+
+    names = {name.strip().lower() for name in main.scalars().all() if name}
+    names.update(name.strip().lower() for name in extra.scalars().all() if name)
+    return sorted(names)
+
+
+async def popular_specializations(db: AsyncSession, limit: int = 6):
+    result = await db.execute(
+        select(func.lower(Doctor.specialization), func.count(Doctor.id))
+        .where(or_(Doctor.dismissed_at.is_(None), Doctor.dismissed_at > clinic_today()))
+        .group_by(func.lower(Doctor.specialization))
+        .order_by(func.count(Doctor.id).desc())
+        .limit(limit)
+    )
+    return [name for name, _ in result.all()]
+
+
 async def add_specialization(doctor_id: int, name: str, db: AsyncSession):
     result = await db.execute(
         select(DoctorSpecialization)

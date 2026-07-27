@@ -207,6 +207,52 @@ async def test_allergy_finds_an_allergist(client, db):
     assert body["specialization"] == "аллерголог"
 
 
+def answer_specialty(monkeypatch, payload):
+    # подменяем только классификатор специализации: остальные обращения к модели
+    # должны и дальше возвращать None, иначе её JSON уедет в текст ответа пациенту
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
+        if system_prompt and "сопоставляешь жалобу" in system_prompt:
+            return payload
+
+        return None
+
+    monkeypatch.setattr(assistant, "ask_llm", fake_ask_llm)
+
+
+async def test_llm_picks_specialty_when_keywords_are_silent(client, db, monkeypatch):
+    await setup_doctor(client, db, email="surgeon@ometus.test", specialization="Хирург")
+    patient_id, headers = await setup_patient(client)
+    answer_specialty(monkeypatch, '{"specialization": "хирург", "confidence": 0.8}')
+
+    response = await ask(client, headers, "мне сказали, что нужно вырезать")
+
+    body = response.json()
+    assert body["action"] == "doctors"
+    assert body["specialization"] == "хирург"
+
+
+async def test_low_confidence_still_asks(client, db, monkeypatch):
+    await setup_doctor(client, db, email="surgeon@ometus.test", specialization="Хирург")
+    patient_id, headers = await setup_patient(client)
+    answer_specialty(monkeypatch, '{"specialization": "хирург", "confidence": 0.3}')
+
+    response = await ask(client, headers, "мне сказали, что нужно вырезать")
+
+    assert response.json()["action"] == "clarify"
+
+
+async def test_model_cannot_invent_a_specialty_absent_in_the_clinic(client, db, monkeypatch):
+    await setup_doctor(client, db, email="surgeon@ometus.test", specialization="Хирург")
+    patient_id, headers = await setup_patient(client)
+    answer_specialty(monkeypatch, '{"specialization": "онколог", "confidence": 0.9}')
+
+    response = await ask(client, headers, "мне сказали, что нужно вырезать")
+
+    body = response.json()
+    assert body["action"] == "clarify"
+    assert body["suggestions"] == ["хирург"]
+
+
 async def test_ambiguous_symptoms_ask_for_clarification(client, db):
     patient_id, headers = await setup_patient(client)
 
