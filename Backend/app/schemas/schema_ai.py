@@ -25,7 +25,6 @@ class AskOut(BaseModel):
     action: str
     reply: str
     conversation_id: int
-    # id сохранённого ответа: без него клиент не может прислать оценку этого ответа
     message_id: int | None = None
     severity: int = 0
     language: str = "ru"

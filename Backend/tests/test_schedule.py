@@ -538,8 +538,6 @@ async def test_slots_are_not_duplicated_by_time(client, db):
     await client.post(
         MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
     )
-    # прямо в базу, минуя проверку пересечений: так выглядят данные,
-    # заведённые до появления этой проверки
     from datetime import time
 
     from app.models.model_schedule import DoctorSchedule

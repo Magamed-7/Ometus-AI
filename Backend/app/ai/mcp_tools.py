@@ -44,9 +44,6 @@ async def find_doctors(
                 "DEPARTMENT_NOT_FOUND", f"Отделение «{department}» не найдено"
             )
 
-        # «Кардиология» есть в трёх филиалах: раньше молча бралось первое совпадение
-        # и пациент получал врачей одного филиала, не зная об этом. Точное совпадение
-        # по названию решает вопрос само, иначе честно переспрашиваем
         exact = [item for item in matched if item.name.lower() == department.lower()]
 
         if len(matched) > 1 and len(exact) != 1:
@@ -59,8 +56,6 @@ async def find_doctors(
         department_id = (exact or matched)[0].id
 
     doctors = await crud_doctor.search_doctors(db, specialization, department_id, city=city)
-    # в своём городе врача может не быть, но это не повод оставлять пациента ни с чем:
-    # ищем шире и помечаем, что придётся ехать
     other_city = False
 
     if not doctors and city:
@@ -92,9 +87,6 @@ async def get_available_time(db: AsyncSession, doctor_id: int, day: date | None 
     if day:
         days = [day]
     else:
-        # без даты раньше шёл цикл по 14 дням, и на каждый день — свой пакет запросов
-        # (расписание, отпуска, занятые времена). Теперь то, что не зависит от дня,
-        # читается один раз, а по дням гоняется только нарезка слотов
         today = clinic_now().date()
         days = [today + timedelta(days=shift) for shift in range(SEARCH_DAYS_AHEAD)]
 
@@ -102,7 +94,6 @@ async def get_available_time(db: AsyncSession, doctor_id: int, day: date | None 
     workdays = {schedule.weekday for schedule in await crud_schedule.get_schedules(doctor_id, db)}
 
     for current in days:
-        # день, в который врач в принципе не работает, не стоит и спрашивать у базы
         if not day and current.weekday() not in workdays:
             continue
 
@@ -134,9 +125,6 @@ async def book_appointment(
     day: date,
     slot_time: time,
 ):
-    # через REST записать родственника можно (этап 6), а через AI было нельзя —
-    # функциональность разъезжалась между двумя входами в систему. Правило одно:
-    # свою карточку или карточку, где ты опекун
     if current_patient.id != patient_id and not await crud_patient.is_bookable_by(
         patient_id, current_patient.user_id, db
     ):

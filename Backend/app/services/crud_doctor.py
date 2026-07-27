@@ -22,9 +22,6 @@ def generate_password(length: int = 20) -> str:
 
 
 def split_full_name(full_name: str):
-    # «Иванова Мария Петровна» → first_name «Мария Петровна», last_name «Иванова».
-    # ФИО целиком в first_name разъезжается с карточкой врача с первой же секунды:
-    # в users одно имя, в doctors другое, и в профиле врач видит бессмыслицу
     parts = full_name.split()
 
     if not parts:
@@ -84,7 +81,6 @@ async def search_doctors(
     filial_id: int | None = None,
     city: str | None = None,
 ):
-    # уволенный врач исчезает из поиска с даты увольнения; до неё к нему ещё можно попасть
     query = select(Doctor).where(
         or_(Doctor.dismissed_at.is_(None), Doctor.dismissed_at > clinic_today())
     )
@@ -124,7 +120,6 @@ async def update_doctor(doctor: Doctor, data: DoctorUpdateIn, db: AsyncSession):
     doctor.full_name = data.full_name or doctor.full_name
     doctor.specialization = data.specialization or doctor.specialization
 
-    # ФИО правится в одном месте, но лежит в двух таблицах — держим их вместе
     if data.full_name:
         user = await db.get(User, doctor.user_id)
 
@@ -187,8 +182,6 @@ async def get_specializations(doctor_id: int, db: AsyncSession):
     return result.scalars().all()
 
 
-# список специализаций, к которым в клинике реально можно попасть: он уходит в промпт
-# модели как закрытый перечень, иначе она предложит пациенту врача, которого у нас нет
 async def list_specializations(db: AsyncSession):
     working = or_(Doctor.dismissed_at.is_(None), Doctor.dismissed_at > clinic_today())
 
@@ -219,8 +212,6 @@ async def add_specialization(doctor_id: int, name: str, db: AsyncSession):
     result = await db.execute(
         select(DoctorSpecialization)
         .where(DoctorSpecialization.doctor_id == doctor_id)
-        # регистр не важен: «Кардиолог» и «кардиолог» — одна специализация,
-        # а в remove имя ещё и приезжает из пути URL в процентной кодировке
         .where(func.lower(DoctorSpecialization.name) == name.strip().lower())
     )
 
@@ -238,8 +229,6 @@ async def remove_specialization(doctor_id: int, name: str, db: AsyncSession):
     result = await db.execute(
         select(DoctorSpecialization)
         .where(DoctorSpecialization.doctor_id == doctor_id)
-        # регистр не важен: «Кардиолог» и «кардиолог» — одна специализация,
-        # а в remove имя ещё и приезжает из пути URL в процентной кодировке
         .where(func.lower(DoctorSpecialization.name) == name.strip().lower())
     )
     specialization = result.scalar_one_or_none()
@@ -253,7 +242,6 @@ async def remove_specialization(doctor_id: int, name: str, db: AsyncSession):
 
 
 async def count_upcoming_appointments(doctor_id: int, since: date, db: AsyncSession):
-    # активные записи после даты увольнения — именно о них надо предупредить админа
     result = await db.execute(
         select(func.count())
         .select_from(Appointment)

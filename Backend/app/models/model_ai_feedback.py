@@ -10,8 +10,6 @@ FEEDBACK_VALUES = ["helpful", "partially", "not_helpful"]
 
 class AiFeedback(Base):
     __tablename__ = "ai_feedback"
-    # одна оценка на сообщение от одного пациента: повторная правит прежнюю,
-    # иначе один недовольный клик мог бы перевесить всю статистику
     __table_args__ = (UniqueConstraint("message_id", "patient_id", name="uq_feedback_message"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)

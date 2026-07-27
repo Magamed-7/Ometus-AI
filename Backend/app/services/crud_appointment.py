@@ -15,7 +15,6 @@ from app.schemas.schema_appointment import (
 
 ACTIVE_STATUSES = ["booked", "completed", "no_show"]
 
-# без потолка админский список за год работы клиники вернул бы всю базу одним ответом
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
 
@@ -268,8 +267,6 @@ async def has_active_appointment(patient_id: int, doctor_id: int, day: date, db:
 async def has_appointment_at(
     patient_id: int, day: date, slot_time: time, db: AsyncSession, exclude_id: int | None = None
 ):
-    # пациент не может сидеть на двух приёмах одновременно — даже у разных врачей
-    # и в разных филиалах. has_active_appointment ловит только «дважды к одному врачу за день»
     query = (
         select(Appointment)
         .where(Appointment.patient_id == patient_id)
@@ -303,8 +300,6 @@ async def reschedule_appointment(
     try:
         await db.commit()
     except IntegrityError:
-        # rollback откатывает транзакцию, но объект в сессии остаётся с новыми полями
-        # и мог бы уехать наружу как «перенесённый». Возвращаем его к тому, что в базе
         await db.rollback()
         await db.refresh(appointment)
         return None

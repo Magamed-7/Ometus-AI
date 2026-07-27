@@ -209,8 +209,6 @@ async def test_allergy_finds_an_allergist(client, db):
 
 
 def answer_specialty(monkeypatch, payload):
-    # подменяем только классификатор специализации: остальные обращения к модели
-    # должны и дальше возвращать None, иначе её JSON уедет в текст ответа пациенту
     async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
         if system_prompt and "сопоставляешь жалобу" in system_prompt:
             return payload
@@ -694,9 +692,6 @@ async def test_cancel_frees_the_slot(client, db):
     appointment_id = await book(client, headers, doctor_id)
 
     await ask(client, headers, "отмени запись", intent="cancel", appointment_id=appointment_id)
-    # спрашиваем именно тот день, на который была запись: без даты ассистент отдаёт
-    # ближайший рабочий день, и если тест запускается после 09:00, слот отсеивается
-    # как прошедший — тест падал по часам, а не по делу
     slots = await ask(
         client, headers, "когда можно прийти", doctor_id=doctor_id, date=str(next_workday())
     )
@@ -866,7 +861,6 @@ async def test_template_reply_used_when_llm_unavailable(client, db):
 
     reply = response.json()["reply"]
     assert "кардиолог" in reply
-    # имя врача в тексте не перечисляется: его показывает карточка
     assert "Иванова Мария" not in reply
 
 
@@ -1570,7 +1564,6 @@ async def test_reply_does_not_enumerate_slots(client, db):
 
     assert body["action"] == "slots"
     assert len(body["slots"]) > 1
-    # время встречается только в карточках, в тексте его быть не должно
     assert not re.search(r"\d{2}:\d{2}", body["reply"])
     assert "Иванова Мария" in body["reply"]
 

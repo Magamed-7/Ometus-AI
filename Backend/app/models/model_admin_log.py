@@ -8,8 +8,6 @@ from app.db.database import Base
 
 
 class AdminActionLog(Base):
-    # для AI аудит был (ai_query_log), а для админа — нет: он мог поменять чужое расписание,
-    # снести отделение или выдать себе подчинённого админа, и следов не оставалось
     __tablename__ = "admin_action_log"
 
     id: Mapped[int] = mapped_column(primary_key=True)

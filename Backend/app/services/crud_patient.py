@@ -6,8 +6,6 @@ from app.models.model_patient import Patient
 from app.models.model_user import User
 from app.schemas.schema_patient import DependentCreateIn, DependentUpdateIn, PatientUpdateIn
 
-# папа, мама, бабушка, дедушка, старший брат или сестра — больше одному аккаунту не нужно,
-# а без потолка один пользователь может наплодить тысячу валидных patient_id для записи
 DEPENDENTS_LIMIT = 5
 
 
@@ -120,8 +118,6 @@ async def is_bookable_by(patient_id: int, user_id: int, db: AsyncSession):
 
 
 async def get_contact(patient_id: int, db: AsyncSession):
-    # у карточки родственника своего аккаунта нет, писать некому — значит пишем опекуну,
-    # он эту запись и создавал
     patient = await get_by_id(patient_id, db)
 
     if patient is None:

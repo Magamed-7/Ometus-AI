@@ -559,8 +559,6 @@ async def change_user_role(
     return await crud_user.set_role(user, data.role, db)
 
 
-# админ заводит родственника «в аккаунте пациента» — тот же лимит и те же правила,
-# что и у самого пациента, просто действие выполняется от лица администратора
 @admin_router.get("/patients/{user_id}/dependents", response_model=list[PatientOut])
 async def list_patient_dependents(
     user_id: int,
@@ -618,8 +616,6 @@ async def dismiss_doctor(
 
     upcoming = await crud_doctor.count_upcoming_appointments(doctor_id, data.dismissed_at, db)
 
-    # предупреждение перед увольнением: сначала показываем, сколько живых записей
-    # попадает на закрываемые даты, и только по confirm=true применяем
     if upcoming and not data.confirm:
         raise AppError(
             code="DOCTOR_HAS_UPCOMING_APPOINTMENTS",

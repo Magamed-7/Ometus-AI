@@ -115,14 +115,10 @@ async def create_my_absence(
 
     absence = await crud_schedule.create_absence(doctor.id, data, db)
 
-    # записи на эти дни снимаем сразу: слоты и так исчезнут из выдачи,
-    # а пациент без отмены остался бы с записью к врачу, которого не будет
     cancelled = await crud_schedule.cancel_appointments_in_range(
         doctor.id, data.date_from, data.date_to, db
     )
 
-    # и предупреждаем каждого письмом — молча отменённая запись это худшее из двух зол:
-    # человек приедет к назначенному времени. Письма уходят после ответа, врач не ждёт SMTP
     for appointment in cancelled:
         email, patient_name = await crud_patient.get_contact(appointment.patient_id, db)
 
@@ -241,8 +237,6 @@ async def update_my_schedule(
             status_code=400,
         )
 
-    # при создании отделение проверяется, при правке — не проверялось:
-    # можно было перевести расписание в отделение, где врач не работает
     if data.department_id and data.department_id != schedule.department_id:
         departments = await crud_doctor.get_departments(doctor.id, db)
 

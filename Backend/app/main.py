@@ -44,9 +44,6 @@ app.include_router(admin_router)
 async def audit_admin_actions(request: Request, call_next):
     response = await call_next(request)
 
-    # Пишем только удавшиеся изменения под /api/admin: для AI аудит был (ai_query_log),
-    # а админ мог поменять чужое расписание, снести отделение или раздать роли бесследно.
-    # Middleware вместо правки двух десятков эндпоинтов — так ни один не забудется
     if (
         request.method in ("POST", "PUT", "PATCH", "DELETE")
         and request.url.path.startswith("/api/admin")

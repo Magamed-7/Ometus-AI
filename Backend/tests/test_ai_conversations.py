@@ -238,7 +238,6 @@ async def test_old_messages_without_payload_still_load(client, db):
     assert saved["payload"] is None
 
 
-# история болезни и метрики в переписку попадать не должны: её отдают клиенту целиком
 def test_payload_keeps_only_what_the_cards_need():
     payload = assistant.render_payload(
         {

@@ -179,8 +179,6 @@ def slice_slots(day: date, schedules, taken):
         stride = timedelta(minutes=schedule.slot_duration + schedule.buffer_duration)
 
         while current + length <= end:
-            # одно и то же время из двух расписаний (например, разные отделения)
-            # это не два свободных слота: врач не может принимать двоих сразу
             if current.time() not in taken and current.time() not in seen:
                 seen.add(current.time())
                 slots.append(
@@ -198,8 +196,6 @@ def slice_slots(day: date, schedules, taken):
 async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
     doctor = await crud_doctor.get_by_id(doctor_id, db)
 
-    # с даты увольнения свободного времени у врача нет — иначе слот покажется,
-    # а запись на него отвалится ошибкой уже после выбора
     if doctor is not None and crud_doctor.is_dismissed_on(doctor, day):
         return []
 
@@ -230,9 +226,6 @@ async def find_overlapping_schedule(
     db: AsyncSession,
     exclude_id: int | None = None,
 ):
-    # пересечения ищем по всем отделениям сразу: врач физически один, и два окна
-    # 09:00-13:00 в разных отделениях — это не два врача, а один в двух местах.
-    # Уникальный индекс ловит только полный дубль по (врач, отделение, день недели)
     query = (
         select(DoctorSchedule)
         .where(DoctorSchedule.doctor_id == doctor_id)
@@ -264,8 +257,6 @@ async def find_overlapping_absence(
 async def cancel_appointments_in_range(
     doctor_id: int, date_from: date, date_to: date, db: AsyncSession
 ):
-    # врач уходит на больничный — активные записи на эти дни надо снять, иначе слоты
-    # просто исчезают из выдачи, а пациент продолжает думать, что его ждут
     result = await db.execute(
         select(Appointment)
         .where(Appointment.doctor_id == doctor_id)

@@ -2,9 +2,6 @@ import email_validator
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-# после перехода схем на EmailStr домен `.test` перестал проходить валидацию:
-# email-validator по умолчанию режет зарезервированные домены (.test/.example/.invalid).
-# Тесты как раз для того их и используют, поэтому в тестовой среде разрешаем
 email_validator.TEST_ENVIRONMENT = True
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -38,9 +35,7 @@ async def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
-# фоновые задачи берут сессию не через Depends, а через фабрику — её тоже уводим
-# на тестовую базу, иначе задача пойдёт в настоящий Postgres
-import app.db.database as database_module  # noqa: E402
+import app.db.database as database_module
 
 database_module.get_session_factory = lambda: TestSessionLocal
 
@@ -56,8 +51,6 @@ async def prepare_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-# последний код, выданный каждой почте: письма в тестах никуда не уходят,
-# а подтвердить почту нужно — вход без этого теперь запрещён
 SENT_CODES = {}
 
 

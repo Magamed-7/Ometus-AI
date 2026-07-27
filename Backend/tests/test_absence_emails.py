@@ -86,7 +86,6 @@ async def setup_doctor(client, db):
         headers=admin,
     )
 
-    # пароль врача генерирует бэкенд и отдаёт один раз в ответе на создание
     doctor_password = doctor.json()["password"]
     headers = await auth_headers(client, DOCTOR_DATA["email"], doctor_password)
     return doctor_id, department.json()["id"], headers
@@ -182,6 +181,5 @@ def test_letter_says_nothing_about_the_doctors_diagnosis(monkeypatch):
     assert "Иванова Мария" in sent["body"]
     assert "03.08.2026" in sent["body"]
     assert "09:00" in sent["body"]
-    # причина отсутствия врача — сведения о его здоровье, в письме пациенту их быть не должно
     assert "больничн" not in sent["body"].lower()
     assert "отпуск" not in sent["body"].lower()

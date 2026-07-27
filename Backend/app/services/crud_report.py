@@ -42,9 +42,6 @@ async def get_doctor_workload(
     )
 
     if department_id:
-        # join именно к doctor_departments, а не к записям: врачи отделения, у которых
-        # за период не было ни одной записи, обязаны попасть в отчёт с нулями —
-        # иначе не видно, кто простаивает. Закреплено тестом
         query = query.join(DoctorDepartment, DoctorDepartment.doctor_id == Doctor.id).where(
             DoctorDepartment.department_id == department_id
         )
@@ -82,9 +79,6 @@ async def get_appointments_summary(db: AsyncSession, date_from: date, date_to: d
     )
     row = result.one()
 
-    # «задействовано врачей» считается по записям, а отчёт по загрузке перечисляет всех,
-    # включая нулевых — числа расходились и выглядели как ошибка. Добавляем знаменатель:
-    # сколько врачей вообще работает, чтобы «7 из 31» читалось однозначно
     total_doctors = await db.execute(
         select(func.count()).select_from(Doctor).where(Doctor.dismissed_at.is_(None))
     )

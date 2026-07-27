@@ -1,5 +1,3 @@
-# Отдельный файл, чтобы не толкаться с правками test_ai_tools.py:
-# здесь только проверки инструментов из раздела 7.0 Fix_bugs.md.
 from datetime import date, timedelta
 
 from app.ai import mcp_tools
@@ -68,8 +66,6 @@ async def test_ai_can_book_a_relative(db):
     await db.refresh(guardian)
     await db.refresh(relative)
 
-    # врача нет — значит дальше проверки прав дело не идёт, но именно она нас и интересует:
-    # раньше здесь возвращалось PERMISSION_DENIED
     result = await mcp_tools.book_appointment(
         db,
         guardian,
@@ -120,8 +116,6 @@ def test_real_emergencies_still_fire():
     from app.ai.emergency_guard import is_emergency
 
     assert is_emergency("вызовите скорую, плохо с сердцем") is True
-    # симптом сформулирован через «не» — отрицание к таким словам не применяется
     assert is_emergency("ребёнок не дышит") is True
     assert is_emergency("не могу дышать") is True
-    # «болит грудь» в списке экстренных слов нет (это HIGH_SYMPTOMS), берём то, что есть
     assert is_emergency("мне не нужна скорая, но боль в груди") is True

@@ -646,7 +646,6 @@ async def test_reschedule_cannot_collide_with_another_appointment(client, db):
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "PATIENT_BUSY"
 
-    # запись осталась там, где была: объект в сессии не уехал наружу изменённым
     unchanged = await client.get(f"{APPOINTMENTS_URL}/{moving.json()['id']}", headers=headers)
     assert unchanged.json()["time"] == "09:20:00"
 

@@ -30,8 +30,6 @@ class Message(Base):
     )
     role: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(String, nullable=False)
-    # что это был за ответ и чем его отрисовать: без этого старая переписка
-    # открывается голым текстом — карточки собирать не из чего
     action: Mapped[str | None] = mapped_column(String(32), nullable=True)
     payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 

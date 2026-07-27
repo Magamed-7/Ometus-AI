@@ -15,8 +15,6 @@ class Doctor(Base):
     )
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     specialization: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    # день, с которого врач уволен: он пропадает из поиска и к нему нельзя записаться,
-    # но прошлые и сорвавшиеся записи остаются нетронутыми — это история клиники
     dismissed_at: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(

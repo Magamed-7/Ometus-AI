@@ -459,7 +459,6 @@ async def test_dismissed_doctor_disappears_from_search(client, db):
     assert dismissed.json()["dismissed_at"] == date.today().isoformat()
     assert all(doctor["id"] != doctor_id for doctor in listing.json())
 
-    # карточка по прямой ссылке остаётся: на неё ссылаются прошлые записи
     card = await client.get(f"{DOCTORS_URL}/{doctor_id}")
     assert card.status_code == 200
 
@@ -545,9 +544,6 @@ async def test_dismissal_can_be_undone(client, db):
     assert any(doctor["id"] == doctor_id for doctor in listing.json())
 
 
-# смысл теста — поймать расхождение словаря ассистента и клиники: если кто-то добавит
-# специализацию в SPECIALIZATION_KEYWORDS, ассистент начнёт её распознавать и тут же
-# отвечать «врачей нет». Боевые данные тест не проверяет, только саму связность
 async def test_every_specialty_in_the_map_can_be_booked(client, db):
     headers = await admin_headers(client, db)
 

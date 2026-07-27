@@ -14,8 +14,6 @@ class AppError(Exception):
 def error_response(code: str, message: str, status_code: int, fields: list | None = None):
     error = {"code": code, "message": message, "status": status_code}
 
-    # список полей отдаём отдельным ключом, а не только в тексте: интерфейс трёхъязычный
-    # и показывает свой перевод по коду, но подставить в него имена полей может
     if fields:
         error["fields"] = fields
 
@@ -34,8 +32,6 @@ def failed_fields(exc: RequestValidationError):
     names = []
 
     for error in exc.errors():
-        # loc это ("body", "email") или ("query", "limit"); первый элемент — источник,
-        # он пользователю ничего не говорит, а вот имя поля говорит
         parts = [str(part) for part in error.get("loc", ())[1:] if not isinstance(part, int)]
 
         if parts and parts[-1] not in names:
@@ -47,8 +43,6 @@ def failed_fields(exc: RequestValidationError):
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ):
-    # без списка полей форма показывает «проверьте введённые данные» и человек гадает,
-    # что именно не так: поймано на создании врача с почтой в зарезервированном домене
     fields = failed_fields(exc)
     message = "Некорректные данные запроса"
 

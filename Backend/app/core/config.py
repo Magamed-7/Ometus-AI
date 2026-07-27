@@ -22,10 +22,8 @@ class Settings:
     DEFAULT_FROM_EMAIL: str = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
     BASE_URL: str = os.getenv("BASE_URL", "http://127.0.0.1:8000")
     EMAIL_CODE_TTL_MINUTES: int = int(os.getenv("EMAIL_CODE_TTL_MINUTES", "10"))
-    # без таймаута зависший SMTP держит поток отправки бесконечно
     EMAIL_TIMEOUT: int = int(os.getenv("EMAIL_TIMEOUT", "10"))
 
-    # часовой пояс клиники: в нём заданы все расписания и записи
     CLINIC_TIMEZONE: str = os.getenv("CLINIC_TIMEZONE", "Asia/Dushanbe")
 
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
@@ -44,14 +42,9 @@ class Settings:
         "GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta/models"
     )
 
-    # цены за миллион токенов в формате "провайдер:модель=вход/выход", через запятую.
-    # по умолчанию пусто: тарифы зависят от плана и меняются, поэтому пока их не впишут,
-    # стоимость считается нулевой — лучше ноль, чем выдуманное число в отчёте о деньгах
     LLM_PRICES: str = os.getenv("LLM_PRICES", "")
     AI_MONTHLY_BUDGET_USD: str = os.getenv("AI_MONTHLY_BUDGET_USD", "0")
 
-    # localhost и 127.0.0.1 — разные origin для браузера, поэтому перечислены оба:
-    # 5173 — vite dev, 4173 — vite preview, 8080 — фронт в контейнере через nginx
     CORS_ORIGINS: list[str] = os.getenv(
         "CORS_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173,"

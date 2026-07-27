@@ -3,8 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-# статус был свободной строкой и в схемах, и в фильтрах: ?status=абракадабра
-# молча возвращал пустой список вместо 422, а в ответе мог оказаться любой мусор из базы
 AppointmentStatus = Literal["booked", "completed", "cancelled", "no_show"]
 
 

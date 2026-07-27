@@ -53,7 +53,6 @@ class SpecializationIn(BaseModel):
 
 class DoctorDismissIn(BaseModel):
     dismissed_at: date
-    # первый запрос без confirm возвращает предупреждение, если на эти даты уже есть записи
     confirm: bool = False
 
 

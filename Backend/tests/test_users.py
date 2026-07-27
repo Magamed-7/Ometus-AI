@@ -128,14 +128,12 @@ async def test_change_email_requires_new_verification(client, sent_emails):
     assert response.status_code == 200
     assert response.json()["email"] == "new.address@ometus.test"
 
-    # вход закрыт, пока новая почта не подтверждена
     blocked = await client.post(
         LOGIN_URL, json={"email": "new.address@ometus.test", "password": "patient1234"}
     )
     assert blocked.status_code == 403
     assert blocked.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
 
-    # код ушёл именно на новый адрес
     assert sent_emails[-1][0] == "new.address@ometus.test"
 
     await verify_email(client, "new.address@ometus.test")

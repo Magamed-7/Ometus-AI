@@ -20,8 +20,6 @@ class AiLlmCall(Base):
     prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error: Mapped[str | None] = mapped_column(String, nullable=True)
-    # деньги считаем Numeric, а не float: округление float в отчётах о тратах недопустимо.
-    # цена фиксируется на момент вызова — задним числом тарифы меняются, а история нет
     cost_usd: Mapped[Decimal] = mapped_column(
         Numeric(12, 6), nullable=False, server_default="0"
     )

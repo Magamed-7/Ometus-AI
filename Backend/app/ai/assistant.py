@@ -53,8 +53,6 @@ SYSTEM_PROMPT_TEMPLATE = (
 
 SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(language="русском")
 
-# история болезни передаётся только чтобы подобрать специалиста. Без этой оговорки
-# модель, увидев «гипертония», охотно начинает советовать лечение — а это прямо запрещено
 EMR_CONTEXT_KEY = "история_болезни"
 
 EMR_PROMPT_NOTE = (
@@ -216,7 +214,6 @@ async def ask_llm(
     ) or await ask_gemini(message, context, history, language, system_prompt)
 
 
-# в карточке пациента full_name собран как «Имя Фамилия», поэтому обращение — первое слово
 def first_name_of(current_patient):
     full_name = (current_patient.full_name or "").strip()
     return full_name.split()[0] if full_name else None
@@ -240,18 +237,10 @@ async def build_reply(
     return generated or fallback
 
 
-# Запись, отмена и перенос — это подтверждение уже совершённого действия, и текст
-# к нему модели не отдаётся. Поймано вживую: приём был успешно забронирован на 16:30,
-# а модель, пересказывая черновик, выдала «Время 16:30 уже занято» — пациент читает
-# отказ и идёт занимать другое время, хотя запись оформлена. Список врачей или слотов
-# перефразировать безопасно, подтверждение — нет: оно должно совпадать с базой дословно
 def state_change_reply(fallback: str):
     return fallback
 
 
-# врачи и слоты в текст ответа больше не перечисляются: их рисует интерфейс карточками,
-# а дублирование списком делало ответ простынёй. Модели они по-прежнему нужны в контексте,
-# иначе она начинает выдумывать имена и время, но короткого списка ей достаточно
 CONTEXT_DOCTORS_LIMIT = 5
 CONTEXT_SLOTS_LIMIT = 6
 
@@ -390,8 +379,6 @@ def parse_specialty(raw: str | None, known: list):
     if not isinstance(name, str):
         return None
 
-    # модель охотно называет специализацию, которой в клинике нет, — и пациент идёт
-    # записываться к врачу-призраку. Ответ принимаем только из списка живых специализаций
     name = name.strip().lower()
 
     if name not in known:
@@ -550,9 +537,6 @@ def pick_flow(data: AskIn):
     return suggest_doctors
 
 
-# в историю кладём только то, чем ответ рисуется. Белый список, а не «всё кроме»:
-# в result попадают история болезни, метрики и черновики промптов, и их место
-# не в переписке, которую потом отдают клиенту
 PAYLOAD_FIELDS = [
     "doctors",
     "slots",
@@ -571,8 +555,6 @@ PAYLOAD_SLOTS_LIMIT = 20
 def render_payload(result: dict):
     payload = {field: result[field] for field in PAYLOAD_FIELDS if result.get(field)}
 
-    # длинная сетка слотов раздувала бы базу на каждом сообщении, а для восстановления
-    # карточек хватает первого экрана
     if len(payload.get("slots", [])) > PAYLOAD_SLOTS_LIMIT:
         payload["slots"] = payload["slots"][:PAYLOAD_SLOTS_LIMIT]
 
@@ -877,8 +859,6 @@ async def show_slots(
     result = await get_available_time(db, data.doctor_id, data.day)
     note = ""
 
-    # на конкретный день врача может не быть свободного времени, но это не повод
-    # заканчивать разговор ошибкой: смотрим ближайшие дни и честно об этом говорим
     if not result["ok"] and data.day and result["error"]["code"] == "NO_SLOTS":
         nearest = await get_available_time(db, data.doctor_id)
 
@@ -915,8 +895,6 @@ async def show_slots(
     return {
         "action": "slots",
         "slots": slots,
-        # врач нужен и в заголовке над сеткой, и чтобы записать из восстановленной
-        # истории: без него клик по слоту в старом чате не знал бы, к кому записывать
         "doctor_id": data.doctor_id,
         "doctor_name": doctor.full_name if doctor else None,
         "reply": await build_reply(
@@ -974,8 +952,6 @@ async def specialties_with_doctors(db: AsyncSession, specializations: list, city
     return found
 
 
-# один врач может подойти сразу по двум специализациям (поиск идёт по подстроке),
-# и в списке он не должен появиться дважды
 def merge_doctors(found: dict):
     merged = {}
 
@@ -997,8 +973,6 @@ async def collect_alternatives(db: AsyncSession, specializations: list):
     return alternatives
 
 
-# раньше при нескольких подходящих специализациях врачи не искались вовсе: пациент
-# читал «уточните, к какому специалисту» и не знал, есть ли такие врачи в клинике
 async def clarify_between_specialties(
     db: AsyncSession, specializations: list, found: dict, language: str
 ):
@@ -1045,9 +1019,6 @@ async def suggest_doctors(
     if not specializations and language != DEFAULT_LANGUAGE:
         specializations = match_specializations(data.message)
 
-    # словарь ключевых слов быстрый, бесплатный и предсказуемый, поэтому он идёт первым,
-    # но он же и узкий: «болит спина» держится на том, что кто-то вписал нужное слово.
-    # Если словарь промолчал — спрашиваем модель, а не сдаёмся сразу
     if not specializations:
         known = await crud_doctor.list_specializations(db)
         guessed = await classify_specialization(data.message, known, history)
@@ -1065,8 +1036,6 @@ async def suggest_doctors(
     if len(specializations) > 1:
         found = await specialties_with_doctors(db, specializations, data.city)
 
-        # если врачи нашлись ровно по одной специализации, уточнять нечего:
-        # остальные варианты в клинике всё равно недоступны
         if len(found) == 1:
             specializations = list(found)
         else:
@@ -1075,8 +1044,6 @@ async def suggest_doctors(
     specialization = specializations[0]
     emr = await load_emr_context(current_patient, db)
     result = await find_doctors(db, specialization, city=data.city)
-    # в аудит идёт только факт использования истории болезни: само содержимое
-    # в таблице логов было бы утечкой медданных
     await log_call(
         current_patient,
         "find_doctors",

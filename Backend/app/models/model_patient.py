@@ -19,8 +19,6 @@ class Patient(Base):
     full_name: Mapped[str | None] = mapped_column(String, nullable=True)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
-    # согласие на передачу истории болезни ассистенту: по умолчанию выключено,
-    # медданные не уходят модели, пока пациент сам не разрешит
     ai_consent: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )

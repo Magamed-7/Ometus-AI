@@ -16,8 +16,6 @@ def generate_code():
 
 
 def send_email(to: str, subject: str, body: str):
-    # общий транспорт: SMTP-соединение и заголовки одни на все письма,
-    # а каждый тип письма отличается только темой и текстом
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = settings.DEFAULT_FROM_EMAIL
@@ -47,9 +45,6 @@ def send_verification_code(email: str, code: str):
 def send_appointment_cancelled(
     email: str, doctor_name: str, day: date, slot_time: time, patient_name: str | None = None
 ):
-    # Причину отсутствия врача пациенту не пишем: «больничный» — это сведения о здоровье
-    # сотрудника, и рассылать их по клиентской базе нельзя. Пациенту важно другое:
-    # приём не состоится, деньги/время планировать заново, записаться можно тут же.
     greeting = f"Здравствуйте, {patient_name}!" if patient_name else "Здравствуйте!"
 
     send_email(
@@ -66,11 +61,6 @@ def send_appointment_cancelled(
 
 
 async def deliver_verification_code(email: str, code: str) -> bool:
-    # smtplib синхронный: вызванный прямо из async-эндпоинта, он на всё время разговора
-    # с почтовым сервером блокирует event loop — на это время встаёт весь сервис.
-    # Уносим в поток и никогда не роняем вызывающий код: пользователь в базе уже создан,
-    # и падать после этого 500-й — значит оставить аккаунт, в который нельзя войти
-    # и на который нельзя зарегистрироваться заново.
     await notifications.publish(email, {"status": "sending"})
 
     try:
@@ -87,9 +77,6 @@ async def deliver_verification_code(email: str, code: str) -> bool:
 async def deliver_appointment_cancelled(
     email: str, doctor_name: str, day: date, slot_time: time, patient_name: str | None = None
 ) -> bool:
-    # тот же принцип, что и с кодами: в поток и без исключений наружу. Запись уже отменена
-    # в базе, и падать из-за недоступного SMTP нельзя — врач не должен получить 500
-    # на оформлении больничного из-за того, что у одного пациента не принял почтовый сервер
     try:
         await asyncio.to_thread(
             send_appointment_cancelled, email, doctor_name, day, slot_time, patient_name

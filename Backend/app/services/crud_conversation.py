@@ -47,8 +47,6 @@ async def get_empty_conversation(patient_id: int, db: AsyncSession):
 
 
 async def start_conversation(patient_id: int, db: AsyncSession):
-    # «новый чат» дважды подряд не должен плодить пустышки в списке: пустой диалог
-    # у пациента может быть только один, и кнопка просто возвращает его
     empty = await get_empty_conversation(patient_id, db)
 
     if empty is not None:
@@ -92,9 +90,6 @@ async def add_message(
     conversation = await get_conversation(conversation_id, db)
 
     if conversation is not None:
-        # onupdate у updated_at срабатывает только когда меняется сам диалог, а новое
-        # сообщение его не трогает — без этой строки список чатов сортировался бы
-        # по дате создания и свежий ответ не поднимал бы диалог наверх
         conversation.updated_at = datetime.now(UTC)
 
         if not conversation.title and role == "user":
@@ -128,8 +123,6 @@ async def get_recent_conversations(patient_id: int, limit: int = 5, db: AsyncSes
 
 
 def conversation_row(conversation, messages: int, preview: str | None, first: str | None = None):
-    # у диалогов, начатых до появления колонки title, заголовка нет: показываем
-    # первое сообщение пациента, а не «Новый чат» на переписке с историей
     title = conversation.title or (make_title(first) if first else None)
 
     return {
@@ -186,8 +179,6 @@ async def list_conversations(patient_id: int, db: AsyncSession, limit: int = 50,
         )
     ).all()
 
-    # тексты первого и последнего сообщения берём одним запросом на всю страницу,
-    # иначе список чатов превращается в N+1 обращений к базе
     contents = await read_contents(
         [row.first_message_id for row in rows] + [row.last_message_id for row in rows], db
     )
@@ -215,8 +206,6 @@ async def rename_conversation(conversation, title: str, db: AsyncSession):
 async def delete_conversation(conversation, db: AsyncSession):
     messages = select(Message.id).where(Message.conversation_id == conversation.id)
 
-    # оценки ответов ссылаются на сообщения, поэтому уходят первыми,
-    # иначе внешний ключ не даст удалить переписку
     await db.execute(delete(AiFeedback).where(AiFeedback.message_id.in_(messages)))
     await db.execute(delete(Message).where(Message.conversation_id == conversation.id))
     await db.delete(conversation)

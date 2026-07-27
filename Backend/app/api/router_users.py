@@ -59,7 +59,6 @@ async def change_my_email(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # пароль спрашиваем не для галочки: смена почты — это смена точки восстановления доступа
     if not verify_password(data.password, current_user.hashed_password):
         raise AppError(code="INVALID_CREDENTIALS", message="Пароль неверен", status_code=401)
 
@@ -101,8 +100,6 @@ async def update_my_patient_profile(
     if patient is None:
         raise AppError(code="PATIENT_NOT_FOUND", message="Профиль пациента не найден", status_code=404)
 
-    # у карточки владельца аккаунта имя не своё, а отражение профиля — редактировать
-    # его здесь значит завести второй источник правды об одном и том же человеке
     if data.full_name is not None:
         raise AppError(
             code="NAME_FROM_ACCOUNT",
@@ -113,8 +110,6 @@ async def update_my_patient_profile(
     return await crud_patient.update_patient(patient, data, db)
 
 
-# карточки родственников заводит только сам пациент: врачу, регистратору и админу
-# в своём аккаунте они не нужны, а get_current_user пускал сюда кого угодно
 @users_router.get("/me/dependents", response_model=list[PatientOut])
 async def get_my_dependents(
     current_user: User = Depends(require_role("patient")),
@@ -165,7 +160,6 @@ async def delete_my_dependent(
     if dependent is None:
         raise AppError(code="PATIENT_NOT_FOUND", message="Родственник не найден", status_code=404)
 
-    # записи на приём ссылаются на карточку: снести её — значит потерять историю визитов
     if await crud_patient.has_appointments(dependent_id, db):
         raise AppError(
             code="PATIENT_HAS_APPOINTMENTS",

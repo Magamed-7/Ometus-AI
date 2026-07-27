@@ -138,10 +138,6 @@ HIGH_SEVERITY_NOTES = {
 HIGH_SEVERITY_NOTE = HIGH_SEVERITY_NOTES["ru"]
 
 
-# «скорая» — это не симптом, а название службы, и в отрицании она встречается сплошь и рядом:
-# «мне не нужна скорая, хочу к терапевту». Гасим ложное срабатывание только для таких слов —
-# к настоящим симптомам отрицание не применяем: «не дышит» и «не могу дышать» сами по себе
-# сформулированы через «не», и снимать по ним тревогу нельзя ни в коем случае
 SERVICE_KEYWORDS = ["скорая", "скорую", "ёрии таъҷилӣ", "таъҷилӣ", "ambulance"]
 NEGATIONS = ["не нужна", "не нужен", "не надо", "не требуется", "без ", "not ", "no need", "лозим нест"]
 
@@ -152,7 +148,6 @@ def is_negated(normalized: str, keyword: str):
     if position == -1:
         return False
 
-    # смотрим короткий кусок текста перед словом: дальше отрицание обычно уже не относится
     before = normalized[max(0, position - 30) : position]
     return any(negation in before for negation in NEGATIONS)
 
@@ -164,7 +159,6 @@ def is_emergency(text: str):
     if not matched:
         return False
 
-    # если совпали только названия службы и все они под отрицанием — тревоги нет
     if all(
         keyword in SERVICE_KEYWORDS and is_negated(normalized, keyword) for keyword in matched
     ):

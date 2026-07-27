@@ -16,9 +16,6 @@ from app.models.model_schedule import DoctorSchedule
 from app.models.model_user import User
 from app.services.crud_doctor import generate_password, split_full_name
 
-# в клинике не было ни одного хирурга, пульмонолога, аллерголога и ещё шести
-# специализаций, которые ассистент умеет распознавать: он находил специализацию
-# и тут же отвечал «врачей нет». Скрипт закрывает разрыв между словарём и клиникой
 DEPARTMENTS = [
     ("Хирургия", 1, [
         ("Назаров Далер Сафарович", "Хирург"),
@@ -75,7 +72,6 @@ def translit(word: str):
     return "".join(TRANSLIT.get(letter, letter) for letter in word.lower().replace("ё", "е"))
 
 
-# почта строится как у уже засеянных врачей: «Саидов Фарход» → farkhod.saidov@ometus.tj
 def make_email(full_name: str):
     parts = full_name.split()
     return f"{translit(parts[1])}.{translit(parts[0])}@ometus.tj"
@@ -115,7 +111,6 @@ async def get_or_create_doctor(full_name: str, specialization: str, db):
         first_name=first_name,
         last_name=last_name,
         role="doctor",
-        # врача заводит клиника, а не он сам: подтверждать почту ему нечем
         is_verified=True,
     )
     db.add(user)
