@@ -93,7 +93,8 @@ export const en = {
     passwordMismatch: "Passwords do not match",
     passwordMin: "Password must be at least 8 characters",
     verifySent: "The code was sent to your email during registration",
-    resendStub: "If the email didn't arrive, register again or contact the clinic.",
+    resendSent: "The code has been sent again — check your inbox",
+    resendIn: "Resend in {seconds} s",
   },
   home: {
     badge: "A leader in innovative medicine",
@@ -353,6 +354,7 @@ export const en = {
     EMAIL_ALREADY_EXISTS: "This email is already registered",
     FILIAL_NOT_FOUND: "Branch not found",
     FORBIDDEN: "You don't have permission for this action",
+    CODE_REQUESTED_TOO_OFTEN: "The code has already been sent — try again in a minute",
     INVALID_CODE: "Invalid or expired code",
     EMAIL_NOT_VERIFIED: "Email is not verified — enter the code from the letter",
     INVALID_CREDENTIALS: "Wrong email or password",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import * as authApi from "../lib/api/auth.js";
 import { errorText } from "../lib/api/errorText.js";
@@ -18,6 +18,29 @@ export default function VerifyEmail() {
   const [code, setCode] = useState("");
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((left) => left - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const onResend = async () => {
+    setResending(true);
+
+    try {
+      await authApi.resendCode(email);
+      setCooldown(60);
+      toast.success(t("auth.resendSent"));
+    } catch (err) {
+      toast.error(errorText(t, err));
+      if (err?.code === "CODE_REQUESTED_TOO_OFTEN") setCooldown(60);
+    } finally {
+      setResending(false);
+    }
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -97,12 +120,16 @@ export default function VerifyEmail() {
             </Button>
           </form>
 
-          {/* Заглушка STUBS #2: эндпоинта POST /api/auth/resend-code в API нет.
-              Кнопка «отправить ещё раз» здесь была бы обманом — она ничего не отправляет,
-              поэтому вместо неё честная подсказка, что делать, если письмо не дошло. */}
-          <p className="mt-md rounded-xl bg-surface-container px-4 py-3 text-center text-body-md text-on-surface-variant">
-            {t("auth.resendStub")}
-          </p>
+          <div className="mt-md text-center">
+            <button
+              type="button"
+              onClick={onResend}
+              disabled={resending || cooldown > 0 || !email}
+              className="text-body-md font-semibold text-primary underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:text-on-surface-variant disabled:no-underline"
+            >
+              {cooldown > 0 ? t("auth.resendIn", { seconds: cooldown }) : t("auth.resend")}
+            </button>
+          </div>
         </div>
       </div>
     </div>

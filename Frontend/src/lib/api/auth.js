@@ -7,3 +7,6 @@ export const login = (email, password) =>
 
 export const verifyEmail = (email, code) =>
   client.post("/api/auth/verify-email", { email, code }, { auth: false });
+
+export const resendCode = (email) =>
+  client.post("/api/auth/resend-code", { email }, { auth: false });
