@@ -15,7 +15,19 @@ import Modal from "../../components/Modal.jsx";
 import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 
-const EMPTY_FORM = { name: "", city: "", address: "", phone: "" };
+const EMPTY_FORM = {
+  name: "",
+  legal_name: "",
+  inn: "",
+  city: "",
+  address: "",
+  phone: "",
+  license_number: "",
+  clinic_type: "",
+  opening_hours: "",
+};
+
+const trimmed = (value) => value.trim() || null;
 
 export default function AdminFilials() {
   const t = useT();
@@ -24,6 +36,7 @@ export default function AdminFilials() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [city, setCity] = useState("");
+  const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -48,7 +61,18 @@ export default function AdminFilials() {
     [filials]
   );
 
-  const rows = city ? filials.filter((f) => f.city === city) : filials;
+  // владелец просил искать филиал и по официальному названию с ИНН, а не только
+  // по городу: у клиник в одном городе разные юрлица, и в договоре стоит ИНН
+  const needle = search.trim().toLowerCase();
+
+  const rows = filials.filter((filial) => {
+    if (city && filial.city !== city) return false;
+    if (!needle) return true;
+
+    return [filial.name, filial.legal_name, filial.inn, filial.license_number]
+      .filter(Boolean)
+      .some((field) => field.toLowerCase().includes(needle));
+  });
 
   const change = (name) => (e) => setForm((prev) => ({ ...prev, [name]: e.target.value }));
 
@@ -60,9 +84,14 @@ export default function AdminFilials() {
   const openEdit = (filial) => {
     setForm({
       name: filial.name,
+      legal_name: filial.legal_name || "",
+      inn: filial.inn || "",
       city: filial.city,
       address: filial.address,
       phone: filial.phone || "",
+      license_number: filial.license_number || "",
+      clinic_type: filial.clinic_type || "",
+      opening_hours: filial.opening_hours || "",
     });
     setEditing(filial);
   };
@@ -73,9 +102,14 @@ export default function AdminFilials() {
 
     const payload = {
       name: form.name.trim(),
+      legal_name: trimmed(form.legal_name),
+      inn: trimmed(form.inn),
       city: form.city.trim(),
       address: form.address.trim(),
-      phone: form.phone.trim() || null,
+      phone: trimmed(form.phone),
+      license_number: trimmed(form.license_number),
+      clinic_type: trimmed(form.clinic_type),
+      opening_hours: trimmed(form.opening_hours),
     };
 
     try {
@@ -114,15 +148,25 @@ export default function AdminFilials() {
   return (
     <div className="space-y-md">
       <div className="flex flex-wrap items-end justify-between gap-sm">
-        <div className="w-full sm:w-64">
-          <Select label={t("admin.city")} value={city} onChange={(e) => setCity(e.target.value)}>
-            <option value="">{t("common.all")}</option>
-            {cities.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
+        <div className="flex w-full flex-wrap gap-sm sm:w-auto">
+          <div className="w-full sm:w-52">
+            <Select label={t("admin.city")} value={city} onChange={(e) => setCity(e.target.value)}>
+              <option value="">{t("common.all")}</option>
+              {cities.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-full sm:w-64">
+            <Field
+              label={t("admin.searchFilial")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("admin.searchFilialHint")}
+            />
+          </div>
         </div>
         <Button icon="add" onClick={openCreate}>
           {t("admin.addFilial")}
@@ -152,6 +196,7 @@ export default function AdminFilials() {
             <thead className="border-b border-outline-variant text-label-md text-on-surface-variant">
               <tr>
                 <th className="px-4 py-3 font-semibold">{t("admin.name")}</th>
+                <th className="px-4 py-3 font-semibold">{t("admin.inn")}</th>
                 <th className="px-4 py-3 font-semibold">{t("admin.city")}</th>
                 <th className="px-4 py-3 font-semibold">{t("admin.address")}</th>
                 <th className="px-4 py-3 font-semibold">{t("admin.phone")}</th>
@@ -161,7 +206,15 @@ export default function AdminFilials() {
             <tbody>
               {rows.map((filial) => (
                 <tr key={filial.id} className="border-b border-outline-variant/50 last:border-0">
-                  <td className="px-4 py-3 font-semibold text-on-surface">{filial.name}</td>
+                  <td className="px-4 py-3 font-semibold text-on-surface">
+                    {filial.name}
+                    {filial.legal_name && (
+                      <span className="block text-label-md font-normal text-on-surface-variant">
+                        {filial.legal_name}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-on-surface-variant">{filial.inn || "—"}</td>
                   <td className="px-4 py-3 text-on-surface-variant">{filial.city}</td>
                   <td className="px-4 py-3 text-on-surface-variant">{filial.address}</td>
                   <td className="px-4 py-3 text-on-surface-variant">
@@ -240,6 +293,36 @@ export default function AdminFilials() {
               hint={t("common.optional")}
               value={form.phone}
               onChange={change("phone")}
+            />
+            <Field
+              label={t("admin.legalName")}
+              hint={t("common.optional")}
+              value={form.legal_name}
+              onChange={change("legal_name")}
+            />
+            <Field
+              label={t("admin.inn")}
+              hint={t("common.optional")}
+              value={form.inn}
+              onChange={change("inn")}
+            />
+            <Field
+              label={t("admin.license")}
+              hint={t("common.optional")}
+              value={form.license_number}
+              onChange={change("license_number")}
+            />
+            <Field
+              label={t("admin.clinicType")}
+              hint={t("common.optional")}
+              value={form.clinic_type}
+              onChange={change("clinic_type")}
+            />
+            <Field
+              label={t("admin.openingHours")}
+              hint={t("admin.openingHoursHint")}
+              value={form.opening_hours}
+              onChange={change("opening_hours")}
             />
           </form>
         </Modal>

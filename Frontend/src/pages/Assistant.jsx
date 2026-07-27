@@ -67,10 +67,29 @@ function DoctorsAnswer({ t, data, onPickDoctor }) {
   );
 }
 
+const slotKey = (slot) => `${slot.date} ${slot.time}`;
+
+// сервер отдаёт слоты в порядке рекомендации — сначала часы, в которые пациент
+// обычно ходит. Сетку времени так читать нельзя (09:40 приходится искать глазами),
+// поэтому показываем по возрастанию, а рекомендованные помечаем. Если порядок
+// сервера и так хронологический, никакой рекомендации не было — метки не ставим
+function recommendedSlots(slots) {
+  const sorted = [...slots].sort((a, b) => slotKey(a).localeCompare(slotKey(b)));
+  const reordered = slots.some((slot, index) => slotKey(slot) !== slotKey(sorted[index]));
+
+  return new Set(reordered ? slots.slice(0, 3).map(slotKey) : []);
+}
+
 function SlotsAnswer({ t, lang, data, onPickSlot }) {
   const byDate = {};
+  const recommended = recommendedSlots(data.slots);
+
   for (const slot of data.slots) {
     (byDate[slot.date] = byDate[slot.date] || []).push(slot);
+  }
+
+  for (const date in byDate) {
+    byDate[date].sort((a, b) => a.time.localeCompare(b.time));
   }
 
   return (
@@ -81,16 +100,28 @@ function SlotsAnswer({ t, lang, data, onPickSlot }) {
             {formatDate(date, lang)}
           </p>
           <div className="grid grid-cols-3 gap-xs sm:grid-cols-4">
-            {slots.map((slot) => (
-              <button
-                key={`${date}-${slot.time}`}
-                type="button"
-                onClick={() => onPickSlot(data, slot)}
-                className="rounded-lg border border-outline-variant bg-surface-container-lowest py-2 text-label-md font-bold text-on-surface transition-colors hover:border-primary hover:text-primary"
-              >
-                {clock(slot.time)}
-              </button>
-            ))}
+            {slots.map((slot) => {
+              const isRecommended = recommended.has(slotKey(slot));
+
+              return (
+                <button
+                  key={`${date}-${slot.time}`}
+                  type="button"
+                  onClick={() => onPickSlot(data, slot)}
+                  title={isRecommended ? t("assistant.usualTime") : undefined}
+                  className={`flex items-center justify-center gap-1 rounded-lg border py-2 text-label-md font-bold transition-colors hover:border-primary hover:text-primary ${
+                    isRecommended
+                      ? "border-primary/50 bg-primary-container/15 text-primary"
+                      : "border-outline-variant bg-surface-container-lowest text-on-surface"
+                  }`}
+                >
+                  {clock(slot.time)}
+                  {isRecommended && (
+                    <span className="sr-only">{t("assistant.usualTime")}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}

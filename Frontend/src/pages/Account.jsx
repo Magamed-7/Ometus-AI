@@ -44,13 +44,24 @@ export default function Account() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  // карточка пациента и записи есть только у пациента: врач, регистратор и админ
+  // на этой же странице правят свой профиль, а за ними на бэкенде 404 и 403
+  const isPatient = user?.role === "patient";
+
   useEffect(() => {
+    if (!isPatient) return;
+
     getPatient()
       .then(setPatient)
       .catch(() => {});
-  }, []);
+  }, [isPatient]);
 
   const loadAppointments = useCallback(() => {
+    if (!isPatient) {
+      setLoading(false);
+      return Promise.resolve();
+    }
+
     setLoading(true);
     setError(false);
     return Promise.all([getMyAppointments(), searchDoctors(), getDepartments(), getFilials()])
@@ -62,7 +73,7 @@ export default function Account() {
       })
       .catch((e) => setError(e))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isPatient]);
 
   useEffect(() => {
     loadAppointments();
@@ -143,6 +154,13 @@ export default function Account() {
     { id: "documents", label: t("account.tabDocuments") },
   ];
 
+  const WORKSPACES = {
+    doctor: { to: "/doctor/today", label: "nav.doctorToday", icon: "event_available" },
+    admin: { to: "/admin/filials", label: "nav.admin", icon: "admin_panel_settings" },
+  };
+
+  const workspace = WORKSPACES[user?.role];
+
   return (
     <div className="mx-auto max-w-7xl px-sm py-md md:px-lg">
       <div className="grid grid-cols-1 items-start gap-md lg:grid-cols-12">
@@ -190,7 +208,7 @@ export default function Account() {
             </Card>
           )}
 
-          {editing && (
+          {editing && isPatient && (
             <Card className="mb-md p-md">
               <h2 className="mb-md text-headline-md font-semibold text-on-surface">
                 {t("account.patientCard")}
@@ -221,6 +239,24 @@ export default function Account() {
             </Card>
           )}
 
+          {!isPatient && (
+            <Card className="p-md">
+              <h2 className="mb-xs text-headline-md font-semibold text-on-surface">
+                {t("account.staffTitle")}
+              </h2>
+              <p className="mb-md text-body-md text-on-surface-variant">
+                {t("account.staffText")}
+              </p>
+              {workspace && (
+                <Button icon={workspace.icon} onClick={() => navigate(workspace.to)}>
+                  {t(workspace.label)}
+                </Button>
+              )}
+            </Card>
+          )}
+
+          {isPatient && (
+          <>
           <div className="no-scrollbar mb-md flex gap-xs overflow-x-auto pb-2">
             {tabs.map((tb) => (
               <button
@@ -312,6 +348,8 @@ export default function Account() {
               />
             )}
           </div>
+          </>
+          )}
         </div>
       </div>
 
@@ -319,7 +357,7 @@ export default function Account() {
         <ConfirmDialog
           title={t("account.cancel")}
           text={t("account.cancelConfirm")}
-          confirmLabel={t("account.cancel")}
+          confirmLabel={t("account.cancelYes")}
           loading={cancelling}
           onConfirm={onCancel}
           onClose={() => setCancelTarget(null)}
