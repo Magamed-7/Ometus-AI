@@ -25,6 +25,8 @@ class AskOut(BaseModel):
     action: str
     reply: str
     conversation_id: int
+    # id сохранённого ответа: без него клиент не может прислать оценку этого ответа
+    message_id: int | None = None
     severity: int = 0
     language: str = "ru"
     detected_intent: str | None = None
@@ -41,6 +43,7 @@ class AskOut(BaseModel):
 
 
 class MessageOut(BaseModel):
+    id: int
     role: str
     content: str
     created_at: datetime
@@ -50,7 +53,21 @@ class MessageOut(BaseModel):
 
 class ConversationHistoryOut(BaseModel):
     conversation_id: int
+    title: str | None = None
     messages: list[MessageOut]
+
+
+class ConversationOut(BaseModel):
+    id: int
+    title: str | None = None
+    messages: int
+    preview: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConversationRenameIn(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
 
 
 class FeedbackIn(BaseModel):

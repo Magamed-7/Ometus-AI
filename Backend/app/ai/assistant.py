@@ -479,7 +479,10 @@ async def remember(
     result["language"] = language
 
     await crud_conversation.add_message(conversation.id, "user", message, db)
-    await crud_conversation.add_message(conversation.id, "assistant", result.get("reply", ""), db)
+    answer = await crud_conversation.add_message(
+        conversation.id, "assistant", result.get("reply", ""), db
+    )
+    result["message_id"] = answer.id
     await crud_ai_metric.save_calls(current_patient.user_id, metrics.collected_calls(), db)
     return result
 
