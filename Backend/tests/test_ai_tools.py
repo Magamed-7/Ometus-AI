@@ -73,7 +73,13 @@ async def admin_headers(client, db, email="admin@ometus.test"):
     return await auth_headers(client, email)
 
 
-async def setup_doctor(client, db, email=DOCTOR_DATA["email"], with_schedule=True):
+async def setup_doctor(
+    client,
+    db,
+    email=DOCTOR_DATA["email"],
+    with_schedule=True,
+    specialization=DOCTOR_DATA["specialization"],
+):
     admin = await admin_headers(client, db)
 
     filial = await client.post(ADMIN_FILIALS_URL, json=FILIAL_DATA, headers=admin)
@@ -85,7 +91,9 @@ async def setup_doctor(client, db, email=DOCTOR_DATA["email"], with_schedule=Tru
     department_id = department.json()["id"]
 
     doctor = await client.post(
-        ADMIN_DOCTORS_URL, json={**DOCTOR_DATA, "email": email}, headers=admin
+        ADMIN_DOCTORS_URL,
+        json={**DOCTOR_DATA, "email": email, "specialization": specialization},
+        headers=admin,
     )
     doctor_id = doctor.json()["id"]
 
@@ -164,6 +172,39 @@ async def test_unclear_request_asks_for_clarification(client, db):
 
     assert response.status_code == 200
     assert response.json()["action"] == "clarify"
+
+
+async def test_back_pain_finds_a_doctor(client, db):
+    await setup_doctor(client, db, email="neuro@ometus.test", specialization="Невролог")
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "болит спина")
+
+    body = response.json()
+    assert body["action"] == "doctors"
+    assert body["specialization"] == "невролог"
+
+
+async def test_boil_finds_a_surgeon(client, db):
+    await setup_doctor(client, db, email="surgeon@ometus.test", specialization="Хирург")
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "у меня нарыв на пальце")
+
+    body = response.json()
+    assert body["action"] == "doctors"
+    assert body["specialization"] == "хирург"
+
+
+async def test_allergy_finds_an_allergist(client, db):
+    await setup_doctor(client, db, email="allergy@ometus.test", specialization="Аллерголог")
+    patient_id, headers = await setup_patient(client)
+
+    response = await ask(client, headers, "у меня аллергия на пыльцу")
+
+    body = response.json()
+    assert body["action"] == "doctors"
+    assert body["specialization"] == "аллерголог"
 
 
 async def test_ambiguous_symptoms_ask_for_clarification(client, db):
