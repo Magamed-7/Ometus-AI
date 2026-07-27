@@ -1,3 +1,5 @@
+from app.ai.specialization_map import SPECIALIZATION_KEYWORDS
+
 from tests.conftest import verify_email
 
 REGISTER_URL = "/api/auth/register"
@@ -541,3 +543,27 @@ async def test_dismissal_can_be_undone(client, db):
     assert restored.status_code == 200
     assert restored.json()["dismissed_at"] is None
     assert any(doctor["id"] == doctor_id for doctor in listing.json())
+
+
+# смысл теста — поймать расхождение словаря ассистента и клиники: если кто-то добавит
+# специализацию в SPECIALIZATION_KEYWORDS, ассистент начнёт её распознавать и тут же
+# отвечать «врачей нет». Боевые данные тест не проверяет, только саму связность
+async def test_every_specialty_in_the_map_can_be_booked(client, db):
+    headers = await admin_headers(client, db)
+
+    for number, specialization in enumerate(SPECIALIZATION_KEYWORDS):
+        await create_doctor(
+            client,
+            headers,
+            {
+                "email": f"specialist{number}@ometus.test",
+                "full_name": f"Врач Номер{number}",
+                "specialization": specialization.capitalize(),
+            },
+        )
+
+    for specialization in SPECIALIZATION_KEYWORDS:
+        found = await client.get(DOCTORS_URL, params={"specialization": specialization})
+
+        assert found.status_code == 200
+        assert found.json(), f"по специализации «{specialization}» врач не нашёлся"
