@@ -106,9 +106,10 @@ function SlotsAnswer({ t, lang, data, onPickSlot }) {
   }
 
   const firstDate = data.slots[0]?.date;
-  const heading = data._doctorName
+  const doctorName = data.doctor_name || data._doctorName;
+  const heading = doctorName
     ? t("assistant.slotsHeadingDoctor", {
-        doctor: data._doctorName,
+        doctor: doctorName,
         date: formatDate(firstDate, lang),
       })
     : t("assistant.slotsHeading", { date: formatDate(firstDate, lang) });
@@ -311,19 +312,30 @@ function ThinkingBubble({ label }) {
   );
 }
 
-// история хранит только текст сообщений: карточки врачей и сетка слотов собираются
-// из ответа на живой запрос и в базе не лежат, поэтому старая переписка
-// восстанавливается текстом — выдумывать под неё врачей и время нельзя
+// ответ ассистента хранится вместе с action и payload, поэтому старая переписка
+// поднимается такой же, как живая: с карточками врачей, сеткой слотов и записью.
+// У сообщений, написанных до появления этих колонок, action пустой — они остаются
+// текстом, и это не регресс: данных для карточек в них физически нет
 function restoreMessages(messages) {
-  return messages.map((message) =>
-    message.role === "user"
-      ? { id: `u-${message.id}`, role: "user", data: { text: message.content } }
-      : {
-          id: `a-${message.id}`,
-          role: "assistant",
-          data: { action: "history", reply: message.content, message_id: message.id },
-        }
-  );
+  return messages.map((message) => {
+    if (message.role === "user") {
+      return { id: `u-${message.id}`, role: "user", data: { text: message.content } };
+    }
+
+    const payload = message.payload || {};
+
+    return {
+      id: `a-${message.id}`,
+      role: "assistant",
+      data: {
+        ...payload,
+        action: message.action || "history",
+        reply: message.content,
+        message_id: message.id,
+        _doctorId: payload.doctor_id || payload.doctors?.[0]?.doctor_id,
+      },
+    };
+  });
 }
 
 export default function Assistant() {
@@ -467,7 +479,13 @@ export default function Assistant() {
   const onPickSlot = (data, slot) => {
     const label = t("assistant.book", { time: clock(slot.time) });
     runAsk(
-      { message: label, doctor_id: data._doctorId, date: slot.date, time: slot.time, confirm: true },
+      {
+        message: label,
+        doctor_id: data.doctor_id || data._doctorId,
+        date: slot.date,
+        time: slot.time,
+        confirm: true,
+      },
       label
     );
   };
