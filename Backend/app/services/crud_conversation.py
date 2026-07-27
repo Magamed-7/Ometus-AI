@@ -118,6 +118,36 @@ async def get_recent_conversations(patient_id: int, limit: int = 5, db: AsyncSes
     return result.scalars().all()
 
 
+def conversation_row(conversation, messages: int, preview: str | None):
+    return {
+        "id": conversation.id,
+        "title": conversation.title,
+        "messages": messages,
+        "preview": preview,
+        "created_at": conversation.created_at,
+        "updated_at": conversation.updated_at,
+    }
+
+
+async def describe_conversation(conversation, db: AsyncSession):
+    messages, last_id = (
+        await db.execute(
+            select(func.count(Message.id), func.max(Message.id)).where(
+                Message.conversation_id == conversation.id
+            )
+        )
+    ).one()
+
+    preview = None
+
+    if last_id:
+        preview = (
+            await db.execute(select(Message.content).where(Message.id == last_id))
+        ).scalar_one_or_none()
+
+    return conversation_row(conversation, messages, preview)
+
+
 async def list_conversations(patient_id: int, db: AsyncSession, limit: int = 50, offset: int = 0):
     rows = (
         await db.execute(
@@ -147,14 +177,7 @@ async def list_conversations(patient_id: int, db: AsyncSession, limit: int = 50,
         previews = dict(found.all())
 
     return [
-        {
-            "id": row.Conversation.id,
-            "title": row.Conversation.title,
-            "messages": row.messages,
-            "preview": previews.get(row.last_message_id),
-            "created_at": row.Conversation.created_at,
-            "updated_at": row.Conversation.updated_at,
-        }
+        conversation_row(row.Conversation, row.messages, previews.get(row.last_message_id))
         for row in rows
     ]
 
