@@ -26,6 +26,8 @@ from app.schemas.schema_ai import AiCostsOut, FeedbackSummaryOut, LlmMetricOut
 from app.schemas.schema_patient import DependentCreateIn, PatientOut
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
 from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
+from app.schemas.schema_review import ReviewAdminOut, ReviewModerateIn
+from app.schemas.schema_service import ServiceCreateIn, ServiceOut, ServiceUpdateIn
 from app.schemas.schema_schedule import ScheduleCreateIn, ScheduleOut, ScheduleUpdateIn
 from app.schemas.schema_user import Role, RoleUpdateIn, UserOut
 from app.services import (
@@ -38,7 +40,9 @@ from app.services import (
     crud_filial,
     crud_patient,
     crud_report,
+    crud_review,
     crud_schedule,
+    crud_service,
     crud_user,
 )
 
@@ -682,3 +686,108 @@ async def list_admin_actions(
     current_user=Depends(require_role("admin")),
 ):
     return await crud_admin_log.get_actions(db, limit, offset)
+
+
+@admin_router.get("/services", response_model=list[ServiceOut])
+async def list_services_for_admin(
+    category: str | None = None,
+    department_id: int | None = None,
+    filial_id: int | None = None,
+    search: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    return await crud_service.list_services(
+        db, category, department_id, filial_id, search, include_hidden=True
+    )
+
+
+@admin_router.post("/services", response_model=ServiceOut, status_code=201)
+async def create_service(
+    data: ServiceCreateIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if await crud_service.get_by_name(data.name, db):
+        raise AppError(
+            code="SERVICE_ALREADY_EXISTS",
+            message="Услуга с таким названием уже есть",
+            status_code=409,
+        )
+
+    return await crud_service.create_service(data, db)
+
+
+@admin_router.patch("/services/{service_id}", response_model=ServiceOut)
+async def update_service(
+    service_id: int,
+    data: ServiceUpdateIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    service = await crud_service.get_by_id(service_id, db)
+
+    if service is None:
+        raise AppError(code="SERVICE_NOT_FOUND", message="Услуга не найдена", status_code=404)
+
+    return await crud_service.update_service(service, data, db)
+
+
+@admin_router.delete("/services/{service_id}")
+async def delete_service(
+    service_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    service = await crud_service.get_by_id(service_id, db)
+
+    if service is None:
+        raise AppError(code="SERVICE_NOT_FOUND", message="Услуга не найдена", status_code=404)
+
+    await crud_service.delete_service(service, db)
+    return {"message": "Услуга удалена"}
+
+
+@admin_router.get("/reviews", response_model=list[ReviewAdminOut])
+async def list_reviews_for_admin(
+    doctor_id: int | None = None,
+    filial_id: int | None = None,
+    page: int = Query(1, ge=1),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    items, _, _ = await crud_review.list_reviews(
+        db, doctor_id, filial_id, page, published_only=False
+    )
+    return items
+
+
+@admin_router.patch("/reviews/{review_id}", response_model=ReviewAdminOut)
+async def moderate_review(
+    review_id: int,
+    data: ReviewModerateIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    review = await crud_review.get_by_id(review_id, db)
+
+    if review is None:
+        raise AppError(code="REVIEW_NOT_FOUND", message="Отзыв не найден", status_code=404)
+
+    await crud_review.set_published(review, data.is_published, db)
+    return await crud_review.get_view(review.id, db)
+
+
+@admin_router.delete("/reviews/{review_id}")
+async def delete_review(
+    review_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    review = await crud_review.get_by_id(review_id, db)
+
+    if review is None:
+        raise AppError(code="REVIEW_NOT_FOUND", message="Отзыв не найден", status_code=404)
+
+    await crud_review.delete_review(review, db)
+    return {"message": "Отзыв удалён"}

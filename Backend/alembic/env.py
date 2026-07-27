@@ -30,7 +30,9 @@ from app.models import (
     model_filial,
     model_medical_record,
     model_patient,
+    model_review,
     model_schedule,
+    model_service,
     model_user,
     model_verification,
 )
