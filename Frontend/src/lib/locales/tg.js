@@ -217,6 +217,7 @@ export const tg = {
     noToday: "Ба имрӯз навбат нест",
     patient: "Бемор",
     phone: "Телефон",
+    marked: "Қайд сабт шуд",
     complete: "Қабул шуд",
     noShow: "Наомад",
     filterDay: "Рӯз",

@@ -1,9 +1,10 @@
 export class ApiError extends Error {
-  constructor({ code, message, status }) {
+  constructor({ code, message, status, fields }) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
+    this.fields = fields || [];
   }
 }
 
@@ -15,6 +16,7 @@ export function fromEnvelope(body, status) {
       code: envelope.code,
       message: envelope.message || "Что-то пошло не так",
       status: envelope.status || status,
+      fields: envelope.fields,
     });
   }
 

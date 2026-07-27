@@ -217,6 +217,7 @@ export const ru = {
     noToday: "На сегодня записей нет",
     patient: "Пациент",
     phone: "Телефон",
+    marked: "Отметка сохранена",
     complete: "Принят",
     noShow: "Не явился",
     filterDay: "День",

@@ -141,10 +141,16 @@ export default function AdminReports() {
                 <SummaryTile icon="task_alt" label={t("status.completed")} value={summary.completed} />
                 <SummaryTile icon="event_busy" label={t("status.cancelled")} value={summary.cancelled} />
                 <SummaryTile icon="person_off" label={t("status.no_show")} value={summary.no_show} />
+                {/* без знаменателя «3» читается как «в клинике три врача»:
+                    бэкенд отдаёт doctors_total именно для этого */}
                 <SummaryTile
                   icon="stethoscope"
                   label={t("admin.doctorsInvolved")}
-                  value={summary.doctors}
+                  value={
+                    summary.doctors_total
+                      ? `${summary.doctors} / ${summary.doctors_total}`
+                      : summary.doctors
+                  }
                 />
                 <SummaryTile
                   icon="groups"

@@ -5,7 +5,13 @@ export function errorText(t, error, fallback) {
 
   const code = error.code;
 
-  if (code && ru.errors[code]) return t(`errors.${code}`);
+  if (code && ru.errors[code]) {
+    // перевод берём по коду, а имена полей — с сервера: иначе на 422 остаётся
+    // «проверьте введённые данные», и в форме на десять полей непонятно, какое из них
+    return error.fields?.length
+      ? `${t(`errors.${code}`)}: ${error.fields.join(", ")}`
+      : t(`errors.${code}`);
+  }
 
   return error.message || fallback || t("common.loadError");
 }

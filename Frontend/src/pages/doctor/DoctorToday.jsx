@@ -46,6 +46,9 @@ export default function DoctorToday() {
     setActing(id);
     try {
       await fn(id);
+      // отметка уводит приём из фильтра «записан», и карточка просто исчезает:
+      // без подтверждения врач не понимает, отметилось ли вообще
+      toast.success(t("doctorCabinet.marked"));
       await load();
     } catch (e) {
       toast.error(errorText(t, e));

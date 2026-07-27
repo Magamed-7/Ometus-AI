@@ -77,7 +77,10 @@ export default function Login() {
           </p>
 
           {errors.form && (
-            <div className="mb-md rounded-xl border border-error/40 bg-error-container px-4 py-3 text-body-md text-on-error-container">
+            <div
+              role="alert"
+              className="mb-md rounded-xl border border-error/40 bg-error-container px-4 py-3 text-body-md text-on-error-container"
+            >
               {errors.form}
             </div>
           )}

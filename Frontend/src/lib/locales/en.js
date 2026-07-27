@@ -217,6 +217,7 @@ export const en = {
     noToday: "No visits today",
     patient: "Patient",
     phone: "Phone",
+    marked: "Saved",
     complete: "Seen",
     noShow: "No-show",
     filterDay: "Day",
