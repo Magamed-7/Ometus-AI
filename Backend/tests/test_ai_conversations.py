@@ -1,10 +1,12 @@
 import pytest
 
 import app.ai.assistant as assistant
+from app.services import crud_conversation
 
 from tests.test_ai_tools import ask, setup_doctor, setup_patient
 
 CONVERSATIONS_URL = "/api/ai/conversations"
+HISTORY_URL = "/api/ai/history"
 
 
 @pytest.fixture(autouse=True)
@@ -208,3 +210,53 @@ async def test_doctor_has_no_chat_list(client, db):
     response = await client.get(CONVERSATIONS_URL, headers=doctor_headers)
 
     assert response.status_code == 403
+
+
+async def test_history_returns_the_cards_of_the_answer(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    answer = (await ask(client, headers, "болит сердце")).json()
+    history = await client.get(f"{HISTORY_URL}/{answer['conversation_id']}", headers=headers)
+
+    saved = [item for item in history.json()["messages"] if item["role"] == "assistant"][-1]
+    assert saved["action"] == "doctors"
+    assert saved["payload"]["specialization"] == "кардиолог"
+    assert saved["payload"]["doctors"][0]["doctor_id"] == doctor_id
+
+
+async def test_old_messages_without_payload_still_load(client, db):
+    patient_id, headers = await setup_patient(client)
+    conversation = (await client.post(CONVERSATIONS_URL, headers=headers)).json()
+
+    await crud_conversation.add_message(conversation["id"], "assistant", "старый ответ", db)
+    history = await client.get(f"{HISTORY_URL}/{conversation['id']}", headers=headers)
+
+    saved = history.json()["messages"][-1]
+    assert saved["content"] == "старый ответ"
+    assert saved["action"] is None
+    assert saved["payload"] is None
+
+
+# история болезни и метрики в переписку попадать не должны: её отдают клиенту целиком
+def test_payload_keeps_only_what_the_cards_need():
+    payload = assistant.render_payload(
+        {
+            "action": "doctors",
+            "specialization": "кардиолог",
+            "doctors": [{"doctor_id": 1}],
+            "emr_used": True,
+            "история_болезни": {"аллергии": ["пыльца"]},
+            "reply": "текст",
+        }
+    )
+
+    assert payload == {"specialization": "кардиолог", "doctors": [{"doctor_id": 1}]}
+
+
+def test_payload_trims_a_long_slot_grid():
+    slots = [{"date": "2026-08-03", "time": f"{hour:02d}:00:00"} for hour in range(24)]
+
+    payload = assistant.render_payload({"action": "slots", "slots": slots})
+
+    assert len(payload["slots"]) == assistant.PAYLOAD_SLOTS_LIMIT

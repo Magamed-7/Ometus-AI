@@ -72,11 +72,20 @@ async def get_or_create_active_conversation(patient_id: int, db: AsyncSession):
     return conversation
 
 
-async def add_message(conversation_id: int, role: str, content: str, db: AsyncSession):
+async def add_message(
+    conversation_id: int,
+    role: str,
+    content: str,
+    db: AsyncSession,
+    action: str | None = None,
+    payload: dict | None = None,
+):
     message = Message(
         conversation_id=conversation_id,
         role=role,
         content=content,
+        action=action,
+        payload=payload,
     )
 
     db.add(message)

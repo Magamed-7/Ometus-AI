@@ -38,6 +38,8 @@ class AskOut(BaseModel):
     error_code: str | None = None
     doctors: list[dict] | None = None
     slots: list[dict] | None = None
+    doctor_id: int | None = None
+    doctor_name: str | None = None
     appointment: dict | None = None
     appointments: list[dict] | None = None
     schedule: list[dict] | None = None
@@ -47,6 +49,8 @@ class MessageOut(BaseModel):
     id: int
     role: str
     content: str
+    action: str | None = None
+    payload: dict | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

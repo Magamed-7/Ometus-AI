@@ -550,6 +550,35 @@ def pick_flow(data: AskIn):
     return suggest_doctors
 
 
+# в историю кладём только то, чем ответ рисуется. Белый список, а не «всё кроме»:
+# в result попадают история болезни, метрики и черновики промптов, и их место
+# не в переписке, которую потом отдают клиенту
+PAYLOAD_FIELDS = [
+    "doctors",
+    "slots",
+    "appointment",
+    "specialization",
+    "alternatives",
+    "suggestions",
+    "error_code",
+    "doctor_id",
+    "doctor_name",
+]
+
+PAYLOAD_SLOTS_LIMIT = 20
+
+
+def render_payload(result: dict):
+    payload = {field: result[field] for field in PAYLOAD_FIELDS if result.get(field)}
+
+    # длинная сетка слотов раздувала бы базу на каждом сообщении, а для восстановления
+    # карточек хватает первого экрана
+    if len(payload.get("slots", [])) > PAYLOAD_SLOTS_LIMIT:
+        payload["slots"] = payload["slots"][:PAYLOAD_SLOTS_LIMIT]
+
+    return payload or None
+
+
 async def remember(
     conversation,
     message: str,
@@ -565,7 +594,12 @@ async def remember(
 
     await crud_conversation.add_message(conversation.id, "user", message, db)
     answer = await crud_conversation.add_message(
-        conversation.id, "assistant", result.get("reply", ""), db
+        conversation.id,
+        "assistant",
+        result.get("reply", ""),
+        db,
+        action=result.get("action"),
+        payload=render_payload(result),
     )
     result["message_id"] = answer.id
     await crud_ai_metric.save_calls(current_patient.user_id, metrics.collected_calls(), db)
@@ -881,6 +915,10 @@ async def show_slots(
     return {
         "action": "slots",
         "slots": slots,
+        # врач нужен и в заголовке над сеткой, и чтобы записать из восстановленной
+        # истории: без него клик по слоту в старом чате не знал бы, к кому записывать
+        "doctor_id": data.doctor_id,
+        "doctor_name": doctor.full_name if doctor else None,
         "reply": await build_reply(
             data.message,
             fallback,
