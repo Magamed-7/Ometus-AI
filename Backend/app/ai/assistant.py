@@ -216,6 +216,15 @@ async def build_reply(
     return generated or fallback
 
 
+# Запись, отмена и перенос — это подтверждение уже совершённого действия, и текст
+# к нему модели не отдаётся. Поймано вживую: приём был успешно забронирован на 16:30,
+# а модель, пересказывая черновик, выдала «Время 16:30 уже занято» — пациент читает
+# отказ и идёт занимать другое время, хотя запись оформлена. Список врачей или слотов
+# перефразировать безопасно, подтверждение — нет: оно должно совпадать с базой дословно
+def state_change_reply(fallback: str):
+    return fallback
+
+
 def describe_doctors(doctors: list):
     return ", ".join(f"{doctor['full_name']} (#{doctor['doctor_id']})" for doctor in doctors)
 
@@ -565,9 +574,7 @@ async def cancel_flow(
     return {
         "action": "cancelled",
         "appointment": result["data"],
-        "reply": await build_reply(
-            data.message, fallback, {"отмена": result["data"]}, history, language
-        ),
+        "reply": state_change_reply(fallback),
     }
 
 
@@ -613,9 +620,7 @@ async def reschedule_flow(
     return {
         "action": "rescheduled",
         "appointment": appointment,
-        "reply": await build_reply(
-            data.message, fallback, {"перенос": appointment}, history, language
-        ),
+        "reply": state_change_reply(fallback),
     }
 
 
@@ -737,9 +742,7 @@ async def confirm_booking(
     return {
         "action": "booked",
         "appointment": appointment,
-        "reply": await build_reply(
-            data.message, fallback, {"запись": appointment}, history, language
-        ),
+        "reply": state_change_reply(fallback),
     }
 
 

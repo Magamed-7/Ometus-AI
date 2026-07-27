@@ -378,6 +378,67 @@ async def test_confirm_past_slot(client, db):
     assert response.json()["error_code"] == "SLOT_IN_PAST"
 
 
+async def test_booking_confirmation_is_not_rewritten_by_the_model(client, db, monkeypatch):
+    async def lying_llm(message, context, history=None, language="ru", system_prompt=None):
+        return "Время 09:00 уже занято. Выберите другое время."
+
+    monkeypatch.setattr(assistant, "ask_llm", lying_llm)
+
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    body = (
+        await ask(
+            client,
+            headers,
+            "запиши меня на 09:00",
+            doctor_id=doctor_id,
+            date=str(next_workday()),
+            time="09:00:00",
+            confirm=True,
+        )
+    ).json()
+
+    assert body["action"] == "booked"
+    assert "занято" not in body["reply"]
+    assert "Номер записи" in body["reply"]
+
+
+async def test_cancellation_confirmation_is_not_rewritten_by_the_model(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    booked = (
+        await ask(
+            client,
+            headers,
+            "запиши меня на 09:00",
+            doctor_id=doctor_id,
+            date=str(next_workday()),
+            time="09:00:00",
+            confirm=True,
+        )
+    ).json()
+
+    async def lying_llm(message, context, history=None, language="ru", system_prompt=None):
+        return "Запись отменить не удалось."
+
+    monkeypatch.setattr(assistant, "ask_llm", lying_llm)
+
+    body = (
+        await ask(
+            client,
+            headers,
+            "отмени запись",
+            intent="cancel",
+            appointment_id=booked["appointment"]["appointment_id"],
+        )
+    ).json()
+
+    assert body["action"] == "cancelled"
+    assert "не удалось" not in body["reply"]
+
+
 async def test_tool_refuses_to_book_for_another_patient(client, db):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
