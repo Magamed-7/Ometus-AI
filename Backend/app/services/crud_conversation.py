@@ -118,10 +118,14 @@ async def get_recent_conversations(patient_id: int, limit: int = 5, db: AsyncSes
     return result.scalars().all()
 
 
-def conversation_row(conversation, messages: int, preview: str | None):
+def conversation_row(conversation, messages: int, preview: str | None, first: str | None = None):
+    # у диалогов, начатых до появления колонки title, заголовка нет: показываем
+    # первое сообщение пациента, а не «Новый чат» на переписке с историей
+    title = conversation.title or (make_title(first) if first else None)
+
     return {
         "id": conversation.id,
-        "title": conversation.title,
+        "title": title,
         "messages": messages,
         "preview": preview,
         "created_at": conversation.created_at,
@@ -130,22 +134,29 @@ def conversation_row(conversation, messages: int, preview: str | None):
 
 
 async def describe_conversation(conversation, db: AsyncSession):
-    messages, last_id = (
+    messages, first_id, last_id = (
         await db.execute(
-            select(func.count(Message.id), func.max(Message.id)).where(
-                Message.conversation_id == conversation.id
-            )
+            select(
+                func.count(Message.id), func.min(Message.id), func.max(Message.id)
+            ).where(Message.conversation_id == conversation.id)
         )
     ).one()
 
-    preview = None
+    contents = await read_contents([first_id, last_id], db)
 
-    if last_id:
-        preview = (
-            await db.execute(select(Message.content).where(Message.id == last_id))
-        ).scalar_one_or_none()
+    return conversation_row(
+        conversation, messages, contents.get(last_id), contents.get(first_id)
+    )
 
-    return conversation_row(conversation, messages, preview)
+
+async def read_contents(ids: list, db: AsyncSession):
+    wanted = [message_id for message_id in ids if message_id]
+
+    if not wanted:
+        return {}
+
+    found = await db.execute(select(Message.id, Message.content).where(Message.id.in_(wanted)))
+    return dict(found.all())
 
 
 async def list_conversations(patient_id: int, db: AsyncSession, limit: int = 50, offset: int = 0):
@@ -154,6 +165,7 @@ async def list_conversations(patient_id: int, db: AsyncSession, limit: int = 50,
             select(
                 Conversation,
                 func.count(Message.id).label("messages"),
+                func.min(Message.id).label("first_message_id"),
                 func.max(Message.id).label("last_message_id"),
             )
             .outerjoin(Message, Message.conversation_id == Conversation.id)
@@ -165,19 +177,19 @@ async def list_conversations(patient_id: int, db: AsyncSession, limit: int = 50,
         )
     ).all()
 
-    last_ids = [row.last_message_id for row in rows if row.last_message_id]
-    previews = {}
-
-    if last_ids:
-        # превью берём одним запросом на всю страницу, иначе список чатов
-        # превращается в N+1 обращений к базе
-        found = await db.execute(
-            select(Message.id, Message.content).where(Message.id.in_(last_ids))
-        )
-        previews = dict(found.all())
+    # тексты первого и последнего сообщения берём одним запросом на всю страницу,
+    # иначе список чатов превращается в N+1 обращений к базе
+    contents = await read_contents(
+        [row.first_message_id for row in rows] + [row.last_message_id for row in rows], db
+    )
 
     return [
-        conversation_row(row.Conversation, row.messages, previews.get(row.last_message_id))
+        conversation_row(
+            row.Conversation,
+            row.messages,
+            contents.get(row.last_message_id),
+            contents.get(row.first_message_id),
+        )
         for row in rows
     ]
 

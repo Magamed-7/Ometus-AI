@@ -27,6 +27,26 @@ async def test_first_message_becomes_the_chat_title(client, db):
     assert chats[0]["messages"] == 2
 
 
+async def test_old_chat_without_a_title_shows_its_first_message(client, db):
+    from sqlalchemy import select
+
+    from app.models.model_conversation import Conversation
+
+    await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    conversation_id = (await ask(client, headers, "болит сердце")).json()["conversation_id"]
+    conversation = (
+        await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    ).scalar_one()
+    conversation.title = None
+    await db.commit()
+
+    chats = (await client.get(CONVERSATIONS_URL, headers=headers)).json()
+
+    assert chats[0]["title"] == "болит сердце"
+
+
 async def test_long_first_message_is_cut_for_the_title(client, db):
     await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
