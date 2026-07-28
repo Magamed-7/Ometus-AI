@@ -8,14 +8,9 @@ from sqlalchemy import select
 
 from app.db.database import get_session_factory
 
-# модель пользователя нужна не для запроса, а чтобы SQLAlchemy разрешил
-# внешний ключ doctors.user_id
-from app.models import model_user  # noqa: F401
+from app.models import model_user
 from app.models.model_doctor import Doctor
 
-# Портреты лежат во фронтенде: Frontend/public/img/doctors/doctor-NN-400.webp.
-# 400px хватает с запасом — самый крупный аватар на странице 112px, дальше
-# только экран с двойной плотностью.
 PHOTOS = [f"/img/doctors/doctor-{index:02d}-400.webp" for index in range(1, 12)]
 
 
@@ -32,9 +27,6 @@ async def seed():
                 skipped += 1
                 continue
 
-            # снимков 11, врачей больше — раздаём по кругу. Лицо на карточке
-            # всё равно иллюстрация, а не документ: настоящее фото врача
-            # загрузит админ через PATCH /api/admin/doctors/{id}
             doctor.photo_url = PHOTOS[position % len(PHOTOS)]
             filled += 1
 

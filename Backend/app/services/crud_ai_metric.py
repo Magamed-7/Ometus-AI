@@ -91,8 +91,6 @@ async def get_daily(db: AsyncSession, date_from: date, date_to: date):
         .group_by(func.date(AiLlmCall.created_at))
     )
 
-    # SQLite отдаёт func.date строкой, PostgreSQL — объектом date; приводим к одному
-    # виду, иначе день не найдётся в словаре и график выйдет пустым на живой базе
     counted = {str(row[0]): row for row in result.all()}
 
     days = []

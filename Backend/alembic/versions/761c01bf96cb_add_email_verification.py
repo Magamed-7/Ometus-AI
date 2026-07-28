@@ -1,10 +1,3 @@
-"""add email verification
-
-Revision ID: 761c01bf96cb
-Revises: ab4cb8201fca
-Create Date: 2026-07-21 15:05:28.701707
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
@@ -18,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.add_column(
         "users",
         sa.Column("is_verified", sa.Boolean(), nullable=False, server_default=sa.false()),
@@ -40,6 +32,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_table("email_verification_codes")
     op.drop_column("users", "is_verified")

@@ -1,10 +1,3 @@
-"""add conversation and message tables
-
-Revision ID: bc3918ae54b2
-Revises: d22995c74ac9
-Create Date: 2026-07-26 22:05:08.511722
-
-"""
 from typing import Sequence, Union
 
 from alembic import op

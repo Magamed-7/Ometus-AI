@@ -1,10 +1,3 @@
-"""create patients table
-
-Revision ID: 582047eba897
-Revises: ef7452ba0d30
-Create Date: 2026-07-21 20:10:00.213174
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
@@ -18,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.create_table(
         "patients",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -38,7 +30,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_index("ix_patients_user_id", table_name="patients")
     op.drop_constraint("uq_patients_user_id", "patients", type_="unique")
     op.drop_table("patients")

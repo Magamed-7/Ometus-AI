@@ -124,8 +124,6 @@ async def book_emergency_appointment(
     current_user=Depends(require_staff),
     db: AsyncSession = Depends(get_db),
 ):
-    # отпуск врача здесь не проверяется намеренно: экстренная запись и нужна для случаев,
-    # когда сетка и отпуска не важны. Остальное проверяется как обычно
     patient = await crud_patient.get_by_id(data.patient_id, db)
 
     if patient is None:

@@ -1,10 +1,3 @@
-"""add ai feedback table
-
-Revision ID: 8dfea1e06e05
-Revises: 295efe6d1450
-Create Date: 2026-07-27 01:48:55.939488
-
-"""
 from typing import Sequence, Union
 
 from alembic import op

@@ -1,10 +1,3 @@
-"""add ai llm calls table
-
-Revision ID: 4302c3d539de
-Revises: 849654aa0340
-Create Date: 2026-07-27 00:39:48.321335
-
-"""
 from typing import Sequence, Union
 
 from alembic import op

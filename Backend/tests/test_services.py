@@ -47,7 +47,6 @@ async def test_hidden_service_drops_out_of_the_public_list(client, db):
     assert await client.get(SERVICES_URL) is not None
     assert (await client.get(SERVICES_URL)).json() == []
     assert (await client.get(f"{SERVICES_URL}/{service_id}")).status_code == 404
-    # админ по-прежнему видит скрытую услугу, иначе её нельзя было бы вернуть
     assert len((await client.get(ADMIN_SERVICES_URL, headers=admin)).json()) == 1
 
 

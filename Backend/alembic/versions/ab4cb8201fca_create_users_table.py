@@ -1,10 +1,3 @@
-"""create users table
-
-Revision ID: ab4cb8201fca
-Revises: 
-Create Date: 2026-07-21 14:23:48.867641
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
@@ -18,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -40,7 +32,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_index("ix_users_email", table_name="users")
     op.drop_constraint("uq_users_email", "users", type_="unique")
     op.drop_table("users")

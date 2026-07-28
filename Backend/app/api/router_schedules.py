@@ -96,8 +96,6 @@ async def get_my_calendar(
             status_code=400,
         )
 
-    # 62 дня это два месяца вперёд — больше врачу в кабинете не нужно,
-    # а каждый день это отдельные запросы за сеткой, отпусками и занятыми слотами
     if (date_to - date_from).days > 62:
         raise AppError(
             code="DATE_RANGE_TOO_WIDE",

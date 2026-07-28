@@ -79,7 +79,6 @@ async def update_service(service: Service, data: ServiceUpdateIn, db: AsyncSessi
     service.duration_minutes = data.duration_minutes or service.duration_minutes
     service.department_id = data.department_id or service.department_id
     service.filial_id = data.filial_id or service.filial_id
-    # is_active — булево, `or` тут снять галочку не даст
     service.is_active = service.is_active if data.is_active is None else data.is_active
 
     await db.commit()

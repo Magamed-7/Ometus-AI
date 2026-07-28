@@ -48,8 +48,6 @@ async def test_author_is_shortened_to_a_first_name_and_an_initial(client, db):
         REVIEWS_URL, json={"appointment_id": appointment_id, "rating": 5}, headers=headers
     )
 
-    # в базе «Мирзоев Азиз», публично — «Азиз М.»: отзыв виден всем,
-    # а полное ФИО рядом с врачом и датой это уже медицинская тайна
     assert response.json()["author"] == "Азиз М."
 
 
@@ -144,7 +142,6 @@ async def test_unpublished_review_disappears_from_the_public_list(client, db):
     public = await client.get(REVIEWS_URL)
     assert public.json()["items"] == []
     assert public.json()["summary"]["total"] == 0
-    # снятый с публикации отзыв остаётся у админа, иначе его нельзя вернуть
     assert len((await client.get(ADMIN_REVIEWS_URL, headers=admin)).json()) == 1
 
 

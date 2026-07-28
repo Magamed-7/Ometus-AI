@@ -217,8 +217,6 @@ async def get_day_plan(doctor_id: int, day: date, db: AsyncSession):
     absence = await get_absence_on(doctor_id, day, db)
     taken = await crud_appointment.get_taken_times(doctor_id, day, db)
 
-    # отпуск сильнее всего остального: сетка на этот день никуда не девается,
-    # но принимать врач не будет, и в календаре это должно быть видно сразу
     if absence is not None:
         return {
             "date": day,

@@ -1,10 +1,3 @@
-"""add cost to ai llm calls
-
-Revision ID: a8a435ba6804
-Revises: 56a2e31a800e
-Create Date: 2026-07-27 01:24:13.880084
-
-"""
 from typing import Sequence, Union
 
 from alembic import op

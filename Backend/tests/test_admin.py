@@ -692,8 +692,6 @@ async def test_daily_report_returns_a_point_per_day_including_empty_ones(client,
     assert days[0]["booked"] == 1
     assert days[1]["completed"] == 1
     assert days[3]["no_show"] == 1
-    # без записей день всё равно приходит нулём, иначе линия графика соединит
-    # соседние даты и провал будет незаметен
     assert days[4]["total"] == 0
 
 

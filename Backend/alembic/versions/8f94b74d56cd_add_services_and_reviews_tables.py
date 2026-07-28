@@ -1,17 +1,9 @@
-"""add services and reviews tables
-
-Revision ID: 8f94b74d56cd
-Revises: c93a1f27de60
-Create Date: 2026-07-27 15:10:32.084246
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
 
 
-# revision identifiers, used by Alembic.
 revision: str = '8f94b74d56cd'
 down_revision: Union[str, Sequence[str], None] = 'c93a1f27de60'
 branch_labels: Union[str, Sequence[str], None] = None
@@ -19,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.create_table(
         'services',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -68,7 +59,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_index(op.f('ix_reviews_is_published'), table_name='reviews')
     op.drop_index(op.f('ix_reviews_rating'), table_name='reviews')
     op.drop_index(op.f('ix_reviews_filial_id'), table_name='reviews')

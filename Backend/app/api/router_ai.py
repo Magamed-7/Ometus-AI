@@ -43,8 +43,6 @@ async def ask_as_doctor(
     doctor=Depends(get_current_doctor),
     db: AsyncSession = Depends(get_db),
 ):
-    # доступ ограничен на слое данных: всё внутри спрашивается по `doctor.id`,
-    # так что чужих пациентов ассистент не покажет даже при удачной подсказке модели
     language = pick_language(data.language, data.message)
     return await staff.answer_doctor(data.message, doctor, language, db)
 

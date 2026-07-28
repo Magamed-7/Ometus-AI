@@ -1,10 +1,3 @@
-"""make patient user id nullable and add guardian
-
-Revision ID: eb8af7b4809b
-Revises: d5b39b41ec74
-Create Date: 2026-07-24 11:31:09.274637
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
@@ -18,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.alter_column("patients", "user_id", existing_type=sa.Integer(), nullable=True)
     op.add_column(
         "patients",
@@ -28,7 +20,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_index("ix_patients_guardian_user_id", table_name="patients")
     op.drop_column("patients", "guardian_user_id")
     op.alter_column("patients", "user_id", existing_type=sa.Integer(), nullable=False)

@@ -14,8 +14,6 @@ class Service(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    # цену храним Numeric, а не float: на деньгах двоичная дробь округляется не туда,
-    # и 150.00 в прайсе клиники превращается в 149.99
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'TJS'"))
     duration_minutes: Mapped[int | None] = mapped_column(nullable=True)

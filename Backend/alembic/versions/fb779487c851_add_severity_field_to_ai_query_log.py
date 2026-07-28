@@ -1,10 +1,3 @@
-"""add severity field to ai_query_log
-
-Revision ID: fb779487c851
-Revises: bc3918ae54b2
-Create Date: 2026-07-26 22:57:51.656142
-
-"""
 from typing import Sequence, Union
 
 from alembic import op

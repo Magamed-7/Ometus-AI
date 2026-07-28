@@ -11,8 +11,6 @@ class ReviewOut(BaseModel):
     doctor_name: str | None = None
     filial_id: int | None = None
     filial_name: str | None = None
-    # только имя и первая буква фамилии: отзыв публичный, полное ФИО пациента
-    # вместе с врачом и датой визита — это уже медицинская тайна
     author: str
     created_at: datetime
 

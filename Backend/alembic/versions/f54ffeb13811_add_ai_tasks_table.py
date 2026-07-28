@@ -1,10 +1,3 @@
-"""add ai tasks table
-
-Revision ID: f54ffeb13811
-Revises: 4302c3d539de
-Create Date: 2026-07-27 01:06:42.156758
-
-"""
 from typing import Sequence, Union
 
 from alembic import op

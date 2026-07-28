@@ -1,10 +1,3 @@
-"""add is emergency flag to appointments
-
-Revision ID: d5b39b41ec74
-Revises: e3a2b0c1ed5e
-Create Date: 2026-07-24 11:24:59.163268
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
@@ -18,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.add_column(
         "appointments",
         sa.Column(
@@ -28,5 +20,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_column("appointments", "is_emergency")

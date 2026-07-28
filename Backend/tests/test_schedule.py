@@ -646,7 +646,6 @@ async def test_calendar_shows_working_day_from_the_weekly_grid(client, db):
         MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
     )
 
-    # 3 августа 2026 — понедельник, weekday 0, как в WORKDAY
     response = await client.get(
         MY_CALENDAR_URL,
         params={"date_from": "2026-08-03", "date_to": "2026-08-04"},

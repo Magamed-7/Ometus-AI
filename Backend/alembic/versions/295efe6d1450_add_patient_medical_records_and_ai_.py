@@ -1,10 +1,3 @@
-"""add patient medical records and ai consent
-
-Revision ID: 295efe6d1450
-Revises: a8a435ba6804
-Create Date: 2026-07-27 01:41:57.418109
-
-"""
 from typing import Sequence, Union
 
 from alembic import op

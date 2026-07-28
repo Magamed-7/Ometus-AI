@@ -1,12 +1,3 @@
-"""add admin action log
-
-Revision ID: 56a2e31a800e
-Revises: f54ffeb13811
-Create Date: 2026-07-27 01:12:32.391539
-
-Написана руками: autogenerate в этой схеме тянет за собой чужой дрейф
-(удаление ai-таблиц, перетряску уникальных индексов), поэтому только своя таблица.
-"""
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.create_table(
         'admin_action_log',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -43,7 +33,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_index(op.f('ix_admin_action_log_entity'), table_name='admin_action_log')
     op.drop_index(op.f('ix_admin_action_log_action'), table_name='admin_action_log')
     op.drop_index(op.f('ix_admin_action_log_admin_user_id'), table_name='admin_action_log')

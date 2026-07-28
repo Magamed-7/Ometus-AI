@@ -1,10 +1,3 @@
-"""create appointments table
-
-Revision ID: 70540dec953b
-Revises: 2bf94a23e690
-Create Date: 2026-07-22 10:12:44.318620
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
@@ -18,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.create_table(
         "appointments",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -45,7 +37,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_index("ix_appointments_date", table_name="appointments")
     op.drop_index("ix_appointments_department_id", table_name="appointments")
     op.drop_index("ix_appointments_doctor_id", table_name="appointments")

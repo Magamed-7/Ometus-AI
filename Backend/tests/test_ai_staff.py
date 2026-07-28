@@ -90,8 +90,6 @@ async def setup_clinic(client, db):
 
 
 def stub_llm(monkeypatch, intent_payload, reply="Готовый ответ модели"):
-    """Первый вызов — распознавание намерения, второй — формулировка ответа."""
-
     async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
         if system_prompt and "JSON" in system_prompt:
             return json.dumps(intent_payload)
@@ -135,7 +133,6 @@ async def test_doctor_never_sees_another_doctors_patients(client, db, monkeypatc
     from app.core.clock import clinic_today
 
     clinic = await setup_clinic(client, db)
-    # запись есть только у второго врача
     await add_appointment(db, clinic, clinic["second_doctor"], clinic_today(), time(10, 0))
     stub_llm(monkeypatch, {"intent": "today", "confidence": 0.9})
     headers = await auth_headers(client, "doctor@ometus.test")
@@ -167,8 +164,6 @@ async def test_patient_names_are_not_sent_to_the_model(client, db, monkeypatch):
 
     await client.post(DOCTOR_ASK_URL, json={"message": "кто у меня сегодня"}, headers=headers)
 
-    # в модель уходят только время и статус: связка «пациент — врач — дата»
-    # это медицинская тайна, наружу её не отдаём
     sent = json.dumps(seen["context"], ensure_ascii=False, default=str)
     assert "patient_name" not in sent
     assert "приёмы" not in sent
@@ -252,7 +247,6 @@ async def test_staff_answer_falls_back_to_plain_numbers_without_the_model(client
 
     response = await client.post(DOCTOR_ASK_URL, json={"message": "кто сегодня"}, headers=headers)
 
-    # модель молчит — цифры всё равно на месте, они и так пришли из базы
     assert response.status_code == 200
     assert "1" in response.json()["reply"]
 
@@ -271,8 +265,6 @@ async def test_hallucinated_date_from_the_model_is_ignored():
 
     today = clinic_today()
 
-    # модель однажды ответила датой из собственного обучения на вопрос «сегодня» —
-    # такие даты отбрасываем, иначе врач увидит расписание позапрошлого года
     assert staff.parse_date("2024-03-16") is None
     assert staff.parse_date("не дата") is None
     assert staff.parse_date(None) is None

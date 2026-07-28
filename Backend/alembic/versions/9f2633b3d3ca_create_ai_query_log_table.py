@@ -1,10 +1,3 @@
-"""create ai query log table
-
-Revision ID: 9f2633b3d3ca
-Revises: 3dd436d18478
-Create Date: 2026-07-22 11:04:52.612907
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
@@ -18,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.create_table(
         "ai_query_log",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -39,7 +31,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_index("ix_ai_query_log_tool_name", table_name="ai_query_log")
     op.drop_index("ix_ai_query_log_user_id", table_name="ai_query_log")
     op.drop_table("ai_query_log")

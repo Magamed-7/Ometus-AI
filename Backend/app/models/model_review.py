@@ -18,7 +18,6 @@ class Review(Base):
     filial_id: Mapped[int | None] = mapped_column(
         ForeignKey("filials.id"), nullable=True, index=True
     )
-    # один приём — один отзыв: без этого пациент накрутит рейтинг врача с одного визита
     appointment_id: Mapped[int] = mapped_column(
         ForeignKey("appointments.id"), nullable=False, unique=True
     )

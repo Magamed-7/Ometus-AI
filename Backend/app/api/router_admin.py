@@ -312,8 +312,6 @@ async def get_daily_report(
             status_code=400,
         )
 
-    # 366 дней — это год на графике; шире период всё равно нечитаем точками по дням,
-    # а ответ раздувается до тысяч строк
     if (date_to - date_from).days > 366:
         raise AppError(
             code="DATE_RANGE_TOO_WIDE", message="Период не больше года", status_code=400

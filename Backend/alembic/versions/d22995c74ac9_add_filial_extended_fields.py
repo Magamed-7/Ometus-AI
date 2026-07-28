@@ -1,10 +1,3 @@
-"""add filial extended fields
-
-Revision ID: d22995c74ac9
-Revises: eb8af7b4809b
-Create Date: 2026-07-26 21:50:59.372475
-
-"""
 from typing import Sequence, Union
 
 from alembic import op

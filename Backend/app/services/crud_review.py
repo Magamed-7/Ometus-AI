@@ -12,8 +12,6 @@ PER_PAGE = 9
 
 
 def short_author(full_name: str | None):
-    # у пациента full_name собирается как «Имя Фамилия» (crud_patient.create_patient),
-    # поэтому инициал берём со второй части, а не с первой, как у врачей
     parts = (full_name or "").split()
 
     if len(parts) >= 2:
@@ -128,7 +126,6 @@ async def get_by_appointment(appointment_id: int, db: AsyncSession):
 
 
 async def create_review(patient_id: int, appointment, data: ReviewCreateIn, db: AsyncSession):
-    # филиал у врача не хранится — он определяется отделением, в котором прошёл приём
     filial_id = (
         await db.execute(
             select(Department.filial_id).where(Department.id == appointment.department_id)

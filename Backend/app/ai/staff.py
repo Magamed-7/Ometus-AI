@@ -1,15 +1,3 @@
-"""Ассистент для врача и администратора.
-
-Устройство то же, что у пациентского: модель только **распознаёт вопрос** и потом
-**формулирует ответ**, а сами цифры берутся из базы обычными запросами. Права доступа
-проверяются на слое данных, а не в подсказке модели: врачу физически недоступны чужие
-пациенты, потому что запрос идёт по его `doctor_id`, а не потому, что так написано
-в промпте. Промпт можно уговорить, `WHERE doctor_id = :id` — нельзя.
-
-Ограничение ТЗ действует и здесь: ассистент не ставит диагнозы и не даёт медицинских
-рекомендаций. Врачу он показывает расписание и списки, администратору — статистику.
-"""
-
 from datetime import date, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,13 +83,6 @@ async def classify(message: str, allowed, hints: str):
 
 
 def parse_date(value: str | None):
-    """Дата от модели — подсказка, а не факт.
-
-    На вопрос «свободные окна сегодня» модель подставляла `2024-03-16` — дату из
-    собственного обучения, — и врач видел расписание позапрошлого года. Поэтому
-    берём только даты в разумном окне вокруг сегодняшнего дня, остальное отбрасываем
-    и работаем с текущей датой.
-    """
     if not value:
         return None
 
@@ -120,15 +101,12 @@ def parse_date(value: str | None):
 
 def period(intent: dict | None, default_days: int = 30):
     days = (intent or {}).get("days") or default_days
-    # период задаёт человек голосом, поэтому подрезаем: «за всё время» на этих
-    # выборках превращается в тяжёлый запрос без всякой пользы для ответа
     days = max(1, min(int(days), 366))
     today = clinic_today()
     return today - timedelta(days=days - 1), today, days
 
 
 async def phrase(message: str, fallback: str, facts: dict, language: str):
-    """Модель только переформулирует. Не ответила — отдаём сухой текст, а не заглушку."""
     generated = await ask_llm(
         message,
         {**facts, "черновик_ответа": fallback},
@@ -140,13 +118,6 @@ async def phrase(message: str, fallback: str, facts: dict, language: str):
 
 
 def describe_appointments(rows):
-    """Только время и статус.
-
-    ФИО и телефоны пациентов во внешнюю модель не уходят: «такой-то пациент такого-то
-    числа у такого-то врача» — это медицинская тайна, и отдавать её стороннему сервису
-    ради красивой фразы незачем. Полный список с именами возвращается в `data`
-    и рисуется в кабинете врача локально.
-    """
     return [{"время": str(row["time"])[:5], "статус": row["status"]} for row in rows[:20]]
 
 
@@ -180,8 +151,6 @@ async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
             if rows
             else f"На {day.isoformat()} записей нет."
         )
-        # в data кладём полный список с именами — он нужен кабинету врача,
-        # но в модель уходит только `facts` без ФИО
         return {
             "action": "day",
             "reply": await phrase(message, fallback, facts, language),
@@ -325,7 +294,6 @@ async def answer_admin(message: str, language: str, db: AsyncSession):
             "бюджет_usd": str(costs["budget_usd"]),
             "цены_заданы": costs["prices_configured"],
         }
-        # без заданных цен сумма всегда ноль, и сказать «потратили $0» было бы враньём
         fallback = (
             f"За {days} дн. {calls} запросов к модели, потрачено ${costs['total_usd']}."
             if costs["prices_configured"]

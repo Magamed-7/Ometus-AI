@@ -9,13 +9,9 @@ from sqlalchemy import select
 
 from app.db.database import get_session_factory
 
-# модели филиала и отделения нужны не для запроса, а чтобы SQLAlchemy разрешил
-# внешние ключи services.filial_id и services.department_id
-from app.models import model_department, model_filial  # noqa: F401
+from app.models import model_department, model_filial
 from app.models.model_service import Service
 
-# Стартовый прайс клиники. Цены редактируются админом через /api/admin/services —
-# скрипт только заводит первый список, чтобы страница не открывалась пустой.
 SERVICES = [
     (
         "consultation",

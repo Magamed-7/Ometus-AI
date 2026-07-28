@@ -1,10 +1,3 @@
-"""create filials table
-
-Revision ID: 2f728b32c086
-Revises: 761c01bf96cb
-Create Date: 2026-07-21 15:42:50.934687
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
@@ -18,7 +11,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
     op.create_table(
         "filials",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -36,5 +28,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_table("filials")

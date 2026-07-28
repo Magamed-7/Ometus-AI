@@ -50,8 +50,6 @@ async def leave_review(
             code="APPOINTMENT_NOT_FOUND", message="Запись не найдена", status_code=404
         )
 
-    # отзыв только о состоявшемся приёме: иначе можно оценить врача,
-    # у которого ты не был, забронировав слот на будущее
     if appointment.status != "completed":
         raise AppError(
             code="APPOINTMENT_NOT_COMPLETED",
