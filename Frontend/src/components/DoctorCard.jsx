@@ -28,7 +28,7 @@ export default function DoctorCard({ doctor }) {
     )}`;
 
   return (
-    <Card className="flex flex-col p-md">
+    <Card className="card-lift flex flex-col p-md">
       <div className="flex items-center gap-md">
         <DoctorAvatar doctor={doctor} className="h-16 w-16 rounded-full" />
         <div className="min-w-0">

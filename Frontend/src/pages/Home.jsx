@@ -83,13 +83,14 @@ export default function Home() {
     <div>
       <section className="relative overflow-hidden bg-surface-container-lowest py-xl md:py-32">
         <div className="hero-pattern pointer-events-none absolute inset-0" />
+        <div aria-hidden="true" className="aurora" />
         <div className="relative z-10 mx-auto max-w-7xl px-lg">
           <div className="flex flex-col items-center gap-lg md:flex-row">
             <div className="flex-1 text-center md:text-left">
               <span className="mb-md inline-block rounded-full bg-secondary-container px-4 py-1 text-label-md font-semibold text-on-secondary-container">
                 {t("home.badge")}
               </span>
-              <h1 className="mb-sm text-headline-lg-mobile leading-tight text-on-surface md:text-headline-xl">
+              <h1 className="gradient-text mb-sm text-headline-lg-mobile leading-tight md:text-headline-xl">
                 {t("home.title")}
               </h1>
               <p className="mb-xl max-w-hero text-body-lg text-on-surface-variant">
@@ -152,7 +153,7 @@ export default function Home() {
                 </div>
                 <button
                   type="submit"
-                  className="flex items-center justify-center gap-2 rounded-lg bg-primary px-lg py-3 font-bold text-on-primary transition-colors hover:bg-primary-container md:py-4"
+                  className="glow-primary flex items-center justify-center gap-2 rounded-lg px-lg py-3 font-bold text-on-primary transition-all md:py-4"
                 >
                   <span aria-hidden="true" className="material-symbols-outlined">search</span>
                   {t("home.find")}
@@ -170,7 +171,7 @@ export default function Home() {
                 eager
                 width="1228"
                 height="768"
-                className="h-[460px] w-full rounded-3xl shadow-2xl"
+                className="tilt-3d h-[460px] w-full rounded-3xl shadow-2xl"
               />
               <div className="animate-bounce-slow absolute -bottom-6 -left-6 flex items-center gap-sm rounded-2xl border border-outline-variant bg-surface-container-lowest p-md shadow-xl">
                 <div className="grid h-12 w-12 place-items-center rounded-full bg-primary-container text-on-primary-container">
@@ -203,7 +204,7 @@ export default function Home() {
           {filialsLoading
             ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
             : filials.map((f, index) => (
-                <Card key={f.id} className="group overflow-hidden transition-all hover:shadow-xl">
+                <Card key={f.id} className="card-lift group overflow-hidden">
                   <Photo
                     base={filialPhoto(index)}
                     widths={CARD_WIDTHS}
@@ -291,7 +292,7 @@ export default function Home() {
             {doctorsLoading
               ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
               : doctors.map((d) => (
-                  <Card key={d.id} className="flex flex-col items-center p-md text-center">
+                  <Card key={d.id} className="card-lift flex flex-col items-center p-md text-center">
                     <DoctorAvatar
                       doctor={d}
                       className="mb-md h-28 w-28 rounded-full border-4 border-surface-container"
@@ -305,7 +306,7 @@ export default function Home() {
                     </p>
                     <Link
                       to={`/booking/${d.id}`}
-                      className="mt-auto w-full rounded-xl bg-primary py-3 font-bold text-on-primary transition-all hover:bg-primary-container hover:shadow-lg"
+                      className="glow-primary mt-auto w-full rounded-xl py-3 text-center font-bold text-on-primary transition-all"
                     >
                       {t("home.book")}
                     </Link>

@@ -316,3 +316,154 @@ body {
     transition: none;
   }
 }
+
+/* ─── Живость и объём ──────────────────────────────────────────────────────
+   Владелец просил «ярче и оживлённее, с объёмом». Три оговорки, из-за которых
+   всё сделано именно так:
+
+   1. `--color-primary` не трогаем. Он несёт белый текст на кнопках, и осветление
+      уронило бы контраст ниже нормы. Яркость даём отдельными акцентами и
+      градиентами на декоративных поверхностях, где текста нет.
+   2. Объём — средствами CSS, без three.js. Движок ради вращающихся фигур на
+      странице записи к врачу весил бы больше всего приложения; глубина
+      получается перспективой, слоями и тенями.
+   3. Всё движение выключается системной настройкой «уменьшить анимацию» —
+      правило в конце файла работает и на эти классы, но фон при этом
+      остаётся градиентом, а не пропадает. */
+
+@theme {
+  --color-accent: #00a3e0;
+  /* тот же оттенок, но тёмный: на нём лежит белый текст кнопок, и светлый конец
+     градиента давал контраст 2.9:1 — ниже нормы. Здесь 4.9:1 */
+  --color-accent-deep: #0077b6;
+  --color-accent-warm: #ff7a45;
+  --animate-aurora: aurora 18s ease-in-out infinite;
+  --animate-float: float 7s ease-in-out infinite;
+}
+
+@keyframes aurora {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(6%, -8%, 0) scale(1.12);
+  }
+  66% {
+    transform: translate3d(-7%, 5%, 0) scale(0.94);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1.2deg);
+  }
+}
+
+/* Цветные пятна за героем: дают ощущение глубины, потому что двигаются
+   медленнее переднего плана и размыты сильнее. */
+.aurora {
+  position: absolute;
+  inset: -20%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aurora::before,
+.aurora::after {
+  content: "";
+  position: absolute;
+  width: 55%;
+  height: 70%;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.32;
+  animation: var(--animate-aurora);
+}
+
+.aurora::before {
+  left: 4%;
+  top: 6%;
+  background: radial-gradient(circle, var(--color-accent), transparent 70%);
+}
+
+.aurora::after {
+  right: 2%;
+  bottom: 2%;
+  background: radial-gradient(circle, var(--color-accent-warm), transparent 70%);
+  animation-delay: -8s;
+}
+
+.dark .aurora::before,
+.dark .aurora::after {
+  opacity: 0.24;
+}
+
+/* Заголовок с переливом. Фолбэк — обычный цвет: если браузер не умеет
+   обрезать фон по тексту, надпись останется читаемой, а не исчезнет. */
+.gradient-text {
+  color: var(--color-primary);
+  background: linear-gradient(120deg, var(--color-primary), var(--color-accent) 60%, var(--color-accent-warm));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .gradient-text {
+    color: transparent;
+  }
+}
+
+/* Карточка приподнимается под курсором — глубина через тень и сдвиг,
+   а не через рамку. */
+.card-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
+}
+
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -18px color-mix(in oklab, var(--color-primary) 55%, transparent);
+}
+
+/* Настоящая перспектива: фото слегка развёрнуто в пространстве и
+   выравнивается под курсором. */
+.tilt-3d {
+  transform: perspective(1200px) rotateY(-6deg) rotateX(2deg);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.5s ease;
+}
+
+.tilt-3d:hover {
+  transform: perspective(1200px) rotateY(0deg) rotateX(0deg) translateY(-6px);
+}
+
+.glow-primary {
+  background-image: linear-gradient(120deg, var(--color-primary), var(--color-accent-deep));
+  box-shadow: 0 10px 30px -12px color-mix(in oklab, var(--color-accent) 70%, transparent);
+}
+
+.glow-primary:hover {
+  box-shadow: 0 14px 36px -10px color-mix(in oklab, var(--color-accent) 85%, transparent);
+}
+
+.animate-float {
+  animation: var(--animate-float);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* пятна остаются, но замирают: фон должен быть, движение — нет */
+  .aurora::before,
+  .aurora::after,
+  .animate-float {
+    animation: none !important;
+  }
+
+  .tilt-3d,
+  .tilt-3d:hover {
+    transform: none;
+  }
+}

@@ -177,7 +177,7 @@ export default function About() {
         ) : (
           <div className="grid grid-cols-1 gap-md md:grid-cols-3">
             {filials.map((filial, index) => (
-              <Card key={filial.id} className="overflow-hidden">
+              <Card key={filial.id} className="card-lift overflow-hidden">
                 <Photo
                   base={filialPhoto(index)}
                   widths={CARD_WIDTHS}
