@@ -6,6 +6,7 @@ const TITLES = {
   "/": "nav.home",
   "/about": "nav.about",
   "/faq": "faq.title",
+  "/patients": "patients.title",
   "/doctors": "nav.doctors",
   "/booking": "nav.booking",
   "/assistant": "nav.assistant",

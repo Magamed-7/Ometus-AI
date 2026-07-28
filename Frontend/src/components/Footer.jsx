@@ -29,6 +29,9 @@ export default function Footer() {
           <a href="#" className="text-label-md text-on-surface-variant hover:text-primary">
             {t("footer.privacy")}
           </a>
+          <Link to="/patients" className="text-label-md text-on-surface-variant hover:text-primary">
+            {t("patients.title")}
+          </Link>
           <Link to="/faq" className="text-label-md text-on-surface-variant hover:text-primary">
             {t("footer.faq")}
           </Link>

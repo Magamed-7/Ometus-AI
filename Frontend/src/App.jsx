@@ -21,6 +21,7 @@ import Faq from "./pages/Faq.jsx";
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import Patients from "./pages/Patients.jsx";
 import Register from "./pages/Register.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
 
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/faq" element={<Faq />} />
+          <Route path="/patients" element={<Patients />} />
           <Route path="/doctors" element={<Doctors />} />
           <Route path="/doctors/:id" element={<DoctorDetail />} />
           <Route path="/booking" element={<Booking />} />
