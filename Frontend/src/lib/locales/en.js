@@ -136,6 +136,8 @@ export const en = {
     noSlots: "No available time",
     departmentsOf: "Doctor's departments",
     profile: "Doctor profile",
+    clearSearch: "Clear search",
+    found: "found: {count}",
   },
   booking: {
     title: "Book an appointment",

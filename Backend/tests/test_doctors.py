@@ -230,6 +230,55 @@ async def test_search_doctors_by_specialization(client, db):
     assert body[0]["specialization"] == "Кардиолог"
 
 
+async def test_search_doctors_by_name(client, db):
+    headers = await admin_headers(client, db)
+    await create_doctor(client, headers)
+    await create_doctor(
+        client,
+        headers,
+        {
+            **DOCTOR_DATA,
+            "email": "doctor2@ometus.test",
+            "full_name": "Саидов Фарход",
+            "specialization": "Невролог",
+        },
+    )
+
+    response = await client.get(DOCTORS_URL, params={"search": "Саидов"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["full_name"] == "Саидов Фарход"
+
+
+async def test_search_doctors_by_search_also_matches_specialization(client, db):
+    headers = await admin_headers(client, db)
+    await create_doctor(client, headers)
+    await create_doctor(
+        client,
+        headers,
+        {**DOCTOR_DATA, "email": "doctor2@ometus.test", "specialization": "Невролог"},
+    )
+
+    response = await client.get(DOCTORS_URL, params={"search": "Кардио"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["specialization"] == "Кардиолог"
+
+
+async def test_search_doctors_by_name_ignores_case(client, db):
+    headers = await admin_headers(client, db)
+    await create_doctor(client, headers)
+
+    response = await client.get(DOCTORS_URL, params={"search": "иванова"})
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
 async def test_search_doctors_by_filial(client, db):
     headers = await admin_headers(client, db)
     filial_id = await create_filial(client, headers)

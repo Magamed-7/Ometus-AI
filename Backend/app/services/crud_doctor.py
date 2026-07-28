@@ -81,18 +81,33 @@ async def search_doctors(
     department_id: int | None = None,
     filial_id: int | None = None,
     city: str | None = None,
+    search: str | None = None,
 ):
     query = select(Doctor).where(
         or_(Doctor.dismissed_at.is_(None), Doctor.dismissed_at > clinic_today())
     )
 
-    if specialization:
+    if specialization or search:
         query = query.outerjoin(
             DoctorSpecialization, DoctorSpecialization.doctor_id == Doctor.id
-        ).where(
+        )
+
+    if specialization:
+        query = query.where(
             or_(
                 Doctor.specialization.ilike(f"%{specialization}%"),
                 DoctorSpecialization.name.ilike(f"%{specialization}%"),
+            )
+        )
+
+    # в шапке сайта одно поле на всё: пациент пишет туда и «кардиолог», и фамилию врача,
+    # поэтому ищем сразу по обоим, а не только по специализации
+    if search:
+        query = query.where(
+            or_(
+                Doctor.full_name.ilike(f"%{search}%"),
+                Doctor.specialization.ilike(f"%{search}%"),
+                DoctorSpecialization.name.ilike(f"%{search}%"),
             )
         )
 

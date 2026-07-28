@@ -136,6 +136,8 @@ export const ru = {
     noSlots: "Нет свободного времени",
     departmentsOf: "Отделения врача",
     profile: "Профиль врача",
+    clearSearch: "Убрать поиск",
+    found: "найдено: {count}",
   },
   booking: {
     title: "Запись на приём",

@@ -136,6 +136,8 @@ export const tg = {
     noSlots: "Вақти холӣ нест",
     departmentsOf: "Шӯъбаҳои табиб",
     profile: "Профили табиб",
+    clearSearch: "Ҷустуҷӯро тоза кардан",
+    found: "ёфт шуд: {count}",
   },
   booking: {
     title: "Навбатгирӣ ба қабул",

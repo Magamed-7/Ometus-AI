@@ -16,11 +16,26 @@ export default function Doctors() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [allSpecs, setAllSpecs] = useState([]);
-  const [spec, setSpec] = useState(params.get("specialization") || "");
   const [filials, setFilials] = useState([]);
-  const [filialIds, setFilialIds] = useState(params.getAll("filial_id"));
 
+  // Адрес — единственный источник правды. Раньше фильтры дублировались в состоянии,
+  // которое читало адрес только при монтировании, а отдельный эффект писал это состояние
+  // обратно в адрес. Из-за этого повторный поиск из шапки затирался: страница уже открыта,
+  // компонент не пересоздаётся, и второй запрос просто не доходил до загрузки.
+  const spec = params.get("specialization") || "";
   const departmentId = params.get("department_id") || "";
+  const search = params.get("search") || "";
+  const filialKey = params.getAll("filial_id").join(",");
+  const filialIds = filialKey ? filialKey.split(",") : [];
+
+  const patch = (mutate) => {
+    const next = new URLSearchParams(params);
+    mutate(next);
+    setParams(next, { replace: true });
+  };
+
+  const setSpec = (value) =>
+    patch((next) => (value ? next.set("specialization", value) : next.delete("specialization")));
 
   useEffect(() => {
     searchDoctors()
@@ -35,15 +50,27 @@ export default function Doctors() {
   }, []);
 
   const toggleFilial = (id) =>
-    setFilialIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    patch((next) => {
+      const current = next.getAll("filial_id");
+      const updated = current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id];
+      next.delete("filial_id");
+      for (const value of updated) next.append("filial_id", value);
+    });
 
   const load = useCallback(() => {
     setLoading(true);
     setError(false);
-    const targets = filialIds.length ? filialIds : [""];
+    const ids = filialKey ? filialKey.split(",") : [""];
     return Promise.all(
-      targets.map((fid) =>
-        searchDoctors({ specialization: spec, filial_id: fid, department_id: departmentId })
+      ids.map((fid) =>
+        searchDoctors({
+          specialization: spec,
+          filial_id: fid,
+          department_id: departmentId,
+          search,
+        })
       )
     )
       .then((lists) => {
@@ -53,19 +80,11 @@ export default function Doctors() {
       })
       .catch((e) => setError(e))
       .finally(() => setLoading(false));
-  }, [spec, filialIds, departmentId]);
+  }, [spec, filialKey, departmentId, search]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    const next = new URLSearchParams();
-    if (spec) next.set("specialization", spec);
-    for (const id of filialIds) next.append("filial_id", id);
-    if (departmentId) next.set("department_id", departmentId);
-    setParams(next, { replace: true });
-  }, [spec, filialIds, departmentId, setParams]);
 
   return (
     <div className="mx-auto max-w-7xl px-md py-lg md:px-lg">
@@ -134,13 +153,10 @@ export default function Doctors() {
               </div>
             )}
 
-            {(spec || filialIds.length > 0) && (
+            {(spec || search || filialIds.length > 0) && (
               <button
                 type="button"
-                onClick={() => {
-                  setSpec("");
-                  setFilialIds([]);
-                }}
+                onClick={() => setParams(new URLSearchParams(), { replace: true })}
                 className="mt-md w-full rounded-lg bg-secondary-container py-3 font-bold text-on-secondary-container transition-all hover:bg-surface-container-high"
               >
                 {t("doctors.reset")}
@@ -150,6 +166,31 @@ export default function Doctors() {
         </aside>
 
         <div className="flex-grow">
+          {search && (
+            <div className="mb-md flex flex-wrap items-center gap-sm">
+              <span className="flex items-center gap-xs rounded-full bg-secondary-container px-md py-2 text-label-md font-semibold text-on-secondary-container">
+                <span aria-hidden="true" className="material-symbols-outlined text-base">
+                  search
+                </span>
+                {search}
+                <button
+                  type="button"
+                  onClick={() => patch((next) => next.delete("search"))}
+                  aria-label={t("doctors.clearSearch")}
+                  className="ml-xs grid h-5 w-5 place-items-center rounded-full transition-colors hover:bg-on-secondary-container/20"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-base">
+                    close
+                  </span>
+                </button>
+              </span>
+              {!loading && (
+                <span className="text-label-md text-on-surface-variant">
+                  {t("doctors.found", { count: doctors.length })}
+                </span>
+              )}
+            </div>
+          )}
           {error ? (
             <ErrorState error={error} onRetry={load} />
           ) : loading ? (

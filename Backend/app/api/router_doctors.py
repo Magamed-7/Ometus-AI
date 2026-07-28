@@ -15,9 +15,12 @@ async def search_doctors(
     specialization: str | None = None,
     department_id: int | None = None,
     filial_id: int | None = None,
+    search: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    return await crud_doctor.search_doctors(db, specialization, department_id, filial_id)
+    return await crud_doctor.search_doctors(
+        db, specialization, department_id, filial_id, search=search
+    )
 
 
 @doctors_router.get("/{doctor_id}", response_model=DoctorOut)

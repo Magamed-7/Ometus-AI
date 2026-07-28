@@ -1,10 +1,11 @@
 import { client } from "./client.js";
 
-export function searchDoctors({ specialization, department_id, filial_id } = {}) {
+export function searchDoctors({ specialization, department_id, filial_id, search } = {}) {
   const params = new URLSearchParams();
   if (specialization) params.set("specialization", specialization);
   if (department_id) params.set("department_id", department_id);
   if (filial_id) params.set("filial_id", filial_id);
+  if (search) params.set("search", search);
   const qs = params.toString();
 
   return client.get(`/api/doctors${qs ? `?${qs}` : ""}`, { auth: false });

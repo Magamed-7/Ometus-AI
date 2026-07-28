@@ -29,10 +29,12 @@ export default function TopNav() {
     links.push({ to: "/account", label: t("nav.account") });
   }
 
+  // ищем через `search`, а не `specialization`: поле подписано «Поиск врача»,
+  // и по фамилии оно обязано находить врача, а не только по названию специальности
   const onSearch = (e) => {
     e.preventDefault();
     const value = query.trim();
-    navigate(value ? `/doctors?specialization=${encodeURIComponent(value)}` : "/doctors");
+    navigate(value ? `/doctors?search=${encodeURIComponent(value)}` : "/doctors");
   };
 
   const onLogout = () => {
