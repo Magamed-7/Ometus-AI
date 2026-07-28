@@ -1,7 +1,7 @@
 # Шрифт иконок
 
 `material-symbols-subset.woff2` — Material Symbols Outlined, урезанный до иконок,
-которые реально встречаются в коде. 59 КБ против 3,5 МБ полного вариативного шрифта.
+которые реально встречаются в коде. 77 КБ против 3,5 МБ полного вариативного шрифта.
 
 ## Зачем локально, а не с Google Fonts
 
@@ -18,9 +18,9 @@
 Новой иконки в сабсете нет — вместо неё снова будет слово. После добавления:
 
 ```bash
-# 1. собрать список иконок из кода
-ICONS=$(grep -rhoP 'material-symbols-outlined[^>]*>\s*\K[a-z0-9_]+' src \
-  | sort -u | paste -sd,)
+# 1. собрать список иконок из кода — ОБА способа записи
+ICONS=$({ grep -rhoP 'material-symbols-outlined[^>]*>\s*\K[a-z0-9_]+' src;
+          grep -rhoP 'icon\s*[:=]\s*["'"'"']\K[a-z0-9_]+' src; } | sort -u | paste -sd,)
 
 # 2. забрать сабсет (имена обязаны идти по алфавиту, иначе 400)
 curl -A "Mozilla/5.0" \
@@ -31,19 +31,42 @@ curl -A "Mozilla/5.0" \
 curl -o public/fonts/material-symbols-subset.woff2 "$(grep -o 'https://fonts.gstatic.com/[^)]*' ms.css)"
 ```
 
-Часть иконок задаётся через проп (`icon="folder_open"` у `EmptyState`), их grep из шага 1
-не видит — проверь глазами, что они в списке.
+**Второй grep в шаге 1 обязателен.** Без него из списка выпадают иконки, которые
+передаются пропом — `icon="folder_open"` у `EmptyState` и `icon: "home_health"`
+в массивах `BottomNav`/`TopNav`. Именно так 28.07.2026 в сабсет не попали 13 иконок,
+и вся нижняя навигация на телефоне показывала слова `home_health`, `medical_services`,
+`calendar_add_on`, `account_circle` вместо значков.
 
-## Что сейчас в сабсете
+## Как проверить, что ничего не потерялось
+
+Ширина глифа равна кеглю. Если лигатуры в шрифте нет, браузер рисует само слово,
+и оно заметно шире. В консоли на любой странице:
+
+```js
+const bad = [];
+for (const n of ["home_health", "science", "account_circle" /* … весь список */]) {
+  const s = document.createElement("span");
+  s.className = "material-symbols-outlined";
+  s.style.cssText = "position:absolute;left:-9999px;font-size:24px";
+  s.textContent = n;
+  document.body.appendChild(s);
+  if (s.getBoundingClientRect().width > 40) bad.push(n);
+  s.remove();
+}
+console.log(bad); // должен быть пустым
+```
+
+## Что сейчас в сабсете (74)
 
 ```
-add, add_comment, apartment, arrow_back, beach_access, calendar_month, call, chat,
-check, check_circle, chevron_left, chevron_right, close, content_copy, dark_mode,
-delete, directions, edit, edit_calendar, emergency, event, event_available,
-event_busy, event_note, expand_more, filter_list, folder_open, groups,
-health_and_safety, history, info, language, light_mode, local_hospital, location_on,
-logout, mail, map, meeting_room, menu, monitoring, person, person_add, person_off,
-pin_drop, progress_activity, refresh, save, schedule, search, search_off, send,
-smart_toy, star, stethoscope, support_agent, task_alt, troubleshoot, verified,
-wifi_off, workspace_premium
+account_circle, add, add_comment, admin_panel_settings, apartment, arrow_back,
+beach_access, calendar_add_on, calendar_month, call, cancel, chat, check, check_circle,
+chevron_left, chevron_right, clinical_notes, close, content_copy, dark_mode, delete,
+directions, edit, edit_calendar, emergency, error, event, event_available, event_busy,
+event_note, expand_more, filter_list, folder_open, groups, health_and_safety, history,
+home_health, inbox, info, language, light_mode, local_hospital, location_on, logout,
+mail, map, medical_services, meeting_room, menu, monitoring, person, person_add,
+person_off, photo_camera, pin_drop, progress_activity, refresh, save, schedule, science,
+search, search_off, send, smart_toy, star, stethoscope, support_agent, task_alt,
+thumb_down, thumb_up, troubleshoot, verified, wifi_off, workspace_premium
 ```
