@@ -350,3 +350,47 @@ async def test_a_question_nobody_understands_still_asks_to_rephrase(client, db, 
     response = await client.post(DOCTOR_ASK_URL, json={"message": "ну это самое"}, headers=headers)
 
     assert response.json()["action"] == "clarify"
+
+
+# вызовы модели из кабинета сотрудника раньше не считались вообще: буфер метрик
+# заводил только пациентский поток, `record_call` видел None и молча всё выбрасывал.
+# Заглушка здесь встаёт на место провайдера и отмечается ровно так же, как `ask_groq`
+def stub_llm_with_metrics(monkeypatch, intent_payload):
+    from app.ai import metrics
+
+    async def fake_ask_llm(message, context, history=None, language="ru", system_prompt=None):
+        metrics.record_call("groq", "llama-3.3-70b-versatile", True, 120, 100, 20)
+
+        if system_prompt and "JSON" in system_prompt:
+            return json.dumps(intent_payload)
+
+        return "Готовый ответ модели"
+
+    monkeypatch.setattr(staff, "ask_llm", fake_ask_llm)
+
+
+async def test_doctor_assistant_calls_land_in_the_metrics(client, db, monkeypatch):
+    from app.services import crud_ai_metric
+
+    await setup_clinic(client, db)
+    stub_llm_with_metrics(monkeypatch, {"intent": "today", "confidence": 0.9})
+    headers = await auth_headers(client, "doctor@ometus.test")
+
+    await client.post(DOCTOR_ASK_URL, json={"message": "кто у меня сегодня"}, headers=headers)
+
+    rows = await crud_ai_metric.get_metrics(db)
+    assert sum(row["calls"] for row in rows) > 0
+
+
+async def test_admin_assistant_calls_land_in_the_metrics(client, db, monkeypatch):
+    from app.services import crud_ai_metric
+
+    await setup_clinic(client, db)
+    stub_llm_with_metrics(monkeypatch, {"intent": "staff", "confidence": 0.9})
+    headers = await auth_headers(client, "admin@ometus.test")
+
+    await client.post(ADMIN_ASK_URL, json={"message": "сколько врачей"}, headers=headers)
+
+    rows = await crud_ai_metric.get_metrics(db)
+    assert sum(row["calls"] for row in rows) > 0
+    assert sum(row["prompt_tokens"] for row in rows) > 0

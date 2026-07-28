@@ -54,7 +54,7 @@ async def ask_as_admin(
     db: AsyncSession = Depends(get_db),
 ):
     language = pick_language(data.language, data.message)
-    return await staff.answer_admin(data.message, language, db)
+    return await staff.answer_admin(data.message, current_user.id, language, db)
 
 
 @ai_router.post("/feedback", response_model=FeedbackOut)

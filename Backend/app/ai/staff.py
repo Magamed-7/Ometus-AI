@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai import metrics
 from app.ai.assistant import ask_llm, extract_json
 from app.ai.dates import human_date, parse_natural_date
 from app.core.clock import clinic_today
@@ -167,7 +168,7 @@ def describe_appointments(rows):
     return [{"время": str(row["time"])[:5], "статус": row["status"]} for row in rows[:20]]
 
 
-async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
+async def build_doctor_answer(message: str, doctor, language: str, db: AsyncSession):
     intent = await classify(message, DOCTOR_INTENTS, DOCTOR_HINTS, DOCTOR_KEYWORDS)
 
     if intent is None:
@@ -269,7 +270,7 @@ async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
     return {"action": "absences", "reply": await phrase(message, fallback, facts, language), "data": facts}
 
 
-async def answer_admin(message: str, language: str, db: AsyncSession):
+async def build_admin_answer(message: str, language: str, db: AsyncSession):
     intent = await classify(message, ADMIN_INTENTS, ADMIN_HINTS, ADMIN_KEYWORDS)
 
     if intent is None:
@@ -364,3 +365,26 @@ async def answer_admin(message: str, language: str, db: AsyncSession):
         f"и {len(filials)} филиалов."
     )
     return {"action": "staff", "reply": await phrase(message, fallback, facts, language), "data": facts}
+
+
+# Вызовы модели из кабинета врача и админа раньше не считались вообще: буфер метрик
+# заводил только пациентский поток, поэтому `record_call` видел None и молча всё выбрасывал.
+# В админской аналитике не было видно ни одного запроса от сотрудников, хотя платим мы за них
+# так же. Одна попытка сходить в модель — одна строка в `ai_llm_calls`, как и у пациента
+async def with_metrics(user_id: int, db: AsyncSession, build):
+    metrics.start_collecting()
+    result = await build()
+    await crud_ai_metric.save_calls(user_id, metrics.collected_calls(), db)
+    return result
+
+
+async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
+    return await with_metrics(
+        doctor.user_id, db, lambda: build_doctor_answer(message, doctor, language, db)
+    )
+
+
+async def answer_admin(message: str, user_id: int, language: str, db: AsyncSession):
+    return await with_metrics(
+        user_id, db, lambda: build_admin_answer(message, language, db)
+    )
