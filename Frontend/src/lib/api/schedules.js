@@ -31,6 +31,12 @@ export const deleteMySchedule = (id) => client.delete(`/api/schedules/me/${id}`)
 export const getMyCalendar = (dateFrom, dateTo) =>
   client.get(`/api/schedules/me/calendar?date_from=${dateFrom}&date_to=${dateTo}`);
 
+export const getMyDateShifts = () => client.get("/api/schedules/me/dates");
+
+export const createMyDateShift = (data) => client.post("/api/schedules/me/dates", data);
+
+export const deleteMyDateShift = (id) => client.delete(`/api/schedules/me/dates/${id}`);
+
 export const getMyAbsences = () => client.get("/api/schedules/me/absences");
 
 export const createMyAbsence = (data) => client.post("/api/schedules/me/absences", data);

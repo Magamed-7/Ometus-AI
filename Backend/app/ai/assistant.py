@@ -1,5 +1,6 @@
 import json
-from datetime import date, datetime
+import re
+from datetime import date, datetime, time
 from time import perf_counter
 
 import httpx
@@ -537,7 +538,63 @@ def needs_classification(data: AskIn, language: str):
 # модель отдаёт только doctor_id, а пациент пишет имя: «покажи время у Марии Андреевны»
 # уходило в общий подбор врачей, и в ответ приходил список неврологов вместо расписания.
 # Дату модель тоже переводит в YYYY-MM-DD через раз, поэтому читаем её и из самого текста
-async def resolve_doctor_and_day(data: AskIn, db: AsyncSession):
+TIME_IN_TEXT = re.compile(r"\b([01]?\d|2[0-3])[:.]([0-5]\d)\b")
+
+
+def extract_times(text: str):
+    return [
+        f"{int(hours):02d}:{minutes}" for hours, minutes in TIME_IN_TEXT.findall(text or "")
+    ]
+
+
+def extract_time(text: str):
+    found = extract_times(text)
+    return found[0] if found else None
+
+
+# в диалоге «покажи время у Соколовой» → «а 16:20 у неё свободно?» второе сообщение
+# не несёт ни имени, ни id, и разговор начинался с нуля: ассистент снова спрашивал,
+# врач какой специализации нужен. Врача берём из последнего ответа в этой же переписке
+def doctor_from_history(history: list | None):
+    for message in reversed(history or []):
+        payload = message.payload if isinstance(message.payload, dict) else None
+        doctor_id = (payload or {}).get("doctor_id")
+
+        if doctor_id:
+            return doctor_id
+
+    return None
+
+
+# пациент не знает номера своей записи и говорит «перенеси мою запись сегодня с 15:40».
+# Ищем её сами: по названному времени, а если у пациента впереди всего одна запись —
+# по ней, других вариантов там всё равно нет
+async def resolve_appointment(data: AskIn, current_patient, db: AsyncSession):
+    active = await crud_appointment.get_patient_appointments(
+        current_patient.id, db, status="booked"
+    )
+
+    if not active:
+        return None
+
+    spoken_time = extract_time(data.message)
+    named = [
+        row
+        for row in active
+        if (data.day is None or str(row.date) == str(data.day))
+        and (spoken_time is None or str(row.time)[:5] == spoken_time)
+    ]
+
+    if len(named) == 1:
+        return named[0].id
+
+    if len(active) == 1:
+        return active[0].id
+
+    return None
+
+
+async def resolve_doctor_and_day(data: AskIn, db: AsyncSession, history: list = None):
     from_text = parse_natural_date(data.message)
 
     # дата из текста важнее даты от модели: на «на 5 августа» модель отдала 2024-08-05,
@@ -553,6 +610,9 @@ async def resolve_doctor_and_day(data: AskIn, db: AsyncSession):
 
         if doctor is not None:
             data.doctor_id = doctor.id
+
+    if data.doctor_id is None and not data.confirm:
+        data.doctor_id = doctor_from_history(history)
 
     return data
 
@@ -667,7 +727,22 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
     if detected:
         data = apply_intent(data, detected)
 
-    data = await resolve_doctor_and_day(data, db)
+    data = await resolve_doctor_and_day(data, db, history)
+
+    if data.intent in ("cancel", "reschedule") and not data.appointment_id:
+        data.appointment_id = await resolve_appointment(data, current_patient, db)
+
+    # «перенеси запись с 15:40 на 16:20» — два времени в одной фразе: первое ищет
+    # запись, второе становится новым временем. Без этого перенос упирался
+    # в «нужны номер, дата и время», хотя пациент назвал всё, кроме номера
+    if data.intent == "reschedule" and data.slot_time is None:
+        spoken = extract_times(data.message)
+
+        if len(spoken) > 1:
+            data.slot_time = time.fromisoformat(f"{spoken[-1]}:00")
+
+    if data.intent == "reschedule" and data.day is None and data.appointment_id:
+        data.day = clinic_today()
 
     flow = pick_flow(data)
     result = await flow(data, current_patient, db, history, severity, language)

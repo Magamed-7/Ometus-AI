@@ -21,6 +21,7 @@ import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 import DoctorAbsences from "./DoctorAbsences.jsx";
 import DoctorCalendar from "./DoctorCalendar.jsx";
+import DoctorDateShifts from "./DoctorDateShifts.jsx";
 
 const EMPTY_FORM = {
   department_id: "",
@@ -166,6 +167,12 @@ export default function DoctorSchedule() {
           {open && editing === null ? t("common.cancel") : t("doctorCabinet.addSchedule")}
         </Button>
       </div>
+
+      {/* без этой подписи страница читается как ошибка: в форме только день недели
+          и ни одной даты. Даты живут в разовых сменах и отпусках ниже */}
+      <p className="mb-md text-body-md text-on-surface-variant">
+        {t("doctorCabinet.gridHint")}
+      </p>
 
       {open && (
         <Card as="form" onSubmit={submit} className="mb-md space-y-md p-md">
@@ -324,6 +331,8 @@ export default function DoctorSchedule() {
       )}
 
       <DoctorCalendar reloadKey={calendarKey} />
+
+      <DoctorDateShifts departments={departments} onChanged={refreshCalendar} />
 
       <DoctorAbsences onChanged={refreshCalendar} />
     </div>

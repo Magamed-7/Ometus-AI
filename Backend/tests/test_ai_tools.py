@@ -1273,7 +1273,9 @@ async def test_detected_intent_cancels_appointment(client, db, monkeypatch):
     assert body["intent_confidence"] == 0.9
 
 
-async def test_detected_cancel_without_id_asks_instead_of_guessing(client, db, monkeypatch):
+# номера своей записи пациент не знает: если запись всего одна, отменяем её,
+# а не требуем цифру, которую взять неоткуда
+async def test_the_only_appointment_is_cancelled_without_a_number(client, db, monkeypatch):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
 
@@ -1291,7 +1293,53 @@ async def test_detected_cancel_without_id_asks_instead_of_guessing(client, db, m
 
     body = (await ask(client, headers, "отмени мою запись")).json()
 
+    assert body["action"] == "cancelled"
+
+
+async def book_two_appointments(client, headers, doctor_id):
+    first = next_workday()
+    second = first + timedelta(days=7)
+
+    for day, slot in ((first, "09:00:00"), (second, "09:20:00")):
+        await ask(
+            client,
+            headers,
+            "запиши меня",
+            confirm=True,
+            doctor_id=doctor_id,
+            date=str(day),
+            time=slot,
+        )
+
+    return first, second
+
+
+async def test_cancel_still_asks_when_there_is_more_than_one_appointment(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    await book_two_appointments(client, headers, doctor_id)
+
+    use_intent(monkeypatch, intent_json("cancel"))
+
+    body = (await ask(client, headers, "отмени мою запись")).json()
+
     assert body["action"] == "clarify"
+
+
+async def test_cancel_picks_the_appointment_by_the_time_the_patient_named(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+    await book_two_appointments(client, headers, doctor_id)
+
+    use_intent(monkeypatch, intent_json("cancel"))
+
+    mine = (await client.get("/api/appointments/me", headers=headers)).json()
+    wanted = next(row for row in mine if str(row["time"]).startswith("09:20"))
+
+    body = (await ask(client, headers, "отмени мою запись на 09:20")).json()
+
+    assert body["action"] == "cancelled"
+    assert body["appointment"]["appointment_id"] == wanted["id"]
 
 
 async def test_detected_intent_never_books(client, db, monkeypatch):
@@ -1798,3 +1846,48 @@ async def test_back_and_head_pain_are_not_pinned_on_one_specialty(client, db):
     # раньше молча выбирался невролог; теперь спрашиваем, к кому записать
     assert body["action"] == "clarify"
     assert body["suggestions"] or body["alternatives"]
+
+
+# «покажи время у Ивановой» → «а 16:20 у неё свободно?»: во втором сообщении нет
+# ни имени, ни id, и разговор начинался с нуля — ассистент снова спрашивал специализацию
+async def test_the_doctor_carries_over_to_the_next_message(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    first = (await ask(client, headers, "покажи свободное время у Ивановой")).json()
+    second = (
+        await ask(
+            client,
+            headers,
+            "а 09:20 у неё свободно?",
+            conversation_id=first["conversation_id"],
+        )
+    ).json()
+
+    assert second["action"] in ("days", "slots")
+    assert second["doctor_id"] == doctor_id
+
+
+async def test_reschedule_reads_both_times_from_one_sentence(client, db, monkeypatch):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    day = next_workday()
+    await ask(
+        client,
+        headers,
+        "запиши меня",
+        confirm=True,
+        doctor_id=doctor_id,
+        date=str(day),
+        time="09:00:00",
+    )
+
+    use_intent(monkeypatch, intent_json("reschedule"))
+
+    body = (
+        await ask(client, headers, f"перенеси мою запись с 09:00 на 09:40 {day.day} числа")
+    ).json()
+
+    assert body["action"] == "rescheduled"
+    assert body["appointment"]["time"].startswith("09:40")
