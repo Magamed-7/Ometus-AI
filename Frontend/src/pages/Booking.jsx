@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { bookAppointment } from "../lib/api/appointments.js";
 import { getDoctor, getDoctorDepartments } from "../lib/api/doctors.js";
-import { getDoctorCalendar, getSlots } from "../lib/api/schedules.js";
+import { getDaySlots, getDoctorCalendar } from "../lib/api/schedules.js";
 import { errorText } from "../lib/api/errorText.js";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { clock, formatDate, isoDate } from "../lib/format.js";
@@ -120,11 +120,13 @@ export default function Booking() {
     }
   };
 
+  // стрелками перебираем только свободные часы: занятые показываем, но встать на них
+  // нельзя ни мышью, ни с клавиатуры
   const onSlotKeyDown = (event, index) => {
-    const target = nextIndex(event.key, index, visibleSlots.length);
+    const target = nextIndex(event.key, index, freeSlots.length);
     if (target === null) return;
     event.preventDefault();
-    const slot = visibleSlots[target];
+    const slot = freeSlots[target];
     setSelectedSlot(slot);
     const element = slotRefs.current[slot.time];
     if (element) element.focus();
@@ -141,7 +143,7 @@ export default function Booking() {
 
     setSlotsLoading(true);
     setSlotsError(false);
-    return getSlots(doctorId, selectedDate)
+    return getDaySlots(doctorId, selectedDate)
       .then((data) => {
         if (isCurrent()) setSlots(data);
       })
@@ -220,12 +222,13 @@ export default function Booking() {
   const visibleSlots = slots.filter(
     (slot) => selectedDate !== todayIso || String(slot.time).slice(0, 5) > nowTime
   );
+  const freeSlots = visibleSlots.filter((slot) => !slot.taken);
 
   const tabSlotTime =
-    selectedSlot && visibleSlots.some((slot) => slot.time === selectedSlot.time)
+    selectedSlot && freeSlots.some((slot) => slot.time === selectedSlot.time)
       ? selectedSlot.time
-      : visibleSlots.length > 0
-        ? visibleSlots[0].time
+      : freeSlots.length > 0
+        ? freeSlots[0].time
         : null;
 
   // раньше это была догадка «день недели рабочий, а слотов нет — значит отпуск»,
@@ -452,13 +455,27 @@ export default function Booking() {
                 </p>
               </div>
             ) : (
-              <div
-                role="radiogroup"
-                aria-labelledby="slots-heading"
-                className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5"
-              >
-                {visibleSlots.map((slot, index) => {
-                  const isActive = selectedSlot && selectedSlot.time === slot.time;
+              <>
+                {freeSlots.length === 0 ? (
+                  <p className="mb-sm flex items-center gap-xs text-body-md text-on-surface-variant">
+                    <span aria-hidden="true" className="material-symbols-outlined text-base">info</span>
+                    {t("booking.allTaken")}
+                  </p>
+                ) : (
+                  <p className="mb-sm text-label-md text-on-surface-variant">
+                    {t("booking.takenHint")}
+                  </p>
+                )}
+                <div
+                  role="radiogroup"
+                  aria-labelledby="slots-heading"
+                  className="grid grid-cols-2 gap-sm sm:grid-cols-4 md:grid-cols-5"
+                >
+                {visibleSlots.map((slot) => {
+                  const isActive = !slot.taken && selectedSlot && selectedSlot.time === slot.time;
+                  // индекс считаем по свободным: занятые из обхода стрелками выпадают
+                  const freeIndex = freeSlots.findIndex((free) => free.time === slot.time);
+
                   return (
                     <button
                       key={slot.time}
@@ -468,20 +485,27 @@ export default function Booking() {
                       }}
                       role="radio"
                       aria-checked={Boolean(isActive)}
+                      aria-label={
+                        slot.taken ? `${clock(slot.time)} — ${t("booking.slotTakenShort")}` : undefined
+                      }
+                      disabled={slot.taken}
                       tabIndex={slot.time === tabSlotTime ? 0 : -1}
                       onClick={() => setSelectedSlot(slot)}
-                      onKeyDown={(event) => onSlotKeyDown(event, index)}
+                      onKeyDown={(event) => onSlotKeyDown(event, freeIndex)}
                       className={`rounded-lg py-3 text-body-md font-bold transition-all ${
-                        isActive
-                          ? "border-2 border-primary bg-primary-container/10 text-primary shadow-sm"
-                          : "border border-outline-variant text-on-surface hover:bg-surface-container"
+                        slot.taken
+                          ? "cursor-not-allowed border border-outline-variant bg-surface-container-low text-on-surface-variant line-through opacity-60"
+                          : isActive
+                            ? "border-2 border-primary bg-primary-container/10 text-primary shadow-sm"
+                            : "border border-outline-variant text-on-surface hover:bg-surface-container"
                       }`}
                     >
                       {clock(slot.time)}
                     </button>
                   );
                 })}
-              </div>
+                </div>
+              </>
             )}
           </Card>
         </div>

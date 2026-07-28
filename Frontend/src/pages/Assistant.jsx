@@ -121,6 +121,15 @@ function SlotsAnswer({ t, lang, data, onPickSlot }) {
   return (
     <div className="flex flex-col gap-sm rounded-xl border border-outline-variant bg-surface-container-low p-sm">
       <AnswerHeading text={heading} />
+      {/* подпись обязательна: голубую заливку рекомендованных часов принимали
+          за «занято» и спрашивали, почему на них всё-таки можно записаться.
+          Занятых часов здесь не бывает вовсе — сервер отдаёт только свободные */}
+      {recommended.size > 0 && (
+        <p className="flex items-center gap-1 text-label-md text-on-surface-variant">
+          <span aria-hidden="true" className="material-symbols-outlined text-base text-primary">star</span>
+          {t("assistant.usualTimeHint")}
+        </p>
+      )}
       {Object.entries(byDate).map(([date, slots]) => (
         <div key={date}>
           <p className="mb-xs text-label-md font-semibold text-on-surface-variant">
@@ -142,6 +151,9 @@ function SlotsAnswer({ t, lang, data, onPickSlot }) {
                       : "border-outline-variant bg-surface-container-lowest text-on-surface"
                   }`}
                 >
+                  {isRecommended && (
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">star</span>
+                  )}
                   {clock(slot.time)}
                   {isRecommended && (
                     <span className="sr-only">{t("assistant.usualTime")}</span>

@@ -76,6 +76,7 @@ class SlotOut(BaseModel):
     date: date
     time: time
     department_id: int
+    taken: bool = False
 
 
 class PublicDayOut(BaseModel):

@@ -340,10 +340,18 @@ async def get_doctor_calendar(
 
 
 @schedules_router.get("/doctors/{doctor_id}/slots", response_model=list[SlotOut])
-async def get_doctor_slots(doctor_id: int, day: date, db: AsyncSession = Depends(get_db)):
+async def get_doctor_slots(
+    doctor_id: int,
+    day: date,
+    include_taken: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
     doctor = await crud_doctor.get_by_id(doctor_id, db)
 
     if doctor is None:
         raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    if include_taken:
+        return await crud_schedule.get_day_grid(doctor_id, day, db)
 
     return await crud_schedule.get_available_slots(doctor_id, day, db)

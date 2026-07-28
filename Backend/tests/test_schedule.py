@@ -862,3 +862,64 @@ async def test_public_calendar_rejects_too_wide_a_range(client, db):
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "DATE_RANGE_TOO_WIDE"
+
+
+async def test_slots_can_show_the_taken_hours_marked(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    await register(client, "grid.patient@ometus.test")
+    patient = await auth_headers(client, "grid.patient@ometus.test")
+    await client.post(
+        "/api/appointments",
+        json={"doctor_id": doctor_id, "date": "2026-08-03", "time": "09:00:00"},
+        headers=patient,
+    )
+
+    free = await client.get(
+        f"/api/schedules/doctors/{doctor_id}/slots", params={"day": "2026-08-03"}
+    )
+    grid = await client.get(
+        f"/api/schedules/doctors/{doctor_id}/slots",
+        params={"day": "2026-08-03", "include_taken": "true"},
+    )
+
+    assert [slot["time"] for slot in free.json()] == ["09:20:00", "09:40:00"]
+    assert [(slot["time"], slot["taken"]) for slot in grid.json()] == [
+        ("09:00:00", True),
+        ("09:20:00", False),
+        ("09:40:00", False),
+    ]
+
+
+async def test_taken_hours_stay_hidden_by_default(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+
+    response = await client.get(
+        f"/api/schedules/doctors/{doctor_id}/slots", params={"day": "2026-08-03"}
+    )
+
+    assert all(slot["taken"] is False for slot in response.json())
+
+
+async def test_the_grid_is_empty_while_the_doctor_is_away(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    await client.post(
+        MY_ABSENCES_URL,
+        json={"date_from": "2026-08-03", "date_to": "2026-08-03"},
+        headers=headers,
+    )
+
+    response = await client.get(
+        f"/api/schedules/doctors/{doctor_id}/slots",
+        params={"day": "2026-08-03", "include_taken": "true"},
+    )
+
+    assert response.json() == []

@@ -173,7 +173,7 @@ async def get_absence_on(doctor_id: int, day: date, db: AsyncSession):
     return result.scalars().first()
 
 
-def slice_slots(day: date, schedules, taken):
+def slice_slots(day: date, schedules, taken, keep_taken: bool = False):
     slots = []
     seen = set()
 
@@ -184,13 +184,16 @@ def slice_slots(day: date, schedules, taken):
         stride = timedelta(minutes=schedule.slot_duration + schedule.buffer_duration)
 
         while current + length <= end:
-            if current.time() not in taken and current.time() not in seen:
+            is_taken = current.time() in taken
+
+            if current.time() not in seen and (keep_taken or not is_taken):
                 seen.add(current.time())
                 slots.append(
                     {
                         "date": day,
                         "time": current.time(),
                         "department_id": schedule.department_id,
+                        "taken": is_taken,
                     }
                 )
             current = current + stride
@@ -211,6 +214,21 @@ async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
     schedules = overrides or await get_schedule_by_weekday(doctor_id, day.weekday(), db)
     taken = await crud_appointment.get_taken_times(doctor_id, day, db)
     return slice_slots(day, schedules, taken)
+
+
+async def get_day_grid(doctor_id: int, day: date, db: AsyncSession):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is not None and crud_doctor.is_dismissed_on(doctor, day):
+        return []
+
+    if await is_absent(doctor_id, day, db):
+        return []
+
+    overrides = await get_date_schedules_on(doctor_id, day, db)
+    schedules = overrides or await get_schedule_by_weekday(doctor_id, day.weekday(), db)
+    taken = await crud_appointment.get_taken_times(doctor_id, day, db)
+    return slice_slots(day, schedules, taken, keep_taken=True)
 
 
 async def get_day_plan(doctor_id: int, day: date, db: AsyncSession):

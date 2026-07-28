@@ -4,6 +4,13 @@ import { client } from "./client.js";
 export const getSlots = (doctorId, day) =>
   client.get(`/api/schedules/doctors/${doctorId}/slots?day=${day}`, { auth: false });
 
+// с занятыми часами: они приходят с `taken: true`, чтобы страница записи показывала
+// их серыми и неактивными, а не делала вид, что у врача весь день свободен
+export const getDaySlots = (doctorId, day) =>
+  client.get(`/api/schedules/doctors/${doctorId}/slots?day=${day}&include_taken=true`, {
+    auth: false,
+  });
+
 export const getDoctorSchedule = (doctorId) =>
   client.get(`/api/schedules/doctors/${doctorId}`, { auth: false });
 
