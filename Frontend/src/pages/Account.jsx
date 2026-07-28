@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cancelAppointment, getMyAppointments } from "../lib/api/appointments.js";
 import { getDepartments } from "../lib/api/departments.js";
+import { getMyReviews } from "../lib/api/reviews.js";
 import { searchDoctors } from "../lib/api/doctors.js";
 import { getFilials } from "../lib/api/filials.js";
 import { getPatient, updateMe, updatePatient } from "../lib/api/users.js";
@@ -10,6 +11,7 @@ import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { useI18n } from "../lib/i18n.jsx";
 import { useToast } from "../lib/toast.jsx";
 import AppointmentCard from "../components/AppointmentCard.jsx";
+import ReviewDialog from "../components/ReviewDialog.jsx";
 import Button from "../components/Button.jsx";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import RescheduleModal from "../components/RescheduleModal.jsx";
@@ -43,6 +45,8 @@ export default function Account() {
   const [filials, setFilials] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [reviewed, setReviewed] = useState(new Set());
+  const [reviewTarget, setReviewTarget] = useState(null);
 
   // карточка пациента и записи есть только у пациента: врач, регистратор и админ
   // на этой же странице правят свой профиль, а за ними на бэкенде 404 и 403
@@ -64,9 +68,16 @@ export default function Account() {
 
     setLoading(true);
     setError(false);
-    return Promise.all([getMyAppointments(), searchDoctors(), getDepartments(), getFilials()])
-      .then(([appts, docs, deps, fils]) => {
+    return Promise.all([
+      getMyAppointments(),
+      searchDoctors(),
+      getDepartments(),
+      getFilials(),
+      getMyReviews(),
+    ])
+      .then(([appts, docs, deps, fils, reviews]) => {
         setAppointments(appts);
+        setReviewed(new Set(reviews.map((review) => review.appointment_id)));
         setDoctors(Object.fromEntries(docs.map((d) => [d.id, d])));
         setDepartments(Object.fromEntries(deps.map((d) => [d.id, d])));
         setFilials(Object.fromEntries(fils.map((f) => [f.id, f])));
@@ -337,7 +348,27 @@ export default function Account() {
                     doctor={doctors[a.doctor_id]}
                     department={departments[a.department_id]}
                     filial={filials[departments[a.department_id]?.filial_id]}
-                  />
+                  >
+                    {/* отзыв только о состоявшемся приёме и только один раз —
+                        те же правила, что на бэкенде, иначе кнопка вела бы в ошибку */}
+                    {a.status === "completed" &&
+                      (reviewed.has(a.id) ? (
+                        <span className="inline-flex items-center gap-1 text-label-md text-on-surface-variant">
+                          <span aria-hidden="true" className="material-symbols-outlined text-base">
+                            check_circle
+                          </span>
+                          {t("review.left")}
+                        </span>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          icon="star"
+                          onClick={() => setReviewTarget(a)}
+                        >
+                          {t("review.leave")}
+                        </Button>
+                      ))}
+                  </AppointmentCard>
                 ))
               ))}
             {tab === "documents" && (
@@ -352,6 +383,18 @@ export default function Account() {
           )}
         </div>
       </div>
+
+      {reviewTarget && (
+        <ReviewDialog
+          appointment={reviewTarget}
+          doctorName={doctors[reviewTarget.doctor_id]?.full_name}
+          onClose={() => setReviewTarget(null)}
+          onSaved={() => {
+            setReviewTarget(null);
+            loadAppointments();
+          }}
+        />
+      )}
 
       {cancelTarget && (
         <ConfirmDialog

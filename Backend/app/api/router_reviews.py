@@ -4,7 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.permissions import get_current_patient
 from app.core.errors import AppError
 from app.db.database import get_db
-from app.schemas.schema_review import ReviewCreateIn, ReviewOut, ReviewPageOut, ReviewSummaryOut
+from app.schemas.schema_review import (
+    MyReviewOut,
+    ReviewCreateIn,
+    ReviewOut,
+    ReviewPageOut,
+    ReviewSummaryOut,
+)
 from app.services import crud_appointment, crud_review
 
 reviews_router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
@@ -35,6 +41,14 @@ async def get_summary(
     db: AsyncSession = Depends(get_db),
 ):
     return await crud_review.summary(db, doctor_id, filial_id)
+
+
+@reviews_router.get("/mine", response_model=list[MyReviewOut])
+async def get_my_reviews(
+    patient=Depends(get_current_patient),
+    db: AsyncSession = Depends(get_db),
+):
+    return await crud_review.list_own(patient.id, db)
 
 
 @reviews_router.post("", response_model=ReviewOut, status_code=201)

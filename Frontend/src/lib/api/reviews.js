@@ -19,4 +19,6 @@ export const getReviews = (params = {}) =>
 export const getReviewSummary = (params = {}) =>
   client.get(`/api/reviews/summary${query(params)}`, { auth: false });
 
+export const getMyReviews = () => client.get("/api/reviews/mine");
+
 export const leaveReview = (body) => client.post("/api/reviews", body);

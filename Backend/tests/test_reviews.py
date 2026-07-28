@@ -171,3 +171,45 @@ async def test_admin_deletes_a_review(client, db):
 
     assert response.status_code == 200
     assert (await client.get(REVIEWS_URL)).json()["total"] == 0
+
+
+MY_REVIEWS_URL = "/api/reviews/mine"
+
+
+async def test_patient_sees_own_reviews_with_appointment_id(client, db):
+    appointment_id, _, headers = await completed_visit(client, db)
+
+    await client.post(
+        REVIEWS_URL,
+        json={"appointment_id": appointment_id, "rating": 5, "text": "Спасибо"},
+        headers=headers,
+    )
+
+    response = await client.get(MY_REVIEWS_URL, headers=headers)
+
+    assert response.status_code == 200
+    rows = response.json()
+    assert len(rows) == 1
+    assert rows[0]["appointment_id"] == appointment_id
+    assert rows[0]["rating"] == 5
+    assert rows[0]["is_published"] is True
+
+
+async def test_patient_does_not_see_reviews_of_other_patients(client, db):
+    appointment_id, _, headers = await completed_visit(client, db)
+    await client.post(
+        REVIEWS_URL, json={"appointment_id": appointment_id, "rating": 4}, headers=headers
+    )
+
+    _, stranger = await setup_patient(client, "stranger@ometus.test")
+
+    response = await client.get(MY_REVIEWS_URL, headers=stranger)
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+async def test_my_reviews_require_a_patient(client, db):
+    response = await client.get(MY_REVIEWS_URL)
+
+    assert response.status_code == 401

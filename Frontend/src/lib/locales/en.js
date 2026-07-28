@@ -551,6 +551,20 @@ export const en = {
     bringResults: "Previous tests and scans",
     bringDrugs: "A list of the medication you take",
   },
+  review: {
+    leave: "Leave a review",
+    left: "Review left",
+    title: "How did the visit go?",
+    about: "A review of {doctor}",
+    aboutVisit: "A review of the visit that took place",
+    rating: "Rating",
+    starsLabel: "{count} out of 5",
+    text: "What stood out",
+    placeholder: "A short note about the visit — what you liked or what could be better",
+    privacy: "On the site a review is signed with a first name and a surname initial; the full name is never published.",
+    send: "Send review",
+    thanks: "Thank you for the review",
+  },
   reviews: {
     title: "Reviews",
     intro:

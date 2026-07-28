@@ -125,6 +125,16 @@ async def get_by_appointment(appointment_id: int, db: AsyncSession):
     return result.scalar_one_or_none()
 
 
+async def list_own(patient_id: int, db: AsyncSession):
+    result = await db.execute(
+        joined_query().where(Review.patient_id == patient_id).order_by(Review.created_at.desc())
+    )
+    return [
+        as_view(review, patient_name, doctor_name, filial_name)
+        for review, patient_name, doctor_name, filial_name in result.all()
+    ]
+
+
 async def create_review(patient_id: int, appointment, data: ReviewCreateIn, db: AsyncSession):
     filial_id = (
         await db.execute(

@@ -37,6 +37,11 @@ class ReviewCreateIn(BaseModel):
     text: str | None = Field(default=None, max_length=2000)
 
 
+class MyReviewOut(ReviewOut):
+    appointment_id: int
+    is_published: bool
+
+
 class ReviewModerateIn(BaseModel):
     is_published: bool
 
