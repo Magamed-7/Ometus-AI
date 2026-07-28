@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.assistant import ask_llm, extract_json
+from app.ai.dates import human_date, parse_natural_date
 from app.core.clock import clinic_today
 from app.services import (
     crud_ai_metric,
@@ -18,6 +19,28 @@ MIN_CONFIDENCE = 0.5
 
 DOCTOR_INTENTS = ("today", "day", "free", "load", "absences")
 ADMIN_INTENTS = ("busiest", "summary", "ai_spend", "no_shows", "staff")
+
+# Ключевые слова — запасной разбор на случай, когда модель молчит или не уверена.
+# Без него любая осечка провайдера превращала ассистента сотрудника в одну и ту же
+# фразу «не понял вопрос» на любой вопрос, включая готовые подсказки под полем ввода.
+DOCTOR_KEYWORDS = {
+    "free": ["свободн", "окн", "холи", "озод", "free", "slot", "availab"],
+    "absences": ["отпуск", "больничн", "отсутств", "рухсат", "касал", "leave", "vacation", "sick"],
+    "load": ["загруз", "сколько приём", "сколько принял", "статистик", "за месяц", "за недел",
+             "сарбор", "load", "workload", "how many"],
+    "today": ["сегодня", "имрӯз", "today"],
+    "day": ["кто записан", "кто у меня", "запис", "приём", "прием", "навбат", "қабул",
+            "booked", "appointment", "schedule"],
+}
+
+ADMIN_KEYWORDS = {
+    "ai_spend": ["ии", "ai", "модел", "потрач", "расход", "стоим", "хароҷот", "spend", "cost", "token"],
+    "no_shows": ["неяв", "не пришл", "не пришел", "наомад", "no show", "no_show", "missed"],
+    "busiest": ["загружен", "больше всех", "самый", "топ", "сарбор", "busiest", "top", "most"],
+    "staff": ["сколько врач", "состав", "отделен", "филиал", "штат", "шӯъба", "how many doctor",
+              "staff", "branch", "department"],
+    "summary": ["сводк", "итог", "обзор", "общая", "ҷамъбаст", "summary", "overview", "total"],
+}
 
 INTENT_PROMPT = (
     "Ты распознаёшь запрос сотрудника клиники и возвращаешь ТОЛЬКО JSON без пояснений "
@@ -48,8 +71,12 @@ REPLY_PROMPT = (
     "Ты ассистент сотрудника клиники. Тебе дают готовые цифры из базы — перескажи их "
     "сотруднику коротко и по-деловому, на его языке. "
     "НЕ придумывай числа, которых нет в данных, и не меняй те, что есть. "
+    "Данные полные и относятся именно к той дате и тому периоду, что в них указаны. "
+    "НЕ пиши, что каких-то сведений нет в системе, и не рассуждай, за какие даты они есть: "
+    "если дата в данных отличается от даты в вопросе, просто ответь про дату из данных. "
     "Диагнозы не ставь, лечение не назначай, медицинских советов не давай — "
-    "это запрещено. Ответ до трёх предложений, без markdown и без списков."
+    "это запрещено. Ответ — одно-два предложения, без markdown и без списков. "
+    "Не пересказывай одно и то же разными словами."
 )
 
 
@@ -77,9 +104,21 @@ def parse(raw: str | None, allowed):
     }
 
 
-async def classify(message: str, allowed, hints: str):
+def match_intent(message: str, keywords: dict):
+    lowered = message.lower()
+
+    for intent, words in keywords.items():
+        if any(word in lowered for word in words):
+            return {"intent": intent, "days": None, "date": None}
+
+    return None
+
+
+async def classify(message: str, allowed, hints: str, keywords: dict):
     prompt = INTENT_PROMPT.format(intents=" | ".join(allowed), hints=hints)
-    return parse(await ask_llm(message, {}, None, system_prompt=prompt), allowed)
+    detected = parse(await ask_llm(message, {}, None, system_prompt=prompt), allowed)
+
+    return detected or match_intent(message, keywords)
 
 
 def parse_date(value: str | None):
@@ -97,6 +136,13 @@ def parse_date(value: str | None):
         return None
 
     return parsed
+
+
+# модель регулярно отдаёт intent, но не дату: «на 30 число» она в YYYY-MM-DD не переводит.
+# Без разбора самого текста вопрос про 30-е тихо отвечал про сегодня, и модель потом
+# сама сочиняла объяснение, почему данных за 30-е «нет»
+def resolve_date(intent: dict, message: str, forward: bool = True):
+    return parse_date(intent.get("date")) or parse_natural_date(message, forward=forward)
 
 
 def period(intent: dict | None, default_days: int = 30):
@@ -122,7 +168,7 @@ def describe_appointments(rows):
 
 
 async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
-    intent = await classify(message, DOCTOR_INTENTS, DOCTOR_HINTS)
+    intent = await classify(message, DOCTOR_INTENTS, DOCTOR_HINTS, DOCTOR_KEYWORDS)
 
     if intent is None:
         return {
@@ -137,19 +183,19 @@ async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
     kind = intent["intent"]
 
     if kind in ("today", "day"):
-        day = parse_date(intent["date"]) or clinic_today()
+        day = resolve_date(intent, message) or clinic_today()
         rows = await crud_appointment.get_doctor_appointments(doctor.id, db, day=day)
         active = [row for row in rows if row["status"] == "booked"]
         facts = {
-            "дата": day.isoformat(),
+            "дата": human_date(day, language),
             "всего_записей": len(rows),
             "ожидают_приёма": len(active),
             "записи": describe_appointments(rows),
         }
         fallback = (
-            f"На {day.isoformat()} у вас {len(rows)} записей, из них ждут приёма {len(active)}."
+            f"На {human_date(day, language)} записей: {len(rows)}, ждут приёма: {len(active)}."
             if rows
-            else f"На {day.isoformat()} записей нет."
+            else f"На {human_date(day, language)} записей нет."
         )
         return {
             "action": "day",
@@ -158,23 +204,23 @@ async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
         }
 
     if kind == "free":
-        day = parse_date(intent["date"]) or clinic_today()
+        day = resolve_date(intent, message) or clinic_today()
         plan = await crud_schedule.get_day_plan(doctor.id, day, db)
         facts = {
-            "дата": day.isoformat(),
+            "дата": human_date(day, language),
             "статус_дня": plan["status"],
             "свободно_слотов": plan.get("slots_free", 0),
             "занято_слотов": plan.get("slots_taken", 0),
         }
 
         if plan["status"] == "absent":
-            fallback = f"{day.isoformat()} у вас отпуск, приёма нет."
+            fallback = f"{human_date(day, language)} у вас отпуск, приёма нет."
         elif plan["status"] == "off":
-            fallback = f"{day.isoformat()} — выходной, приёма нет."
+            fallback = f"{human_date(day, language)} — выходной, приёма нет."
         else:
             fallback = (
-                f"{day.isoformat()} свободно {plan['slots_free']} слотов, "
-                f"занято {plan['slots_taken']}."
+                f"На {human_date(day, language)} свободно слотов: {plan['slots_free']}, "
+                f"занято: {plan['slots_taken']}."
             )
 
         return {"action": "free", "reply": await phrase(message, fallback, facts, language), "data": facts}
@@ -190,8 +236,8 @@ async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
         )
         facts = {
             "период_дней": days,
-            "с": date_from.isoformat(),
-            "по": date_to.isoformat(),
+            "с": human_date(date_from, language),
+            "по": human_date(date_to, language),
             **counts,
         }
         fallback = (
@@ -207,12 +253,16 @@ async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
     facts = {
         "всего_отсутствий": len(absences),
         "предстоящих": [
-            {"с": row.date_from.isoformat(), "по": row.date_to.isoformat(), "причина": row.reason}
+            {
+                "с": human_date(row.date_from, language),
+                "по": human_date(row.date_to, language),
+                "причина": row.reason,
+            }
             for row in upcoming
         ],
     }
     fallback = (
-        f"Впереди {len(upcoming)} периодов отсутствия, ближайший с {upcoming[0].date_from.isoformat()}."
+        f"Впереди периодов отсутствия: {len(upcoming)}, ближайший с {human_date(upcoming[0].date_from, language)}."
         if upcoming
         else "Предстоящих отпусков и больничных не запланировано."
     )
@@ -220,7 +270,7 @@ async def answer_doctor(message: str, doctor, language: str, db: AsyncSession):
 
 
 async def answer_admin(message: str, language: str, db: AsyncSession):
-    intent = await classify(message, ADMIN_INTENTS, ADMIN_HINTS)
+    intent = await classify(message, ADMIN_INTENTS, ADMIN_HINTS, ADMIN_KEYWORDS)
 
     if intent is None:
         return {

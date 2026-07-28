@@ -1,5 +1,5 @@
 import json
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from app.ai import staff
 from app.models.model_appointment import Appointment
@@ -273,6 +273,7 @@ async def test_hallucinated_date_from_the_model_is_ignored():
 
 
 async def test_doctor_free_slots_use_today_when_the_model_invents_a_date(client, db, monkeypatch):
+    from app.ai.dates import human_date
     from app.core.clock import clinic_today
 
     await setup_clinic(client, db)
@@ -281,4 +282,71 @@ async def test_doctor_free_slots_use_today_when_the_model_invents_a_date(client,
 
     response = await client.post(DOCTOR_ASK_URL, json={"message": "где свободные окна"}, headers=headers)
 
-    assert response.json()["data"]["дата"] == clinic_today().isoformat()
+    assert response.json()["data"]["дата"] == human_date(clinic_today())
+
+
+async def test_the_day_named_in_the_question_wins_over_today(client, db, monkeypatch):
+    from app.ai.dates import human_date
+    from app.core.clock import clinic_today
+
+    await setup_clinic(client, db)
+    stub_llm(monkeypatch, {"intent": "free", "confidence": 0.9})
+    headers = await auth_headers(client, "doctor@ometus.test")
+
+    response = await client.post(
+        DOCTOR_ASK_URL, json={"message": "где остались свободные окна завтра"}, headers=headers
+    )
+
+    tomorrow = clinic_today() + timedelta(days=1)
+    assert response.json()["data"]["дата"] == human_date(tomorrow)
+
+
+# без словаря любая осечка провайдера отвечала «не понял вопрос» на всё подряд,
+# включая готовые подсказки под полем ввода
+async def test_keywords_answer_when_the_model_gives_no_intent(client, db, monkeypatch):
+    from app.core.clock import clinic_today
+
+    clinic = await setup_clinic(client, db)
+    await add_appointment(db, clinic, clinic["first_doctor"], clinic_today(), time(9, 0))
+
+    async def silent_llm(message, context, history=None, language="ru", system_prompt=None):
+        return None
+
+    monkeypatch.setattr(staff, "ask_llm", silent_llm)
+    headers = await auth_headers(client, "doctor@ometus.test")
+
+    response = await client.post(
+        DOCTOR_ASK_URL, json={"message": "Кто у меня сегодня?"}, headers=headers
+    )
+
+    assert response.json()["action"] == "day"
+
+
+async def test_admin_keywords_answer_when_the_model_gives_no_intent(client, db, monkeypatch):
+    await setup_clinic(client, db)
+
+    async def silent_llm(message, context, history=None, language="ru", system_prompt=None):
+        return None
+
+    monkeypatch.setattr(staff, "ask_llm", silent_llm)
+    headers = await auth_headers(client, "admin@ometus.test")
+
+    response = await client.post(
+        ADMIN_ASK_URL, json={"message": "Сколько потрачено на ИИ?"}, headers=headers
+    )
+
+    assert response.json()["action"] == "ai_spend"
+
+
+async def test_a_question_nobody_understands_still_asks_to_rephrase(client, db, monkeypatch):
+    await setup_clinic(client, db)
+
+    async def silent_llm(message, context, history=None, language="ru", system_prompt=None):
+        return None
+
+    monkeypatch.setattr(staff, "ask_llm", silent_llm)
+    headers = await auth_headers(client, "doctor@ometus.test")
+
+    response = await client.post(DOCTOR_ASK_URL, json={"message": "ну это самое"}, headers=headers)
+
+    assert response.json()["action"] == "clarify"
