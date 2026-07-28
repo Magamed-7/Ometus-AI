@@ -20,6 +20,7 @@ import { Field, Select } from "../../components/Field.jsx";
 import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 import DoctorAbsences from "./DoctorAbsences.jsx";
+import DoctorCalendar from "./DoctorCalendar.jsx";
 
 const EMPTY_FORM = {
   department_id: "",
@@ -56,6 +57,9 @@ export default function DoctorSchedule() {
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(null);
   const [confirming, setConfirming] = useState(null);
+  const [calendarKey, setCalendarKey] = useState(0);
+
+  const refreshCalendar = () => setCalendarKey((prev) => prev + 1);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -117,6 +121,7 @@ export default function DoctorSchedule() {
       toast.success(t("common.saved"));
       closeForm();
       await load();
+      refreshCalendar();
     } catch (err) {
       toast.error(errorText(t, err));
     } finally {
@@ -134,6 +139,7 @@ export default function DoctorSchedule() {
       toast.success(t("doctorCabinet.scheduleDeleted"));
       setConfirming(null);
       await load();
+      refreshCalendar();
     } catch (err) {
       toast.error(errorText(t, err));
     } finally {
@@ -317,7 +323,9 @@ export default function DoctorSchedule() {
         />
       )}
 
-      <DoctorAbsences />
+      <DoctorCalendar reloadKey={calendarKey} />
+
+      <DoctorAbsences onChanged={refreshCalendar} />
     </div>
   );
 }

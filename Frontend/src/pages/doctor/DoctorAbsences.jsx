@@ -15,7 +15,9 @@ import Skeleton from "../../components/Skeleton.jsx";
 
 const today = () => isoDate(new Date());
 
-export default function DoctorAbsences() {
+// об изменениях сообщаем наверх: календарь дней обязан пересчитаться сразу,
+// иначе врач добавляет отпуск и не видит, чтобы в днях приёма что-то поменялось
+export default function DoctorAbsences({ onChanged }) {
   const { t, lang } = useI18n();
   const toast = useToast();
   const [absences, setAbsences] = useState([]);
@@ -56,6 +58,7 @@ export default function DoctorAbsences() {
       setForm({ date_from: today(), date_to: today(), reason: "" });
       setOpen(false);
       await load();
+      onChanged?.();
     } catch (err) {
       toast.error(errorText(t, err));
     } finally {
@@ -71,6 +74,7 @@ export default function DoctorAbsences() {
       toast.success(t("doctorCabinet.absenceDeleted"));
       setConfirming(null);
       await load();
+      onChanged?.();
     } catch (err) {
       toast.error(errorText(t, err));
     } finally {

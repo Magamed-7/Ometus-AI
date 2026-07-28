@@ -11,6 +11,7 @@ from app.schemas.schema_schedule import (
     AbsenceOut,
     DateScheduleCreateIn,
     DateScheduleOut,
+    DayPlanOut,
     ScheduleCreateIn,
     ScheduleOut,
     ScheduleUpdateIn,
@@ -79,6 +80,32 @@ async def create_my_schedule(
         )
 
     return await crud_schedule.create_schedule(doctor.id, data, db)
+
+
+@schedules_router.get("/me/calendar", response_model=list[DayPlanOut])
+async def get_my_calendar(
+    date_from: date,
+    date_to: date,
+    doctor=Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    if date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала позже даты конца",
+            status_code=400,
+        )
+
+    # 62 дня это два месяца вперёд — больше врачу в кабинете не нужно,
+    # а каждый день это отдельные запросы за сеткой, отпусками и занятыми слотами
+    if (date_to - date_from).days > 62:
+        raise AppError(
+            code="DATE_RANGE_TOO_WIDE",
+            message="Период не больше 62 дней",
+            status_code=400,
+        )
+
+    return await crud_schedule.get_calendar(doctor.id, date_from, date_to, db)
 
 
 @schedules_router.get("/me/absences", response_model=list[AbsenceOut])

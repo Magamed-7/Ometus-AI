@@ -76,3 +76,24 @@ class SlotOut(BaseModel):
     date: date
     time: time
     department_id: int
+
+
+class DayPlanOut(BaseModel):
+    """Что у врача происходит в конкретный день после всех правил.
+
+    Врач видит сетку по дням недели, отпуска и разовые смены тремя разными списками
+    и не может сложить их в голове. Здесь они уже сложены: сервер сам решает, что
+    сильнее — отпуск, разовая смена или обычный день, — и отдаёт готовый ответ на дату.
+    """
+
+    date: date
+    weekday: int
+    # working — обычный день по сетке, override — разовая смена на дату,
+    # absent — отпуск или больничный, off — в этот день врач не принимает
+    status: str
+    start_time: time | None = None
+    end_time: time | None = None
+    department_id: int | None = None
+    absence_reason: str | None = None
+    slots_free: int = 0
+    slots_taken: int = 0

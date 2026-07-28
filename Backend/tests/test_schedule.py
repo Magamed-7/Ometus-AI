@@ -635,3 +635,118 @@ async def test_absence_cancels_appointments_on_those_days(client, db):
     await db.refresh(appointment)
 
     assert appointment.status == "cancelled"
+
+
+MY_CALENDAR_URL = "/api/schedules/me/calendar"
+
+
+async def test_calendar_shows_working_day_from_the_weekly_grid(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+
+    # 3 августа 2026 — понедельник, weekday 0, как в WORKDAY
+    response = await client.get(
+        MY_CALENDAR_URL,
+        params={"date_from": "2026-08-03", "date_to": "2026-08-04"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    monday, tuesday = response.json()
+    assert monday["date"] == "2026-08-03"
+    assert monday["status"] == "working"
+    assert monday["start_time"] == "09:00:00"
+    assert monday["slots_free"] == 3
+    assert tuesday["status"] == "off"
+
+
+async def test_calendar_marks_absence_days_and_zeroes_their_slots(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    await client.post(
+        MY_ABSENCES_URL,
+        json={"date_from": "2026-08-03", "date_to": "2026-08-03", "reason": "Отпуск"},
+        headers=headers,
+    )
+
+    response = await client.get(
+        MY_CALENDAR_URL,
+        params={"date_from": "2026-08-03", "date_to": "2026-08-03"},
+        headers=headers,
+    )
+
+    day = response.json()[0]
+    assert day["status"] == "absent"
+    assert day["absence_reason"] == "Отпуск"
+    assert day["slots_free"] == 0
+
+
+async def test_calendar_prefers_the_one_off_shift_over_the_weekly_grid(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    await client.post(
+        MY_DATES_URL,
+        json={
+            "department_id": department_id,
+            "date": "2026-08-03",
+            "start_time": "14:00:00",
+            "end_time": "15:00:00",
+            "slot_duration": 20,
+        },
+        headers=headers,
+    )
+
+    response = await client.get(
+        MY_CALENDAR_URL,
+        params={"date_from": "2026-08-03", "date_to": "2026-08-03"},
+        headers=headers,
+    )
+
+    day = response.json()[0]
+    assert day["status"] == "override"
+    assert day["start_time"] == "14:00:00"
+
+
+async def test_calendar_rejects_a_backwards_range(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+
+    response = await client.get(
+        MY_CALENDAR_URL,
+        params={"date_from": "2026-08-10", "date_to": "2026-08-01"},
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_DATE_RANGE"
+
+
+async def test_calendar_rejects_too_wide_a_range(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+
+    response = await client.get(
+        MY_CALENDAR_URL,
+        params={"date_from": "2026-01-01", "date_to": "2026-12-31"},
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "DATE_RANGE_TOO_WIDE"
+
+
+async def test_calendar_is_closed_to_patients(client, db):
+    await register(client, "curious.patient@ometus.test")
+    headers = await auth_headers(client, "curious.patient@ometus.test")
+
+    response = await client.get(
+        MY_CALENDAR_URL,
+        params={"date_from": "2026-08-03", "date_to": "2026-08-04"},
+        headers=headers,
+    )
+
+    assert response.status_code == 403

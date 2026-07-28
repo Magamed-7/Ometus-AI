@@ -159,13 +159,18 @@ async def delete_date_schedule(schedule: DoctorDateSchedule, db: AsyncSession):
 
 
 async def is_absent(doctor_id: int, day: date, db: AsyncSession):
+    absence = await get_absence_on(doctor_id, day, db)
+    return absence is not None
+
+
+async def get_absence_on(doctor_id: int, day: date, db: AsyncSession):
     result = await db.execute(
         select(DoctorAbsence)
         .where(DoctorAbsence.doctor_id == doctor_id)
         .where(DoctorAbsence.date_from <= day)
         .where(DoctorAbsence.date_to >= day)
     )
-    return result.scalars().first() is not None
+    return result.scalars().first()
 
 
 def slice_slots(day: date, schedules, taken):
@@ -206,6 +211,55 @@ async def get_available_slots(doctor_id: int, day: date, db: AsyncSession):
     schedules = overrides or await get_schedule_by_weekday(doctor_id, day.weekday(), db)
     taken = await crud_appointment.get_taken_times(doctor_id, day, db)
     return slice_slots(day, schedules, taken)
+
+
+async def get_day_plan(doctor_id: int, day: date, db: AsyncSession):
+    absence = await get_absence_on(doctor_id, day, db)
+    taken = await crud_appointment.get_taken_times(doctor_id, day, db)
+
+    # отпуск сильнее всего остального: сетка на этот день никуда не девается,
+    # но принимать врач не будет, и в календаре это должно быть видно сразу
+    if absence is not None:
+        return {
+            "date": day,
+            "weekday": day.weekday(),
+            "status": "absent",
+            "absence_reason": absence.reason,
+            "slots_taken": len(taken),
+        }
+
+    overrides = await get_date_schedules_on(doctor_id, day, db)
+    schedules = overrides or await get_schedule_by_weekday(doctor_id, day.weekday(), db)
+
+    if not schedules:
+        return {
+            "date": day,
+            "weekday": day.weekday(),
+            "status": "off",
+            "slots_taken": len(taken),
+        }
+
+    return {
+        "date": day,
+        "weekday": day.weekday(),
+        "status": "override" if overrides else "working",
+        "start_time": min(row.start_time for row in schedules),
+        "end_time": max(row.end_time for row in schedules),
+        "department_id": schedules[0].department_id,
+        "slots_free": len(slice_slots(day, schedules, taken)),
+        "slots_taken": len(taken),
+    }
+
+
+async def get_calendar(doctor_id: int, date_from: date, date_to: date, db: AsyncSession):
+    days = []
+    current = date_from
+
+    while current <= date_to:
+        days.append(await get_day_plan(doctor_id, current, db))
+        current = current + timedelta(days=1)
+
+    return days
 
 
 async def find_slot(doctor_id: int, day: date, slot_time: time, db: AsyncSession):
