@@ -22,6 +22,7 @@ import ChartCard from "../../components/ChartCard.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
 import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
+import StaffAssistant from "../../components/StaffAssistant.jsx";
 import { Field } from "../../components/Field.jsx";
 
 function daysAgo(count) {
@@ -182,6 +183,8 @@ export default function AdminAnalytics() {
           onChange={(e) => setDateTo(e.target.value)}
         />
       </div>
+
+      <StaffAssistant role="admin" />
 
       {error ? (
         <ErrorState error={error} onRetry={load} />

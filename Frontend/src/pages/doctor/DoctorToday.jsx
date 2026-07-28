@@ -15,6 +15,7 @@ import ErrorState from "../../components/ErrorState.jsx";
 import { Select } from "../../components/Field.jsx";
 import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
+import StaffAssistant from "../../components/StaffAssistant.jsx";
 import StatusPill from "../../components/StatusPill.jsx";
 
 const STATUSES = ["booked", "completed", "cancelled", "no_show"];
@@ -62,6 +63,10 @@ export default function DoctorToday() {
       <h1 className="mb-md text-headline-lg-mobile font-bold text-on-surface md:text-headline-lg">
         {t("doctorCabinet.todayTitle")}
       </h1>
+
+      <div className="mb-md">
+        <StaffAssistant role="doctor" />
+      </div>
 
       <div className="mb-md grid gap-sm sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">

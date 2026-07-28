@@ -128,6 +128,17 @@ class LlmMetricOut(BaseModel):
     cost_usd: Decimal
 
 
+class StaffAskIn(BaseModel):
+    message: str
+    language: str | None = None
+
+
+class StaffAskOut(BaseModel):
+    action: str
+    reply: str
+    data: dict
+
+
 class AiDailyOut(BaseModel):
     date: date
     calls: int

@@ -1,11 +1,15 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai import assistant
-from app.api.permissions import get_current_patient
+from app.ai import assistant, staff
+from app.api.permissions import (
+    get_current_doctor,
+    get_current_patient,
+    require_role,
+)
 from app.core.errors import AppError
 from app.db.database import get_db
-from app.ai.i18n import DEFAULT_LANGUAGE
+from app.ai.i18n import DEFAULT_LANGUAGE, pick_language
 from app.schemas.schema_ai import (
     AiTaskOut,
     AskIn,
@@ -16,6 +20,8 @@ from app.schemas.schema_ai import (
     ConversationRenameIn,
     FeedbackIn,
     FeedbackOut,
+    StaffAskIn,
+    StaffAskOut,
 )
 from app.services import crud_ai_feedback, crud_ai_task, crud_conversation
 
@@ -29,6 +35,28 @@ async def ask_assistant(
     db: AsyncSession = Depends(get_db),
 ):
     return await assistant.ask(data, patient, db)
+
+
+@ai_router.post("/doctor/ask", response_model=StaffAskOut)
+async def ask_as_doctor(
+    data: StaffAskIn,
+    doctor=Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    # доступ ограничен на слое данных: всё внутри спрашивается по `doctor.id`,
+    # так что чужих пациентов ассистент не покажет даже при удачной подсказке модели
+    language = pick_language(data.language, data.message)
+    return await staff.answer_doctor(data.message, doctor, language, db)
+
+
+@ai_router.post("/admin/ask", response_model=StaffAskOut)
+async def ask_as_admin(
+    data: StaffAskIn,
+    current_user=Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    language = pick_language(data.language, data.message)
+    return await staff.answer_admin(data.message, language, db)
 
 
 @ai_router.post("/feedback", response_model=FeedbackOut)
