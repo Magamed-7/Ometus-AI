@@ -29,14 +29,22 @@ export default function TopNav() {
     return () => observer.disconnect();
   }, []);
 
+  // запись и ассистент — только для пациента: врач и админ записаться не могут,
+  // а на странице ассистента их встречала плашка «только для пациентов».
+  // У сотрудников свой ассистент — в «Приёме сегодня» и в аналитике
+  const isStaff = user?.role === "doctor" || user?.role === "admin";
+
   const links = [
     { to: "/", label: t("nav.home"), end: true },
     { to: "/about", label: t("nav.about") },
     { to: "/services", label: t("nav.services") },
     { to: "/doctors", label: t("nav.doctors") },
-    { to: "/booking", label: t("nav.booking") },
-    { to: "/assistant", label: t("nav.assistant") },
   ];
+
+  if (!isStaff) {
+    links.push({ to: "/booking", label: t("nav.booking") });
+    links.push({ to: "/assistant", label: t("nav.assistant") });
+  }
 
   if (user?.role === "doctor") {
     links.push({ to: "/doctor/today", label: t("nav.doctorToday") });

@@ -6,14 +6,22 @@ export default function BottomNav() {
   const t = useT();
   const { user } = useAuth();
 
+  // тот же отбор, что и в верхней навигации: записаться и говорить с пациентским
+  // ассистентом врач и админ всё равно не могут
+  const isStaff = user?.role === "doctor" || user?.role === "admin";
+
   const items = [
     { to: "/", label: t("nav.home"), icon: "home_health", end: true },
     { to: "/doctors", label: t("nav.doctors"), icon: "medical_services" },
-    { to: "/booking", label: t("nav.booking"), icon: "calendar_add_on" },
-    { to: "/assistant", label: t("nav.assistant"), icon: "smart_toy" },
   ];
 
+  if (!isStaff) {
+    items.push({ to: "/booking", label: t("nav.booking"), icon: "calendar_add_on" });
+    items.push({ to: "/assistant", label: t("nav.assistant"), icon: "smart_toy" });
+  }
+
   if (user?.role === "doctor") {
+    items.push({ to: "/doctor/schedule", label: t("nav.doctorSchedule"), icon: "calendar_month" });
     items.push({ to: "/doctor/today", label: t("nav.doctorToday"), icon: "event_available" });
   } else if (user?.role === "admin") {
     items.push({ to: "/admin/filials", label: t("nav.admin"), icon: "admin_panel_settings" });

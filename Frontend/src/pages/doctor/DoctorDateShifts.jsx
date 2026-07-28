@@ -1,46 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
 import { errorText } from "../../lib/api/errorText.js";
-import {
-  createMyDateShift,
-  deleteMyDateShift,
-  getMyDateShifts,
-} from "../../lib/api/schedules.js";
-import { clock, formatDate, isoDate } from "../../lib/format.js";
+import { deleteMyDateShift, getMyDateShifts } from "../../lib/api/schedules.js";
+import { clock, formatDate } from "../../lib/format.js";
 import { useI18n } from "../../lib/i18n.jsx";
 import { useToast } from "../../lib/toast.jsx";
-import Button from "../../components/Button.jsx";
 import Card from "../../components/Card.jsx";
 import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
 import ErrorState from "../../components/ErrorState.jsx";
-import { Field, Select } from "../../components/Field.jsx";
 import LoadingStatus from "../../components/LoadingStatus.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 
-const today = () => isoDate(new Date());
-
-const emptyForm = () => ({
-  department_id: "",
-  date: today(),
-  start_time: "09:00",
-  end_time: "17:00",
-  slot_duration: 30,
-  buffer_duration: 0,
-});
-
-// Разовые смены умел только бэкенд: эндпоинты `/api/schedules/me/dates` появились
-// вместе с зонами роста, а формы к ним не было. Из-за этого в расписании стоял
-// один «день недели» без единой даты, а в легенде календаря висел статус
-// «разовая смена», который врач не мог создать никаким способом.
-export default function DoctorDateShifts({ departments, onChanged }) {
+// Только список. Добавляются смены сверху, в той же форме, что и дни недели —
+// двух кнопок «добавить расписание» на одной странице быть не должно
+export default function DoctorDateShifts({ reloadKey, onChanged }) {
   const { t, lang } = useI18n();
   const toast = useToast();
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(null);
   const [confirming, setConfirming] = useState(null);
 
@@ -55,40 +33,7 @@ export default function DoctorDateShifts({ departments, onChanged }) {
 
   useEffect(() => {
     load();
-  }, [load]);
-
-  useEffect(() => {
-    if (departments.length === 1) {
-      setForm((prev) => ({ ...prev, department_id: String(departments[0].id) }));
-    }
-  }, [departments]);
-
-  const change = (name) => (e) => setForm((prev) => ({ ...prev, [name]: e.target.value }));
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-
-    try {
-      await createMyDateShift({
-        department_id: Number(form.department_id),
-        date: form.date,
-        start_time: `${form.start_time}:00`,
-        end_time: `${form.end_time}:00`,
-        slot_duration: Number(form.slot_duration),
-        buffer_duration: Number(form.buffer_duration),
-      });
-      toast.success(t("common.saved"));
-      setForm(emptyForm());
-      setOpen(false);
-      await load();
-      onChanged?.();
-    } catch (err) {
-      toast.error(errorText(t, err));
-    } finally {
-      setSaving(false);
-    }
-  };
+  }, [load, reloadKey]);
 
   const remove = async () => {
     setRemoving(confirming.id);
@@ -110,83 +55,12 @@ export default function DoctorDateShifts({ departments, onChanged }) {
 
   return (
     <section className="mt-xl">
-      <div className="mb-xs flex flex-wrap items-center justify-between gap-sm">
-        <h2 className="text-headline-md font-bold text-on-surface">
-          {t("doctorCabinet.shifts")}
-        </h2>
-        <Button
-          variant={open ? "outline" : "primary"}
-          icon={open ? "close" : "add"}
-          onClick={() => setOpen((prev) => !prev)}
-        >
-          {open ? t("common.cancel") : t("doctorCabinet.addShift")}
-        </Button>
-      </div>
+      <h2 className="mb-xs text-headline-md font-bold text-on-surface">
+        {t("doctorCabinet.shifts")}
+      </h2>
       <p className="mb-md text-body-md text-on-surface-variant">
         {t("doctorCabinet.shiftsHint")}
       </p>
-
-      {open && (
-        <Card as="form" onSubmit={submit} className="mb-md space-y-md p-md">
-          <div className="grid gap-sm sm:grid-cols-2">
-            <Select
-              label={t("doctorCabinet.department")}
-              required
-              value={form.department_id}
-              onChange={change("department_id")}
-            >
-              <option value="">{t("doctorCabinet.pickDepartment")}</option>
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </Select>
-            <Field
-              label={t("doctorCabinet.date")}
-              type="date"
-              required
-              min={today()}
-              value={form.date}
-              onChange={change("date")}
-            />
-            <Field
-              label={t("doctorCabinet.startTime")}
-              type="time"
-              required
-              value={form.start_time}
-              onChange={change("start_time")}
-            />
-            <Field
-              label={t("doctorCabinet.endTime")}
-              type="time"
-              required
-              value={form.end_time}
-              onChange={change("end_time")}
-            />
-            <Field
-              label={t("doctorCabinet.slotDuration")}
-              type="number"
-              min={5}
-              max={240}
-              required
-              value={form.slot_duration}
-              onChange={change("slot_duration")}
-            />
-            <Field
-              label={t("doctorCabinet.bufferDuration")}
-              type="number"
-              min={0}
-              max={120}
-              value={form.buffer_duration}
-              onChange={change("buffer_duration")}
-            />
-          </div>
-          <Button type="submit" icon="save" loading={saving}>
-            {t("common.save")}
-          </Button>
-        </Card>
-      )}
 
       {error ? (
         <ErrorState error={error} onRetry={load} />

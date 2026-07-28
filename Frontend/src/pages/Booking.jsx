@@ -317,6 +317,17 @@ export default function Booking() {
       <h1 className="mb-md text-headline-lg-mobile font-bold text-on-surface md:text-headline-lg">
         {t("booking.title")}
       </h1>
+
+      {/* из меню страница у сотрудников убрана, но по прямой ссылке дойти можно:
+          лучше честно сказать, что записаться нельзя, чем дать нажать и получить отказ */}
+      {user && user.role !== "patient" && (
+        <div
+          role="status"
+          className="mb-md rounded-xl border border-outline-variant bg-surface-container-low p-sm text-label-md text-on-surface-variant"
+        >
+          {t("booking.patientsOnly")}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-md lg:grid-cols-3">
         <div className="flex flex-col gap-md lg:col-span-2">
           <Card className="flex flex-col items-center gap-md p-md sm:flex-row sm:items-start">

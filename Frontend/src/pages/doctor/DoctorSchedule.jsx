@@ -3,12 +3,13 @@ import { useAuth } from "../../lib/auth/AuthContext.jsx";
 import { findMyDoctor, getDoctorDepartments } from "../../lib/api/doctors.js";
 import { errorText } from "../../lib/api/errorText.js";
 import {
+  createMyDateShift,
   createMySchedule,
   deleteMySchedule,
   getMySchedule,
   updateMySchedule,
 } from "../../lib/api/schedules.js";
-import { clock } from "../../lib/format.js";
+import { clock, isoDate } from "../../lib/format.js";
 import { useI18n } from "../../lib/i18n.jsx";
 import { useToast } from "../../lib/toast.jsx";
 import Button from "../../components/Button.jsx";
@@ -23,7 +24,13 @@ import DoctorAbsences from "./DoctorAbsences.jsx";
 import DoctorCalendar from "./DoctorCalendar.jsx";
 import DoctorDateShifts from "./DoctorDateShifts.jsx";
 
+const today = () => isoDate(new Date());
+
+// «Каждую неделю» — сетка по дню недели, «Одна дата» — разовая смена на эту дату.
+// Раньше форма умела только первое, и врач видел день недели без единой даты
 const EMPTY_FORM = {
+  mode: "weekly",
+  date: today(),
   department_id: "",
   weekday: "0",
   start_time: "09:00",
@@ -34,6 +41,8 @@ const EMPTY_FORM = {
 
 function toForm(row) {
   return {
+    mode: "weekly",
+    date: today(),
     department_id: String(row.department_id),
     weekday: String(row.weekday),
     start_time: clock(row.start_time),
@@ -59,6 +68,7 @@ export default function DoctorSchedule() {
   const [removing, setRemoving] = useState(null);
   const [confirming, setConfirming] = useState(null);
   const [calendarKey, setCalendarKey] = useState(0);
+  const [shiftsKey, setShiftsKey] = useState(0);
 
   const refreshCalendar = () => setCalendarKey((prev) => prev + 1);
 
@@ -114,7 +124,17 @@ export default function DoctorSchedule() {
     };
 
     try {
-      if (editing === null) {
+      if (form.mode === "date" && editing === null) {
+        await createMyDateShift({
+          department_id: payload.department_id,
+          date: form.date,
+          start_time: `${form.start_time}:00`,
+          end_time: `${form.end_time}:00`,
+          slot_duration: payload.slot_duration,
+          buffer_duration: payload.buffer_duration,
+        });
+        setShiftsKey((prev) => prev + 1);
+      } else if (editing === null) {
         await createMySchedule(payload);
       } else {
         await updateMySchedule(editing, payload);
@@ -180,6 +200,35 @@ export default function DoctorSchedule() {
             {editing === null ? t("doctorCabinet.addSchedule") : t("doctorCabinet.editSchedule")}
           </p>
 
+          {editing === null && (
+            <div>
+              <p className="mb-xs text-label-md font-semibold text-on-surface-variant">
+                {t("doctorCabinet.repeat")}
+              </p>
+              <div role="radiogroup" aria-label={t("doctorCabinet.repeat")} className="flex flex-wrap gap-xs">
+                {["weekly", "date"].map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.mode === mode}
+                    onClick={() => setForm((prev) => ({ ...prev, mode }))}
+                    className={`rounded-full border px-md py-2 text-label-md font-semibold transition-colors ${
+                      form.mode === mode
+                        ? "border-primary bg-primary text-on-primary"
+                        : "border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary"
+                    }`}
+                  >
+                    {t(`doctorCabinet.mode_${mode}`)}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-xs text-label-md text-on-surface-variant">
+                {t(`doctorCabinet.modeHint_${form.mode}`)}
+              </p>
+            </div>
+          )}
+
           {departments.length === 0 && !loading && (
             <p className="rounded-xl bg-error-container px-4 py-3 text-body-md text-on-error-container">
               {t("doctorCabinet.noDepartments")}
@@ -200,17 +249,28 @@ export default function DoctorSchedule() {
                 </option>
               ))}
             </Select>
-            <Select
-              label={t("doctorCabinet.weekday")}
-              value={form.weekday}
-              onChange={change("weekday")}
-            >
-              {fulls.map((name, index) => (
-                <option key={name} value={index}>
-                  {name}
-                </option>
-              ))}
-            </Select>
+            {form.mode === "date" ? (
+              <Field
+                label={t("doctorCabinet.date")}
+                type="date"
+                required
+                min={today()}
+                value={form.date}
+                onChange={change("date")}
+              />
+            ) : (
+              <Select
+                label={t("doctorCabinet.weekday")}
+                value={form.weekday}
+                onChange={change("weekday")}
+              >
+                {fulls.map((name, index) => (
+                  <option key={name} value={index}>
+                    {name}
+                  </option>
+                ))}
+              </Select>
+            )}
             <Field
               label={t("doctorCabinet.startTime")}
               type="time"
@@ -332,7 +392,7 @@ export default function DoctorSchedule() {
 
       <DoctorCalendar reloadKey={calendarKey} />
 
-      <DoctorDateShifts departments={departments} onChanged={refreshCalendar} />
+      <DoctorDateShifts reloadKey={shiftsKey} onChanged={refreshCalendar} />
 
       <DoctorAbsences onChanged={refreshCalendar} />
     </div>
