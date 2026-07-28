@@ -117,6 +117,8 @@ export const tg = {
     allDoctors: "Ҳамаи табибонро нишон диҳед",
     book: "Навбат гирифтан",
     hoursUnknown: "Соатҳои кориро пурсед",
+    heroPhotoAlt: "Табиби Ometus дар долони клиника",
+    filialPhotoAlt: "Филиали {name}",
   },
   doctors: {
     photoAlt: "Тасвири духтур {name}",

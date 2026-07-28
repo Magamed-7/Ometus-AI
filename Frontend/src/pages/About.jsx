@@ -4,13 +4,13 @@ import { getDepartments } from "../lib/api/departments.js";
 import { searchDoctors } from "../lib/api/doctors.js";
 import { getFilials } from "../lib/api/filials.js";
 import { useT } from "../lib/i18n.jsx";
+import { CARD_WIDTHS, filialPhoto, SCENE_WIDTHS } from "../lib/photos.js";
 import Card from "../components/Card.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingStatus from "../components/LoadingStatus.jsx";
 import Photo from "../components/Photo.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
-const FILIAL_PHOTOS = ["/img/filials/filial-1.webp", "/img/filials/filial-2.webp", "/img/filials/filial-3.webp"];
 const FILIAL_ICONS = ["apartment", "local_hospital", "monitoring"];
 
 export default function About() {
@@ -97,13 +97,15 @@ export default function About() {
         </div>
         <div className="relative">
           <Photo
-            src="/img/about/team.webp"
+            base="/img/about/team"
+            widths={SCENE_WIDTHS}
+            sizes="(min-width: 1024px) 50vw, 100vw"
             alt={t("about.teamPhotoAlt")}
             icon="groups"
             eager
-            width="960"
-            height="640"
-            className="aspect-[3/2] w-full rounded-2xl"
+            width="1228"
+            height="768"
+            className="aspect-[8/5] w-full rounded-2xl"
           />
           <Card className="absolute bottom-md left-md max-w-note bg-primary p-sm text-on-primary">
             <p className="text-body-md font-bold">{t("about.trustTitle")}</p>
@@ -177,12 +179,14 @@ export default function About() {
             {filials.map((filial, index) => (
               <Card key={filial.id} className="overflow-hidden">
                 <Photo
-                  src={FILIAL_PHOTOS[index % FILIAL_PHOTOS.length]}
+                  base={filialPhoto(index)}
+                  widths={CARD_WIDTHS}
+                  sizes="(min-width: 768px) 33vw, 100vw"
                   alt={t("about.filialPhotoAlt", { name: filial.name })}
                   icon={FILIAL_ICONS[index % FILIAL_ICONS.length]}
-                  width="800"
-                  height="480"
-                  className="aspect-[5/3] w-full"
+                  width="640"
+                  height="400"
+                  className="aspect-[8/5] w-full"
                 />
                 <div className="p-md">
                   <h3 className="text-body-lg font-bold text-on-surface">{filial.name}</h3>
@@ -239,20 +243,24 @@ export default function About() {
           </div>
           <div className="grid grid-cols-2 gap-sm">
             <Photo
-              src="/img/about/story-1.webp"
+              base="/img/about/story-1"
+              widths={CARD_WIDTHS}
+              sizes="(min-width: 1024px) 25vw, 50vw"
               alt={t("about.storyPhotoOneAlt")}
               icon="history"
-              width="600"
-              height="800"
-              className="aspect-[3/4] w-full rounded-xl"
+              width="641"
+              height="604"
+              className="aspect-square w-full rounded-xl"
             />
             <Photo
-              src="/img/about/story-2.webp"
+              base="/img/about/story-2"
+              widths={CARD_WIDTHS}
+              sizes="(min-width: 1024px) 25vw, 50vw"
               alt={t("about.storyPhotoTwoAlt")}
               icon="stethoscope"
-              width="600"
-              height="800"
-              className="mt-lg aspect-[3/4] w-full rounded-xl"
+              width="641"
+              height="604"
+              className="mt-lg aspect-square w-full rounded-xl"
             />
           </div>
         </Card>

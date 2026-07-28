@@ -1,10 +1,18 @@
 import { useState } from "react";
 
-// Пока фотографии не залиты в public/img, страницы не должны выглядеть сломанными:
-// вместо битой картинки рисуем градиент с иконкой — тот же приём, что у DoctorAvatar
-// с инициалами. Как только файл появится по этому пути, он подставится сам.
+// Файлы лежат как `<base>-<ширина>.webp`, поэтому браузеру отдаём весь набор и он
+// сам берёт нужный: телефону не за чем тянуть кадр под широкий экран.
+function buildSrcSet(base, widths) {
+  return widths.map((width) => `${base}-${width}.webp ${width}w`).join(", ");
+}
+
+// Если файла по пути нет, страница не должна выглядеть сломанной: вместо битой
+// картинки рисуем градиент с иконкой — тот же приём, что у DoctorAvatar с инициалами.
 export default function Photo({
   src,
+  base,
+  widths,
+  sizes,
   alt,
   icon = "photo_camera",
   className = "",
@@ -14,8 +22,10 @@ export default function Photo({
   eager = false,
 }) {
   const [broken, setBroken] = useState(false);
+  const largest = widths && widths.length ? widths[widths.length - 1] : null;
+  const url = base && largest ? `${base}-${largest}.webp` : src;
 
-  if (!src || broken) {
+  if (!url || broken) {
     return (
       <div
         aria-hidden="true"
@@ -30,11 +40,14 @@ export default function Photo({
 
   return (
     <img
-      src={src}
+      src={url}
+      srcSet={base && largest ? buildSrcSet(base, widths) : undefined}
+      sizes={base && largest ? sizes : undefined}
       alt={alt}
       width={width}
       height={height}
       loading={eager ? "eager" : "lazy"}
+      decoding={eager ? "sync" : "async"}
       onError={() => setBroken(true)}
       className={`bg-surface-container object-cover ${className} ${imgClassName}`}
     />

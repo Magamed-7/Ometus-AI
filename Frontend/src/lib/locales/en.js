@@ -117,6 +117,8 @@ export const en = {
     allDoctors: "Show all doctors",
     book: "Book",
     hoursUnknown: "Call to check opening hours",
+    heroPhotoAlt: "An Ometus doctor in the clinic corridor",
+    filialPhotoAlt: "{name} branch",
   },
   doctors: {
     photoAlt: "Image of doctor {name}",

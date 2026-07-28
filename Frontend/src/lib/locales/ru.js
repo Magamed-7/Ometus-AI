@@ -117,6 +117,8 @@ export const ru = {
     allDoctors: "Показать всех врачей",
     book: "Записаться",
     hoursUnknown: "Часы работы уточняйте",
+    heroPhotoAlt: "Врач Ometus в коридоре клиники",
+    filialPhotoAlt: "Филиал {name}",
   },
   doctors: {
     photoAlt: "Изображение врача {name}",

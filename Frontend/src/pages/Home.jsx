@@ -4,10 +4,12 @@ import { getFilials } from "../lib/api/filials.js";
 import { searchDoctors } from "../lib/api/doctors.js";
 import { phone } from "../lib/format.js";
 import { useT } from "../lib/i18n.jsx";
+import { CARD_WIDTHS, filialPhoto, SCENE_WIDTHS } from "../lib/photos.js";
 import Card from "../components/Card.jsx";
 import DoctorAvatar from "../components/DoctorAvatar.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingStatus from "../components/LoadingStatus.jsx";
+import Photo from "../components/Photo.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 
 const mapsUrl = (f) =>
@@ -159,13 +161,17 @@ export default function Home() {
             </div>
 
             <div className="relative hidden flex-1 md:block">
-              <div className="relative h-[460px] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary-container shadow-2xl">
-                <div className="absolute inset-0 grid place-items-center">
-                  <span aria-hidden="true" className="material-symbols-outlined text-[160px] text-on-primary/90">
-                    health_and_safety
-                  </span>
-                </div>
-              </div>
+              <Photo
+                base="/img/home/hero"
+                widths={SCENE_WIDTHS}
+                sizes="(min-width: 768px) 50vw, 100vw"
+                alt={t("home.heroPhotoAlt")}
+                icon="health_and_safety"
+                eager
+                width="1228"
+                height="768"
+                className="h-[460px] w-full rounded-3xl shadow-2xl"
+              />
               <div className="animate-bounce-slow absolute -bottom-6 -left-6 flex items-center gap-sm rounded-2xl border border-outline-variant bg-surface-container-lowest p-md shadow-xl">
                 <div className="grid h-12 w-12 place-items-center rounded-full bg-primary-container text-on-primary-container">
                   <span aria-hidden="true" className="material-symbols-outlined">verified</span>
@@ -196,15 +202,18 @@ export default function Home() {
           {filialsLoading && <LoadingStatus />}
           {filialsLoading
             ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-72" />)
-            : filials.map((f) => (
+            : filials.map((f, index) => (
                 <Card key={f.id} className="group overflow-hidden transition-all hover:shadow-xl">
-                  <div className="relative h-40 overflow-hidden bg-gradient-to-br from-primary to-primary-container">
-                    <div className="absolute inset-0 grid place-items-center">
-                      <span aria-hidden="true" className="material-symbols-outlined text-6xl text-on-primary/90">
-                        apartment
-                      </span>
-                    </div>
-                  </div>
+                  <Photo
+                    base={filialPhoto(index)}
+                    widths={CARD_WIDTHS}
+                    sizes="(min-width: 768px) 33vw, 100vw"
+                    alt={t("home.filialPhotoAlt", { name: f.name })}
+                    icon="apartment"
+                    width="640"
+                    height="400"
+                    className="h-40 w-full"
+                  />
                   <div className="p-md">
                     <h3 className="mb-xs text-headline-md font-semibold text-on-surface">{f.name}</h3>
                     <div className="mb-md flex items-start gap-xs text-on-surface-variant">
