@@ -32,6 +32,9 @@ export default function Footer() {
           <Link to="/patients" className="text-label-md text-on-surface-variant hover:text-primary">
             {t("patients.title")}
           </Link>
+          <Link to="/reviews" className="text-label-md text-on-surface-variant hover:text-primary">
+            {t("reviews.title")}
+          </Link>
           <Link to="/faq" className="text-label-md text-on-surface-variant hover:text-primary">
             {t("footer.faq")}
           </Link>

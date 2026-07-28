@@ -491,4 +491,24 @@ export const en = {
     bringResults: "Previous tests and scans",
     bringDrugs: "A list of the medication you take",
   },
+  reviews: {
+    title: "Reviews",
+    intro:
+      "Only patients who actually attended an appointment can leave a rating — one review per visit. That makes the average grow slowly, but honestly.",
+    ratingLabel: "Rated {value} out of 5",
+    count: "ratings: {count}",
+    filter: "Filter",
+    byFilial: "Branch",
+    allFilials: "All branches",
+    byDoctor: "Doctor",
+    allDoctors: "All doctors",
+    reset: "Reset",
+    emptyTitle: "No reviews yet",
+    emptyText:
+      "Ratings will appear here once appointments have taken place. We do not show made-up reviews.",
+    leave: "Book an appointment",
+    pagination: "Review pages",
+    prevPage: "Previous page",
+    nextPage: "Next page",
+  },
 };

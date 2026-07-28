@@ -23,6 +23,7 @@ import Login from "./pages/Login.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import Patients from "./pages/Patients.jsx";
 import Register from "./pages/Register.jsx";
+import Reviews from "./pages/Reviews.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/about" element={<About />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/patients" element={<Patients />} />
+          <Route path="/reviews" element={<Reviews />} />
           <Route path="/doctors" element={<Doctors />} />
           <Route path="/doctors/:id" element={<DoctorDetail />} />
           <Route path="/booking" element={<Booking />} />
