@@ -175,7 +175,7 @@ export default function Account() {
   return (
     <div className="mx-auto max-w-7xl px-sm py-md md:px-lg">
       <div className="grid grid-cols-1 items-start gap-md lg:grid-cols-12">
-        <aside className="lg:col-span-4 lg:sticky lg:top-24">
+        <aside className="lg:col-span-4 lg:below-header">
           <ProfileSidebar
             user={user}
             editing={editing}

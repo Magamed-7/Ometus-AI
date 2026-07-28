@@ -23,6 +23,8 @@ export const ru = {
     adminDoctors: "Врачи",
     adminReports: "Отчёты",
     about: "О нас",
+    services: "Услуги",
+    sections: "Разделы сайта",
   },
   common: {
     loading: "Загрузка…",

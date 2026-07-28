@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth/AuthContext.jsx";
 import { useT } from "../lib/i18n.jsx";
@@ -10,11 +10,29 @@ export default function TopNav() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const headerRef = useRef(null);
+
+  // высота шапки не константа: вторая строка появляется только с md, пунктов
+  // в ней у врача больше, чем у пациента, а в узком окне добавляется полоска
+  // прокрутки. Липким сайдбарам нужно точное число, поэтому меряем и отдаём
+  // его в CSS, а не подбираем на глаз
+  useEffect(() => {
+    const element = headerRef.current;
+    if (!element) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      const height = Math.round(entry.target.getBoundingClientRect().height);
+      document.documentElement.style.setProperty("--header-h", `${height}px`);
+    });
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   const links = [
     { to: "/", label: t("nav.home"), end: true },
     { to: "/about", label: t("nav.about") },
-    { to: "/services", label: t("services.title") },
+    { to: "/services", label: t("nav.services") },
     { to: "/doctors", label: t("nav.doctors") },
     { to: "/booking", label: t("nav.booking") },
     { to: "/assistant", label: t("nav.assistant") },
@@ -42,28 +60,29 @@ export default function TopNav() {
     navigate("/");
   };
 
+  // whitespace-nowrap обязателен: без него «О нас» и «Услуги и цены» при нехватке
+  // места ломались по словам и текст шёл сверху вниз
   const linkClass = ({ isActive }) =>
-    `text-label-md font-semibold transition-colors ${
+    `whitespace-nowrap border-b-2 pb-1 text-label-md font-semibold transition-colors ${
       isActive
-        ? "text-primary border-b-2 border-primary pb-1"
-        : "text-on-surface-variant hover:text-primary"
+        ? "border-primary text-primary"
+        : "border-transparent text-on-surface-variant hover:text-primary"
     }`;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-outline-variant bg-surface/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-xs px-sm py-xs md:gap-md md:px-lg">
-        <div className="flex min-w-0 items-center gap-md">
-          <NavLink to="/" className="truncate text-xl font-bold text-primary md:text-headline-md">
-            {t("brand.name")}
-          </NavLink>
-          <nav className="ml-lg hidden gap-md md:flex">
-            {links.map((l) => (
-              <NavLink key={l.to} to={l.to} end={l.end} className={linkClass}>
-                {l.label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-40 border-b border-outline-variant bg-surface/95 backdrop-blur"
+    >
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-sm px-sm py-1 md:px-lg">
+        {/* бренд не сжимается и не обрезается: раньше на нём стоял truncate,
+            и «Ometus Clinic» превращался в «Omet…» */}
+        <NavLink
+          to="/"
+          className="shrink-0 whitespace-nowrap text-xl font-bold text-primary md:text-headline-md"
+        >
+          {t("brand.name")}
+        </NavLink>
 
         <div className="flex shrink-0 items-center gap-xs">
           <form onSubmit={onSearch} className="relative hidden items-center lg:flex">
@@ -102,6 +121,25 @@ export default function TopNav() {
           )}
         </div>
       </div>
+
+      {/* Навигация вынесена во вторую строку. В один ряд с брендом, поиском и кнопкой
+          она не помещалась: у пациента это 7 пунктов, у врача 8, и при нехватке места
+          подписи ломались по вертикали. Отдельная строка держит любое их число,
+          а на телефоне она скрыта — там за навигацию отвечает нижняя панель.
+          Обе строки прижаты по вертикали: вместе они должны укладываться в 96px,
+          на которые рассчитаны `sticky top-24` у сайдбаров записи, врачей и кабинета. */}
+      <nav
+        aria-label={t("nav.sections")}
+        className="nav-scroll hidden overflow-x-auto border-t border-outline-variant/60 md:block"
+      >
+        <div className="mx-auto flex max-w-7xl items-center gap-md px-sm py-1 md:px-lg lg:gap-lg">
+          {links.map((l) => (
+            <NavLink key={l.to} to={l.to} end={l.end} className={linkClass}>
+              {l.label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </header>
   );
 }

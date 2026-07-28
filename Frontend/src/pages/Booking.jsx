@@ -422,7 +422,7 @@ export default function Booking() {
           </Card>
         </div>
         <div className="lg:col-span-1">
-          <div className="sticky top-24">
+          <div className="below-header">
             <Card className="bg-surface-container-high p-md">
               <h3 className="mb-md text-label-md font-semibold uppercase tracking-widest text-primary">
                 {t("booking.summary")}

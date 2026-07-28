@@ -23,6 +23,8 @@ export const tg = {
     adminDoctors: "Табибон",
     adminReports: "Ҳисоботҳо",
     about: "Дар бораи мо",
+    services: "Хизматҳо",
+    sections: "Бахшҳои сайт",
   },
   common: {
     loading: "Боркунӣ…",

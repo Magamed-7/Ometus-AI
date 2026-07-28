@@ -97,7 +97,7 @@ export default function Doctors() {
 
       <div className="flex flex-col gap-lg lg:flex-row">
         <aside className="w-full flex-shrink-0 lg:w-72">
-          <div className="sticky top-24 rounded-xl border border-outline-variant bg-surface-container-lowest p-md">
+          <div className="below-header rounded-xl border border-outline-variant bg-surface-container-lowest p-md">
             <div className="mb-md flex items-center gap-xs">
               <span aria-hidden="true" className="material-symbols-outlined text-primary">filter_list</span>
               <h2 className="text-headline-md font-semibold text-on-surface">

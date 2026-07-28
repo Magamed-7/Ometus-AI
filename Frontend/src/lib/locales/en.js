@@ -23,6 +23,8 @@ export const en = {
     adminDoctors: "Doctors",
     adminReports: "Reports",
     about: "About us",
+    services: "Services",
+    sections: "Site sections",
   },
   common: {
     loading: "Loading…",
