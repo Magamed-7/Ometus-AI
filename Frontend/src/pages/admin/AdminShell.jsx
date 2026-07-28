@@ -6,7 +6,8 @@ const SECTIONS = [
   { to: "/admin/departments", icon: "meeting_room", key: "nav.adminDepartments" },
   { to: "/admin/doctors", icon: "stethoscope", key: "nav.adminDoctors" },
   { to: "/admin/appointments", icon: "event_note", key: "admin.appointments" },
-  { to: "/admin/reports", icon: "monitoring", key: "nav.adminReports" },
+  { to: "/admin/analytics", icon: "monitoring", key: "analytics.title" },
+  { to: "/admin/reports", icon: "table_rows", key: "nav.adminReports" },
 ];
 
 export default function AdminShell() {

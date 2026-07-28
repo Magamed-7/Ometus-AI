@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import and_, case, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,6 +61,42 @@ async def get_doctor_workload(
         }
         for row in result.all()
     ]
+
+
+async def get_daily_appointments(db: AsyncSession, date_from: date, date_to: date):
+    result = await db.execute(
+        select(
+            Appointment.date,
+            func.count(Appointment.id),
+            status_count("booked"),
+            status_count("completed"),
+            status_count("cancelled"),
+            status_count("no_show"),
+        )
+        .where(Appointment.date >= date_from)
+        .where(Appointment.date <= date_to)
+        .group_by(Appointment.date)
+    )
+    counted = {row[0]: row for row in result.all()}
+
+    days = []
+    current = date_from
+
+    while current <= date_to:
+        row = counted.get(current)
+        days.append(
+            {
+                "date": current,
+                "total": row[1] if row else 0,
+                "booked": row[2] if row else 0,
+                "completed": row[3] if row else 0,
+                "cancelled": row[4] if row else 0,
+                "no_show": row[5] if row else 0,
+            }
+        )
+        current = current + timedelta(days=1)
+
+    return days
 
 
 async def get_appointments_summary(db: AsyncSession, date_from: date, date_to: date):

@@ -1,5 +1,17 @@
 import { client } from "./client.js";
 
+export const getDailyReport = (dateFrom, dateTo) =>
+  client.get(`/api/admin/reports/daily?date_from=${dateFrom}&date_to=${dateTo}`);
+
+export const getAiDaily = (dateFrom, dateTo) =>
+  client.get(`/api/admin/ai-daily?date_from=${dateFrom}&date_to=${dateTo}`);
+
+export const getAiCosts = (dateFrom, dateTo) =>
+  client.get(`/api/admin/ai-costs?date_from=${dateFrom}&date_to=${dateTo}`);
+
+export const getAiFeedback = (dateFrom, dateTo) =>
+  client.get(`/api/admin/ai-feedback?date_from=${dateFrom}&date_to=${dateTo}`);
+
 function query(params) {
   const search = new URLSearchParams();
 

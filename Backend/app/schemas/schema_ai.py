@@ -128,6 +128,17 @@ class LlmMetricOut(BaseModel):
     cost_usd: Decimal
 
 
+class AiDailyOut(BaseModel):
+    date: date
+    calls: int
+    succeeded: int
+    failed: int
+    cost_usd: Decimal
+    avg_duration_ms: int
+    prompt_tokens: int
+    completion_tokens: int
+
+
 class AiCostsOut(BaseModel):
     total_usd: Decimal
     budget_usd: Decimal

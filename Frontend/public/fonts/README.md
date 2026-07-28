@@ -56,7 +56,7 @@ for (const n of ["home_health", "science", "account_circle" /* … весь сп
 console.log(bad); // должен быть пустым
 ```
 
-## Что сейчас в сабсете (74)
+## Что сейчас в сабсете (76)
 
 ```
 account_circle, add, add_comment, admin_panel_settings, apartment, arrow_back,
@@ -65,8 +65,9 @@ chevron_left, chevron_right, clinical_notes, close, content_copy, dark_mode, del
 directions, edit, edit_calendar, emergency, error, event, event_available, event_busy,
 event_note, expand_more, filter_list, folder_open, groups, health_and_safety, history,
 home_health, inbox, info, language, light_mode, local_hospital, location_on, logout,
-mail, map, medical_services, meeting_room, menu, monitoring, person, person_add,
-person_off, photo_camera, pin_drop, progress_activity, refresh, save, schedule, science,
-search, search_off, send, smart_toy, star, stethoscope, support_agent, task_alt,
-thumb_down, thumb_up, troubleshoot, verified, wifi_off, workspace_premium
+mail, map, medical_services, meeting_room, menu, monitoring, payments, person,
+person_add, person_off, photo_camera, pin_drop, progress_activity, refresh, save,
+schedule, science, search, search_off, send, smart_toy, star, stethoscope,
+support_agent, table_rows, task_alt, thumb_down, thumb_up, troubleshoot, verified,
+wifi_off, workspace_premium
 ```

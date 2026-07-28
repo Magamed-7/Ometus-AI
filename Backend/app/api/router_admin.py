@@ -22,10 +22,14 @@ from app.schemas.schema_doctor import (
     DoctorUpdateIn,
     SpecializationIn,
 )
-from app.schemas.schema_ai import AiCostsOut, FeedbackSummaryOut, LlmMetricOut
+from app.schemas.schema_ai import AiCostsOut, AiDailyOut, FeedbackSummaryOut, LlmMetricOut
 from app.schemas.schema_patient import DependentCreateIn, PatientOut
 from app.schemas.schema_filial import FilialCreateIn, FilialOut, FilialUpdateIn
-from app.schemas.schema_report import AppointmentsSummaryOut, DoctorWorkloadOut
+from app.schemas.schema_report import (
+    AppointmentsSummaryOut,
+    DailyPointOut,
+    DoctorWorkloadOut,
+)
 from app.schemas.schema_review import ReviewAdminOut, ReviewModerateIn
 from app.schemas.schema_service import ServiceCreateIn, ServiceOut, ServiceUpdateIn
 from app.schemas.schema_schedule import ScheduleCreateIn, ScheduleOut, ScheduleUpdateIn
@@ -292,6 +296,52 @@ async def get_workload_report(
             )
 
     return await crud_report.get_doctor_workload(db, date_from, date_to, department_id)
+
+
+@admin_router.get("/reports/daily", response_model=list[DailyPointOut])
+async def get_daily_report(
+    date_from: date,
+    date_to: date,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала должна быть раньше даты окончания",
+            status_code=400,
+        )
+
+    # 366 дней — это год на графике; шире период всё равно нечитаем точками по дням,
+    # а ответ раздувается до тысяч строк
+    if (date_to - date_from).days > 366:
+        raise AppError(
+            code="DATE_RANGE_TOO_WIDE", message="Период не больше года", status_code=400
+        )
+
+    return await crud_report.get_daily_appointments(db, date_from, date_to)
+
+
+@admin_router.get("/ai-daily", response_model=list[AiDailyOut])
+async def get_ai_daily(
+    date_from: date,
+    date_to: date,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role("admin")),
+):
+    if date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала должна быть раньше даты окончания",
+            status_code=400,
+        )
+
+    if (date_to - date_from).days > 366:
+        raise AppError(
+            code="DATE_RANGE_TOO_WIDE", message="Период не больше года", status_code=400
+        )
+
+    return await crud_ai_metric.get_daily(db, date_from, date_to)
 
 
 @admin_router.get("/ai-metrics", response_model=list[LlmMetricOut])

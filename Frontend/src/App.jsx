@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import DocumentTitle from "./components/DocumentTitle.jsx";
 import Layout from "./components/Layout.jsx";
@@ -26,6 +27,10 @@ import Register from "./pages/Register.jsx";
 import Reviews from "./pages/Reviews.jsx";
 import Services from "./pages/Services.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
+
+// Chart.js нужен только админу, поэтому страница грузится отдельным куском:
+// пациенту незачем тянуть библиотеку графиков ради записи к врачу
+const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics.jsx"));
 
 export default function App() {
   return (
@@ -81,6 +86,14 @@ export default function App() {
             <Route path="departments" element={<AdminDepartments />} />
             <Route path="doctors" element={<AdminDoctors />} />
             <Route path="appointments" element={<AdminAppointments />} />
+            <Route
+              path="analytics"
+              element={
+                <Suspense fallback={<div className="h-96" />}>
+                  <AdminAnalytics />
+                </Suspense>
+              }
+            />
             <Route path="reports" element={<AdminReports />} />
           </Route>
           <Route path="*" element={<NotFound />} />

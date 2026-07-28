@@ -664,3 +664,152 @@ async def test_users_can_be_searched_by_email(client, db):
     found = await client.get(f"{USERS_URL}?email=findme", headers=headers)
 
     assert [user["email"] for user in found.json()] == ["findme@ometus.test"]
+
+
+DAILY_URL = "/api/admin/reports/daily"
+AI_DAILY_URL = "/api/admin/ai-daily"
+
+
+async def test_daily_report_returns_a_point_per_day_including_empty_ones(client, db):
+    clinic = await setup_clinic(client, db)
+    await fill_appointments(db, clinic)
+
+    response = await client.get(
+        DAILY_URL,
+        params={"date_from": "2026-03-05", "date_to": "2026-03-09"},
+        headers=clinic["admin"],
+    )
+
+    assert response.status_code == 200
+    days = response.json()
+    assert [day["date"] for day in days] == [
+        "2026-03-05",
+        "2026-03-06",
+        "2026-03-07",
+        "2026-03-08",
+        "2026-03-09",
+    ]
+    assert days[0]["booked"] == 1
+    assert days[1]["completed"] == 1
+    assert days[3]["no_show"] == 1
+    # без записей день всё равно приходит нулём, иначе линия графика соединит
+    # соседние даты и провал будет незаметен
+    assert days[4]["total"] == 0
+
+
+async def test_daily_report_rejects_a_backwards_period(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.get(
+        DAILY_URL,
+        params={"date_from": "2026-03-31", "date_to": "2026-03-01"},
+        headers=clinic["admin"],
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_DATE_RANGE"
+
+
+async def test_daily_report_rejects_a_period_wider_than_a_year(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.get(
+        DAILY_URL,
+        params={"date_from": "2024-01-01", "date_to": "2026-01-01"},
+        headers=clinic["admin"],
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "DATE_RANGE_TOO_WIDE"
+
+
+async def test_daily_report_forbidden_for_patient(client, db):
+    await register(client, "curious@ometus.test")
+    headers = await auth_headers(client, "curious@ometus.test")
+
+    response = await client.get(DAILY_URL, params=PERIOD, headers=headers)
+
+    assert response.status_code == 403
+
+
+async def test_ai_daily_returns_zero_days_when_the_assistant_was_not_used(client, db):
+    clinic = await setup_clinic(client, db)
+
+    response = await client.get(
+        AI_DAILY_URL,
+        params={"date_from": "2026-03-01", "date_to": "2026-03-03"},
+        headers=clinic["admin"],
+    )
+
+    assert response.status_code == 200
+    days = response.json()
+    assert len(days) == 3
+    assert all(day["calls"] == 0 for day in days)
+    assert all(float(day["cost_usd"]) == 0 for day in days)
+
+
+async def test_ai_daily_counts_calls_and_money(client, db):
+    from datetime import datetime
+
+    from sqlalchemy import select
+
+    from app.models.model_ai_metric import AiLlmCall
+    from app.models.model_user import User
+
+    clinic = await setup_clinic(client, db)
+    admin_user = (
+        await db.execute(select(User).where(User.email == "admin@ometus.test"))
+    ).scalar_one()
+    db.add_all(
+        [
+            AiLlmCall(
+                user_id=admin_user.id,
+                provider="groq",
+                model="llama-3.3-70b",
+                success=True,
+                duration_ms=800,
+                prompt_tokens=100,
+                completion_tokens=50,
+                cost_usd="0.002000",
+                created_at=datetime(2026, 3, 2, 10, 0),
+            ),
+            AiLlmCall(
+                user_id=admin_user.id,
+                provider="groq",
+                model="llama-3.3-70b",
+                success=False,
+                duration_ms=1200,
+                prompt_tokens=80,
+                completion_tokens=0,
+                cost_usd="0.001000",
+                created_at=datetime(2026, 3, 2, 11, 0),
+            ),
+        ]
+    )
+    await db.commit()
+
+    response = await client.get(
+        AI_DAILY_URL,
+        params={"date_from": "2026-03-01", "date_to": "2026-03-03"},
+        headers=clinic["admin"],
+    )
+
+    days = {day["date"]: day for day in response.json()}
+    assert days["2026-03-02"]["calls"] == 2
+    assert days["2026-03-02"]["succeeded"] == 1
+    assert days["2026-03-02"]["failed"] == 1
+    assert float(days["2026-03-02"]["cost_usd"]) == 0.003
+    assert days["2026-03-01"]["calls"] == 0
+
+
+async def test_ai_daily_forbidden_for_patient(client, db):
+    await register(client, "nosy@ometus.test")
+    headers = await auth_headers(client, "nosy@ometus.test")
+
+    response = await client.get(
+        AI_DAILY_URL,
+        params={"date_from": "2026-03-01", "date_to": "2026-03-03"},
+        headers=headers,
+    )
+
+    assert response.status_code == 403

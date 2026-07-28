@@ -17,6 +17,10 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes("node_modules")) return null;
           if (id.includes("react-router")) return "router";
+          // chart.js возвращаем rollup'у: пусть уедет в ленивый кусок админской
+          // аналитики. В общем вендор-чанке он утроил бы вес, который качает
+          // каждый пациент ради записи к врачу
+          if (id.includes("chart.js") || id.includes("react-chartjs-2")) return null;
           return "react";
         },
       },

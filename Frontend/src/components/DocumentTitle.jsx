@@ -22,6 +22,7 @@ const TITLES = {
   "/admin/departments": "nav.adminDepartments",
   "/admin/doctors": "nav.adminDoctors",
   "/admin/appointments": "admin.appointments",
+  "/admin/analytics": "analytics.title",
   "/admin/reports": "nav.adminReports",
   "/admin": "nav.admin",
 };
