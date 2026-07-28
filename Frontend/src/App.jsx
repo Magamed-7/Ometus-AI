@@ -17,6 +17,7 @@ import DoctorDetail from "./pages/DoctorDetail.jsx";
 import Doctors from "./pages/Doctors.jsx";
 import DoctorSchedule from "./pages/doctor/DoctorSchedule.jsx";
 import DoctorToday from "./pages/doctor/DoctorToday.jsx";
+import Faq from "./pages/Faq.jsx";
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import NotFound from "./pages/NotFound.jsx";
@@ -31,6 +32,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
+          <Route path="/faq" element={<Faq />} />
           <Route path="/doctors" element={<Doctors />} />
           <Route path="/doctors/:id" element={<DoctorDetail />} />
           <Route path="/booking" element={<Booking />} />

@@ -29,9 +29,9 @@ export default function Footer() {
           <a href="#" className="text-label-md text-on-surface-variant hover:text-primary">
             {t("footer.privacy")}
           </a>
-          <a href="#" className="text-label-md text-on-surface-variant hover:text-primary">
+          <Link to="/faq" className="text-label-md text-on-surface-variant hover:text-primary">
             {t("footer.faq")}
-          </a>
+          </Link>
         </div>
 
         <div className="flex flex-col gap-sm">

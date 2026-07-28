@@ -415,4 +415,35 @@ export const en = {
     storyPhotoOneAlt: "The clinic's early years — illustration",
     storyPhotoTwoAlt: "A doctor and patient in consultation — illustration",
   },
+  faq: {
+    label: "Support",
+    title: "Frequently asked questions",
+    intro:
+      "The things the front desk is asked most often. If the answer is not here, call us or ask the assistant.",
+    photoAlt: "A doctor and a patient during a consultation",
+    bookQuestion: "How do I book an appointment?",
+    bookAnswer:
+      "Pick a doctor under “Doctors”, open their schedule and tap a free time — the booking is confirmed straight away. You can also just tell the assistant what is bothering you: it will match a specialty and show the free slots.",
+    bookOnline: "Choose a doctor",
+    askAssistant: "Ask the assistant",
+    bringQuestion: "What should I bring with me?",
+    bringAnswer: "Special preparation is not always needed, but two documents always help:",
+    bringPassport: "A passport, or a birth certificate for a child",
+    bringRecords: "Previous reports, scans and test results",
+    cancelQuestion: "Can I cancel or move an appointment?",
+    cancelAnswer:
+      "Yes. In your account, under “My appointments”, every booking can be cancelled or moved to another free time. The freed slot goes back to other patients immediately, so cancelling early helps.",
+    durationQuestion: "How long does an appointment last?",
+    durationAnswer:
+      "The doctor sets the length in their own schedule — most often 20 minutes. The exact time is shown when you pick a slot: neighbouring windows never overlap, and the doctor can keep a break between them.",
+    weekendQuestion: "Are you open at weekends?",
+    weekendAnswer:
+      "Every doctor keeps their own schedule, and some specialists see patients on Saturdays. In the booking calendar days without appointments are shown empty, so it is clear at once when a doctor works.",
+    helpTitle: "Still no answer?",
+    helpText: "Call the front desk or ask the assistant — it answers around the clock.",
+    locationLabel: "Location",
+    buildingAlt: "The Ometus clinic building",
+    openMap: "Open on the map",
+    allBranches: "All branches",
+  },
 };
