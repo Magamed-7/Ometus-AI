@@ -14,6 +14,7 @@ export default function TopNav() {
   const links = [
     { to: "/", label: t("nav.home"), end: true },
     { to: "/about", label: t("nav.about") },
+    { to: "/services", label: t("services.title") },
     { to: "/doctors", label: t("nav.doctors") },
     { to: "/booking", label: t("nav.booking") },
     { to: "/assistant", label: t("nav.assistant") },

@@ -8,6 +8,7 @@ const TITLES = {
   "/faq": "faq.title",
   "/patients": "patients.title",
   "/reviews": "reviews.title",
+  "/services": "services.title",
   "/doctors": "nav.doctors",
   "/booking": "nav.booking",
   "/assistant": "nav.assistant",
