@@ -7,6 +7,12 @@ export const getSlots = (doctorId, day) =>
 export const getDoctorSchedule = (doctorId) =>
   client.get(`/api/schedules/doctors/${doctorId}`, { auth: false });
 
+export const getDoctorCalendar = (doctorId, dateFrom, dateTo) =>
+  client.get(
+    `/api/schedules/doctors/${doctorId}/calendar?date_from=${dateFrom}&date_to=${dateTo}`,
+    { auth: false }
+  );
+
 export const getMySchedule = () => client.get("/api/schedules/me");
 
 export const createMySchedule = (data) => client.post("/api/schedules/me", data);

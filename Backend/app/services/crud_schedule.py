@@ -249,6 +249,33 @@ async def get_day_plan(doctor_id: int, day: date, db: AsyncSession):
     }
 
 
+async def get_public_day(doctor, day: date, db: AsyncSession):
+    if crud_doctor.is_dismissed_on(doctor, day):
+        return {"date": day, "weekday": day.weekday(), "status": "off", "slots_free": 0}
+
+    plan = await get_day_plan(doctor.id, day, db)
+
+    return {
+        "date": day,
+        "weekday": day.weekday(),
+        "status": "working" if plan["status"] == "override" else plan["status"],
+        "start_time": plan.get("start_time"),
+        "end_time": plan.get("end_time"),
+        "slots_free": plan.get("slots_free", 0),
+    }
+
+
+async def get_public_calendar(doctor, date_from: date, date_to: date, db: AsyncSession):
+    days = []
+    current = date_from
+
+    while current <= date_to:
+        days.append(await get_public_day(doctor, current, db))
+        current = current + timedelta(days=1)
+
+    return days
+
+
 async def get_calendar(doctor_id: int, date_from: date, date_to: date, db: AsyncSession):
     days = []
     current = date_from

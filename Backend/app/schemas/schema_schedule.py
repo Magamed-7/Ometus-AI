@@ -78,6 +78,15 @@ class SlotOut(BaseModel):
     department_id: int
 
 
+class PublicDayOut(BaseModel):
+    date: date
+    weekday: int
+    status: str
+    start_time: time | None = None
+    end_time: time | None = None
+    slots_free: int = 0
+
+
 class DayPlanOut(BaseModel):
     date: date
     weekday: int

@@ -749,3 +749,116 @@ async def test_calendar_is_closed_to_patients(client, db):
     )
 
     assert response.status_code == 403
+
+
+PUBLIC_CALENDAR_URL = "/api/schedules/doctors/{doctor_id}/calendar"
+
+
+async def test_public_calendar_marks_absence_without_saying_why(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    await client.post(
+        MY_ABSENCES_URL,
+        json={"date_from": "2026-08-03", "date_to": "2026-08-03", "reason": "Больничный"},
+        headers=headers,
+    )
+
+    response = await client.get(
+        PUBLIC_CALENDAR_URL.format(doctor_id=doctor_id),
+        params={"date_from": "2026-08-03", "date_to": "2026-08-03"},
+    )
+
+    assert response.status_code == 200
+    day = response.json()[0]
+    assert day["status"] == "absent"
+    assert day["slots_free"] == 0
+    assert "absence_reason" not in day
+    assert "slots_taken" not in day
+
+
+async def test_public_calendar_separates_a_working_day_from_a_day_off(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+
+    response = await client.get(
+        PUBLIC_CALENDAR_URL.format(doctor_id=doctor_id),
+        params={"date_from": "2026-08-03", "date_to": "2026-08-04"},
+    )
+
+    monday, tuesday = response.json()
+    assert monday["status"] == "working"
+    assert monday["start_time"] == "09:00:00"
+    assert monday["slots_free"] == 3
+    assert tuesday["status"] == "off"
+
+
+async def test_public_calendar_shows_a_one_off_shift_as_a_working_day(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_DATES_URL,
+        json={
+            "department_id": department_id,
+            "date": "2026-08-04",
+            "start_time": "14:00:00",
+            "end_time": "15:00:00",
+            "slot_duration": 20,
+        },
+        headers=headers,
+    )
+
+    response = await client.get(
+        PUBLIC_CALENDAR_URL.format(doctor_id=doctor_id),
+        params={"date_from": "2026-08-04", "date_to": "2026-08-04"},
+    )
+
+    day = response.json()[0]
+    assert day["status"] == "working"
+    assert day["start_time"] == "14:00:00"
+
+
+async def test_public_calendar_closes_the_days_after_a_dismissal(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+    await client.post(
+        MY_SCHEDULE_URL, json={**WORKDAY, "department_id": department_id}, headers=headers
+    )
+    admin = await admin_headers(client, db)
+    await client.put(
+        f"{ADMIN_DOCTORS_URL}/{doctor_id}/dismiss",
+        json={"dismissed_at": "2026-08-03", "confirm": True},
+        headers=admin,
+    )
+
+    response = await client.get(
+        PUBLIC_CALENDAR_URL.format(doctor_id=doctor_id),
+        params={"date_from": "2026-08-03", "date_to": "2026-08-03"},
+    )
+
+    day = response.json()[0]
+    assert day["status"] == "off"
+    assert day["slots_free"] == 0
+
+
+async def test_public_calendar_needs_a_real_doctor(client, db):
+    response = await client.get(
+        PUBLIC_CALENDAR_URL.format(doctor_id=9999),
+        params={"date_from": "2026-08-03", "date_to": "2026-08-04"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "DOCTOR_NOT_FOUND"
+
+
+async def test_public_calendar_rejects_too_wide_a_range(client, db):
+    doctor_id, department_id, headers = await setup_doctor(client, db)
+
+    response = await client.get(
+        PUBLIC_CALENDAR_URL.format(doctor_id=doctor_id),
+        params={"date_from": "2026-01-01", "date_to": "2026-12-31"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "DATE_RANGE_TOO_WIDE"

@@ -152,6 +152,8 @@ export const ru = {
     slots: "Свободное время",
     noSlots: "В этот день приёма нет",
     absence: "Врач в отпуске в этот день",
+    dayAbsent: "врач в отпуске",
+    dayOff: "выходной",
     summary: "Сводка записи",
     doctor: "Врач",
     date: "Дата",

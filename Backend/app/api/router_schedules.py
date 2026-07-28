@@ -12,6 +12,7 @@ from app.schemas.schema_schedule import (
     DateScheduleCreateIn,
     DateScheduleOut,
     DayPlanOut,
+    PublicDayOut,
     ScheduleCreateIn,
     ScheduleOut,
     ScheduleUpdateIn,
@@ -310,6 +311,32 @@ async def get_doctor_schedule(doctor_id: int, db: AsyncSession = Depends(get_db)
         raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
 
     return await crud_schedule.get_schedules(doctor_id, db)
+
+
+@schedules_router.get("/doctors/{doctor_id}/calendar", response_model=list[PublicDayOut])
+async def get_doctor_calendar(
+    doctor_id: int, date_from: date, date_to: date, db: AsyncSession = Depends(get_db)
+):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
+
+    if date_from > date_to:
+        raise AppError(
+            code="INVALID_DATE_RANGE",
+            message="Дата начала позже даты конца",
+            status_code=400,
+        )
+
+    if (date_to - date_from).days > 62:
+        raise AppError(
+            code="DATE_RANGE_TOO_WIDE",
+            message="Период не больше 62 дней",
+            status_code=400,
+        )
+
+    return await crud_schedule.get_public_calendar(doctor, date_from, date_to, db)
 
 
 @schedules_router.get("/doctors/{doctor_id}/slots", response_model=list[SlotOut])

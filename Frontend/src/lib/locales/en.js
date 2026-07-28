@@ -152,6 +152,8 @@ export const en = {
     slots: "Available time",
     noSlots: "No visits on this day",
     absence: "The doctor is on leave this day",
+    dayAbsent: "doctor on leave",
+    dayOff: "day off",
     summary: "Booking summary",
     doctor: "Doctor",
     date: "Date",
