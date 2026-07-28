@@ -97,6 +97,37 @@ function recommendedSlots(slots) {
   return new Set(reordered ? slots.slice(0, 3).map(slotKey) : []);
 }
 
+// ассистент больше не подставляет ближайший день сам, а спрашивает — и ответ на этот
+// вопрос должен быть в один клик, поэтому дни приходят карточками, а не текстом
+function DaysAnswer({ t, lang, data, onPickDay }) {
+  return (
+    <div className="flex flex-col gap-sm rounded-xl border border-outline-variant bg-surface-container-low p-sm">
+      <AnswerHeading
+        text={
+          data.doctor_name
+            ? t("assistant.daysHeadingDoctor", { doctor: data.doctor_name })
+            : t("assistant.daysHeading")
+        }
+      />
+      <div className="grid grid-cols-2 gap-xs sm:grid-cols-3">
+        {data.days.map((day) => (
+          <button
+            key={day.date}
+            type="button"
+            onClick={() => onPickDay(data, day)}
+            className="flex flex-col items-start rounded-lg border border-outline-variant bg-surface-container-lowest px-sm py-2 text-left transition-colors hover:border-primary hover:text-primary"
+          >
+            <span className="text-label-md font-bold">{formatDate(day.date, lang)}</span>
+            <span className="text-label-md text-on-surface-variant">
+              {t("assistant.daySlotsFree", { count: day.slots_free })}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SlotsAnswer({ t, lang, data, onPickSlot }) {
   const byDate = {};
   const recommended = recommendedSlots(data.slots);
@@ -252,7 +283,17 @@ function Rating({ t, rating, onRate }) {
   );
 }
 
-function AssistantBubble({ data, t, lang, rating, onRate, onPickDoctor, onPickSlot, onAsk }) {
+function AssistantBubble({
+  data,
+  t,
+  lang,
+  rating,
+  onRate,
+  onPickDoctor,
+  onPickDay,
+  onPickSlot,
+  onAsk,
+}) {
   if (data.action === "emergency") return <EmergencyAnswer t={t} reply={data.reply} />;
 
   const isError = data.action === "error";
@@ -301,6 +342,9 @@ function AssistantBubble({ data, t, lang, rating, onRate, onPickDoctor, onPickSl
               </button>
             ))}
           </div>
+        )}
+        {data.action === "days" && data.days?.length > 0 && (
+          <DaysAnswer t={t} lang={lang} data={data} onPickDay={onPickDay} />
         )}
         {data.action === "slots" && data.slots?.length > 0 && (
           <SlotsAnswer t={t} lang={lang} data={data} onPickSlot={onPickSlot} />
@@ -492,6 +536,18 @@ export default function Assistant() {
     );
   };
 
+  const onPickDay = (data, day) => {
+    runAsk(
+      {
+        message: t("assistant.pickDay", { date: day.date }),
+        doctor_id: data.doctor_id || data._doctorId,
+        date: day.date,
+      },
+      formatDate(day.date, lang),
+      { _doctorName: data.doctor_name || data._doctorName }
+    );
+  };
+
   const onPickSlot = (data, slot) => {
     const label = t("assistant.book", { time: clock(slot.time) });
     runAsk(
@@ -653,6 +709,7 @@ export default function Assistant() {
               t={t}
               lang={lang}
               onPickDoctor={onPickDoctor}
+              onPickDay={onPickDay}
               onPickSlot={onPickSlot}
             />
           )}
@@ -669,6 +726,7 @@ export default function Assistant() {
                 rating={ratings[msg.data.message_id]}
                 onRate={(feedback) => onRate(msg.data.message_id, feedback)}
                 onPickDoctor={onPickDoctor}
+                onPickDay={onPickDay}
                 onPickSlot={onPickSlot}
                 onAsk={send}
               />

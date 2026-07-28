@@ -287,3 +287,42 @@ async def restore_doctor(doctor: Doctor, db: AsyncSession):
 
 def is_dismissed_on(doctor: Doctor, day: date):
     return doctor.dismissed_at is not None and day >= doctor.dismissed_at
+
+
+NAME_STEM_MIN = 4
+
+
+def name_stem(word: str):
+    lowered = word.lower().replace("ё", "е")
+    return lowered[: max(NAME_STEM_MIN, len(lowered) - 2)]
+
+
+def name_score(full_name: str, text: str):
+    return sum(
+        1
+        for word in full_name.split()
+        if len(word) >= NAME_STEM_MIN and name_stem(word) in text
+    )
+
+
+async def find_by_name(text: str, db: AsyncSession):
+    doctors = await search_doctors(db)
+    normalized = text.lower().replace("ё", "е")
+    scored = [(name_score(doctor.full_name, normalized), doctor) for doctor in doctors]
+    best = max((score for score, _ in scored), default=0)
+
+    if best == 0:
+        return None
+
+    winners = [doctor for score, doctor in scored if score == best]
+
+    if len(winners) != 1:
+        return None
+
+    doctor = winners[0]
+    surname = doctor.full_name.split()[0]
+
+    if best == 1 and (len(surname) < 5 or name_stem(surname) not in normalized):
+        return None
+
+    return doctor

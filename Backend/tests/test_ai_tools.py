@@ -387,18 +387,36 @@ async def test_slots_for_chosen_doctor(client, db):
     assert [slot["time"] for slot in body["slots"]] == ["09:00:00", "09:20:00", "09:40:00"]
 
 
-async def test_slots_without_date_look_ahead(client, db):
+# без даты ассистент теперь спрашивает день, а не подставляет ближайший: владелец
+# просил именно этого — «он мне даёт сразу время на завтра, а мне нужен другой день»
+async def test_slots_without_a_date_ask_which_day(client, db):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
 
     response = await ask(client, headers, "когда можно прийти", doctor_id=doctor_id)
 
     body = response.json()
-    assert body["action"] == "slots"
+    assert body["action"] == "days"
+    assert body["days"]
 
-    first_day = date.fromisoformat(body["slots"][0]["date"])
+    first_day = date.fromisoformat(body["days"][0]["date"])
     assert first_day.weekday() == WORKDAY["weekday"]
     assert first_day >= date.today()
+    assert body["days"][0]["slots_free"] > 0
+
+
+async def test_a_named_day_goes_straight_to_the_slots(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    day = next_workday()
+    response = await ask(
+        client, headers, "покажите время", doctor_id=doctor_id, date=day.isoformat()
+    )
+
+    body = response.json()
+    assert body["action"] == "slots"
+    assert body["slots"][0]["date"] == day.isoformat()
 
 
 async def test_no_slots_for_doctor_without_schedule(client, db):
@@ -1560,7 +1578,15 @@ async def test_reply_does_not_enumerate_slots(client, db):
     doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
     patient_id, headers = await setup_patient(client)
 
-    body = (await ask(client, headers, "покажите время", doctor_id=doctor_id)).json()
+    body = (
+        await ask(
+            client,
+            headers,
+            "покажите время",
+            doctor_id=doctor_id,
+            date=next_workday().isoformat(),
+        )
+    ).json()
 
     assert body["action"] == "slots"
     assert len(body["slots"]) > 1
@@ -1725,3 +1751,50 @@ async def test_several_conversations_do_not_break_lookup(client, db):
     response = await ask(client, headers, "болит сердце")
 
     assert response.status_code == 200
+
+
+# «покажи время у Марии Андреевны» уходило в общий подбор и возвращало список
+# неврологов: имя врача разбирать было нечем, модель отдаёт только doctor_id
+async def test_doctor_is_found_by_name_in_the_message(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    body = (
+        await ask(client, headers, f"покажи свободное время у Ивановой Марии")
+    ).json()
+
+    assert body["action"] == "days"
+    assert body["doctor_id"] == doctor_id
+
+
+async def test_a_declined_doctor_name_still_matches(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "а когда принимает Иванова Мария Петровна?")).json()
+
+    assert body["doctor_id"] == doctor_id
+
+
+async def test_a_day_named_in_words_reaches_the_slots(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    day = next_workday()
+    body = (
+        await ask(client, headers, f"покажи время у Ивановой на {day.day} число")
+    ).json()
+
+    assert body["action"] == "slots"
+    assert body["slots"][0]["date"] == day.isoformat()
+
+
+async def test_back_and_head_pain_are_not_pinned_on_one_specialty(client, db):
+    doctor_id, department_id, doctor_headers = await setup_doctor(client, db)
+    patient_id, headers = await setup_patient(client)
+
+    body = (await ask(client, headers, "болит спина и голова")).json()
+
+    # раньше молча выбирался невролог; теперь спрашиваем, к кому записать
+    assert body["action"] == "clarify"
+    assert body["suggestions"] or body["alternatives"]

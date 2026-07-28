@@ -63,6 +63,7 @@ REPLIES = {
         "Могу предложить: {alternatives}. К кому записать?",
         "slots_found": "Вот свободное время у врача {doctor} на {date}. "
         "Выберите удобное, и я запишу.",
+        "which_day": "На какой день записать к врачу {doctor}? Вот дни, когда он принимает.",
         "no_slots_today": "На {date} свободного времени нет, показываю ближайшие дни.",
         "booked": "Записал вас к врачу {doctor} ({specialization}), отделение {department}, "
         "{date} в {time}. Номер записи — {appointment_id}.",
@@ -90,6 +91,7 @@ REPLIES = {
         "Пешниҳод карда метавонам: {alternatives}. Ба кадомаш навбат гирем?",
         "slots_found": "Вақти холии духтур {doctor} барои {date}. "
         "Вақти қулайро интихоб кунед, ман сабт мекунам.",
+        "which_day": "Ба кадом рӯз ба духтур {doctor} навбат гирем? Инак рӯзҳои қабули ӯ.",
         "no_slots_today": "Барои {date} вақти холӣ нест, рӯзҳои наздиктаринро нишон медиҳам.",
         "booked": "Шуморо ба духтур {doctor} ({specialization}), шӯъбаи {department}, "
         "{date} соати {time} сабт кардам. Рақами навбат — {appointment_id}.",
@@ -117,6 +119,7 @@ REPLIES = {
         "I can offer: {alternatives}. Who should I book?",
         "slots_found": "Here is the available time with {doctor} on {date}. "
         "Pick a slot and I will book it.",
+        "which_day": "Which day should I book with {doctor}? Here are the days they see patients.",
         "no_slots_today": "There is no free time on {date}, showing the nearest days.",
         "booked": "Booked you with {doctor} ({specialization}), department {department}, "
         "on {date} at {time}. Appointment number — {appointment_id}.",

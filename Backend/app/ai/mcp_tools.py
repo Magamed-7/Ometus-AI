@@ -14,6 +14,114 @@ from app.services import (
 
 SEARCH_DAYS_AHEAD = 14
 
+# Паспорта инструментов. Раньше модель выбирала намерение по короткому списку слов
+# и не знала ни что делает инструмент, ни какие у него параметры, ни когда его звать
+# нельзя — отсюда и «покажи время у Марии Андреевны» в виде списка неврологов.
+# Описания уходят в промпт классификатора и написаны для модели: что делает, что нужно
+# на входе, когда выбирать и чего не делать.
+TOOLS = [
+    {
+        "name": "find_doctors",
+        "intent": "find_doctor",
+        "description": "Find a doctor by specialty or by what the patient complains about. "
+        "Pick this when the patient names a specialty ('I need a cardiologist'), "
+        "describes a symptom ('my throat hurts'), or asks to book without naming a doctor.",
+        "parameters": {
+            "specialization": "specialty name, only if the patient stated it",
+            "city": "branch city, if the patient named one",
+        },
+        "never": "Do not pick this when the patient named a specific doctor, "
+        "or when the request is about an appointment that already exists.",
+    },
+    {
+        "name": "get_open_days",
+        "intent": "open_days",
+        "description": "List the days on which a known doctor still has free time. "
+        "Pick this when the doctor is known but the patient has not named a day.",
+        "parameters": {"doctor_id": "doctor identifier"},
+        "never": "Never choose a day yourself. With no date from the patient, ask which day "
+        "instead of showing the nearest one.",
+    },
+    {
+        "name": "get_available_time",
+        "intent": "slots",
+        "description": "Show a doctor's free hours on one specific day. "
+        "Pick this only when both the doctor and the day are known.",
+        "parameters": {
+            "doctor_id": "doctor identifier",
+            "date": "date as YYYY-MM-DD",
+        },
+        "never": "Do not pick this without a date — use get_open_days for that.",
+    },
+    {
+        "name": "book_appointment",
+        "intent": "book",
+        "description": "Book the appointment. "
+        "Pick this only after the patient has confirmed the doctor, the date and the time.",
+        "parameters": {
+            "doctor_id": "doctor identifier",
+            "date": "date as YYYY-MM-DD",
+            "time": "time as HH:MM",
+        },
+        "never": "Never book without an explicit confirmation from the patient.",
+    },
+    {
+        "name": "cancel_appointment",
+        "intent": "cancel",
+        "description": "Cancel the patient's appointment. Pick this when asked to cancel a visit.",
+        "parameters": {"appointment_id": "appointment number, if the patient gave one"},
+        "never": "Never cancel someone else's appointment, and do not confuse cancelling "
+        "with rescheduling.",
+    },
+    {
+        "name": "reschedule_appointment",
+        "intent": "reschedule",
+        "description": "Move an existing appointment to another date or time. "
+        "Pick this when the patient asks to move a visit rather than drop it.",
+        "parameters": {
+            "appointment_id": "appointment number, if named",
+            "date": "new date as YYYY-MM-DD",
+            "time": "new time as HH:MM",
+        },
+        "never": "Do not reschedule when the patient asks to cancel.",
+    },
+    {
+        "name": "get_patient_appointments",
+        "intent": "my_appointments",
+        "description": "Show the patient their own appointments. "
+        "Pick this for 'my appointments', 'when am I booked', 'show my visits'.",
+        "parameters": {},
+        "never": "Never show appointments belonging to anyone else.",
+    },
+    {
+        "name": "get_doctor_schedule",
+        "intent": "doctor_schedule",
+        "description": "Show a doctor's working schedule — which weekdays they see patients. "
+        "Pick this for 'when does the doctor work', 'what are their hours'.",
+        "parameters": {"doctor_id": "doctor identifier"},
+        "never": "Do not confuse this with get_available_time: this is the weekly grid, "
+        "not the free hours on a date.",
+    },
+]
+
+
+def describe_tools(intents=None):
+    lines = []
+
+    for tool in TOOLS:
+        if intents is not None and tool["intent"] not in intents:
+            continue
+
+        parameters = ", ".join(f"{name} — {hint}" for name, hint in tool["parameters"].items())
+        line = f"{tool['intent']} ({tool['name']}): {tool['description']}"
+
+        if parameters:
+            line += f" Parameters: {parameters}."
+
+        lines.append(f"{line} {tool['never']}")
+
+    return "\n".join(lines)
+
 
 def tool_error(code: str, message: str):
     return {"ok": False, "error": {"code": code, "message": message}}
@@ -113,6 +221,39 @@ async def get_available_time(db: AsyncSession, doctor_id: int, day: date | None 
             "NO_SLOTS",
             f"У врача {doctor.full_name} нет свободного времени "
             + (f"на {day}" if day else f"в ближайшие {SEARCH_DAYS_AHEAD} дней"),
+        )
+
+    return tool_result(found)
+
+
+async def get_open_days(db: AsyncSession, doctor_id: int, limit: int = 7):
+    doctor = await crud_doctor.get_by_id(doctor_id, db)
+
+    if doctor is None:
+        return tool_error("DOCTOR_NOT_FOUND", "Врач не найден")
+
+    today = clinic_now().date()
+    found = []
+
+    for shift in range(SEARCH_DAYS_AHEAD * 2):
+        current = today + timedelta(days=shift)
+        slots = [
+            slot
+            for slot in await crud_schedule.get_available_slots(doctor_id, current, db)
+            if is_future(current, slot["time"])
+        ]
+
+        if slots:
+            found.append({"date": str(current), "slots_free": len(slots)})
+
+        if len(found) >= limit:
+            break
+
+    if not found:
+        return tool_error(
+            "NO_SLOTS",
+            f"У врача {doctor.full_name} нет свободного времени "
+            f"в ближайшие {SEARCH_DAYS_AHEAD * 2} дней",
         )
 
     return tool_result(found)

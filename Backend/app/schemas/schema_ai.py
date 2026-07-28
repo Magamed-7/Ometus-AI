@@ -37,6 +37,7 @@ class AskOut(BaseModel):
     error_code: str | None = None
     doctors: list[dict] | None = None
     slots: list[dict] | None = None
+    days: list[dict] | None = None
     doctor_id: int | None = None
     doctor_name: str | None = None
     appointment: dict | None = None

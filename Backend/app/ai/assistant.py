@@ -16,17 +16,21 @@ from app.ai.emergency_guard import (
     is_emergency,
 )
 from app.ai.i18n import DEFAULT_LANGUAGE, pick_language, translate
+from app.ai.dates import human_date, parse_natural_date
 from app.ai.mcp_tools import (
     book_appointment,
     cancel_appointment,
     find_doctors,
     get_available_time,
     get_doctor_schedule,
+    get_open_days,
     get_patient_appointments,
+    describe_tools,
     reschedule_appointment,
     tool_error,
 )
 from app.ai.specialization_map import find_fallback_specialists, match_specializations
+from app.core.clock import clinic_today
 from app.core.config import settings
 from app.schemas.schema_ai import AskIn
 from app.services import (
@@ -281,19 +285,32 @@ async def log_call(current_patient, tool_name: str, params: dict, result: dict, 
     await crud_ai_log.log_tool_call(current_patient.user_id, tool_name, params, result, db, severity)
 
 
-KNOWN_INTENTS = ["cancel", "reschedule", "my_appointments", "doctor_schedule", "find_doctor"]
+KNOWN_INTENTS = [
+    "cancel",
+    "reschedule",
+    "my_appointments",
+    "doctor_schedule",
+    "open_days",
+    "slots",
+    "find_doctor",
+]
 
 MIN_INTENT_CONFIDENCE = 0.6
 
+MAX_DATE_DISTANCE_DAYS = 366
+
+# описания инструментов подставляются целиком: без них модель выбирала намерение
+# по одной строчке с перечислением слов и не знала ни границ инструмента, ни его параметров
 INTENT_SYSTEM_PROMPT = (
     "Ты — классификатор намерений пациента в регистратуре клиники. "
     "Верни ТОЛЬКО JSON без пояснений и без markdown в формате: "
     '{"primary": "<intent>", "parameters": {"appointment_id": null, "doctor_id": null, '
     '"date": null, "time": null}, "confidence": <0..1>}. '
     f"Допустимые intent: {', '.join(KNOWN_INTENTS)}. "
-    "cancel — отменить запись, reschedule — перенести, my_appointments — показать свои записи, "
-    "doctor_schedule — расписание врача, find_doctor — найти врача или время приёма. "
+    "Вот что делает каждый инструмент, что ему нужно на входе и когда его брать нельзя:\n"
+    f"{describe_tools(KNOWN_INTENTS)}\n"
     "Заполняй parameters только теми значениями, которые пациент назвал явно. "
+    "Даты переводи в YYYY-MM-DD, время — в HH:MM. "
     "Если намерение неясно, ставь низкий confidence."
 )
 
@@ -517,6 +534,29 @@ def needs_classification(data: AskIn, language: str):
     return not match_specializations(data.message, language)
 
 
+# модель отдаёт только doctor_id, а пациент пишет имя: «покажи время у Марии Андреевны»
+# уходило в общий подбор врачей, и в ответ приходил список неврологов вместо расписания.
+# Дату модель тоже переводит в YYYY-MM-DD через раз, поэтому читаем её и из самого текста
+async def resolve_doctor_and_day(data: AskIn, db: AsyncSession):
+    from_text = parse_natural_date(data.message)
+
+    # дата из текста важнее даты от модели: на «на 5 августа» модель отдала 2024-08-05,
+    # и ассистент честно сообщил, что свободного времени в 2024 году нет.
+    # Разбор текста срабатывает только на явно названной дате, поэтому он и надёжнее
+    if from_text is not None:
+        data.day = from_text
+    elif data.day is not None and abs((data.day - clinic_today()).days) > MAX_DATE_DISTANCE_DAYS:
+        data.day = None
+
+    if data.doctor_id is None and not data.confirm:
+        doctor = await crud_doctor.find_by_name(data.message, db)
+
+        if doctor is not None:
+            data.doctor_id = doctor.id
+
+    return data
+
+
 def pick_flow(data: AskIn):
     flows = {
         "cancel": cancel_flow,
@@ -528,11 +568,18 @@ def pick_flow(data: AskIn):
     if data.intent in flows:
         return flows[data.intent]
 
+    # намерения про время требуют врача: без него показывать нечего, и разговор
+    # начинается с подбора врача, а не с расписания неизвестно кого
+    if data.intent in ("slots", "open_days") and not data.doctor_id:
+        return suggest_doctors
+
     if data.confirm:
         return confirm_booking
 
     if data.doctor_id:
-        return show_slots
+        # без даты не гадаем: раньше подставлялся ближайший день со слотами, и на просьбу
+        # «покажи свободное время» приходило завтрашнее, хотя нужен был другой день
+        return show_slots if data.day else offer_days
 
     return suggest_doctors
 
@@ -540,6 +587,7 @@ def pick_flow(data: AskIn):
 PAYLOAD_FIELDS = [
     "doctors",
     "slots",
+    "days",
     "appointment",
     "specialization",
     "alternatives",
@@ -618,6 +666,8 @@ async def ask(data: AskIn, current_patient, db: AsyncSession):
 
     if detected:
         data = apply_intent(data, detected)
+
+    data = await resolve_doctor_and_day(data, db)
 
     flow = pick_flow(data)
     result = await flow(data, current_patient, db, history, severity, language)
@@ -848,6 +898,41 @@ async def confirm_booking(
     }
 
 
+async def offer_days(
+    data: AskIn,
+    current_patient,
+    db: AsyncSession,
+    history: list = None,
+    severity: int = 0,
+    language: str = DEFAULT_LANGUAGE,
+):
+    result = await get_open_days(db, data.doctor_id)
+    await log_call(
+        current_patient, "get_open_days", {"doctor_id": data.doctor_id}, result, db, severity
+    )
+
+    if not result["ok"]:
+        return {
+            "action": "error",
+            "error_code": result["error"]["code"],
+            "reply": result["error"]["message"],
+        }
+
+    doctor = await crud_doctor.get_by_id(data.doctor_id, db)
+
+    # текст ответа берём готовым, без модели: она уже успела написать «вот свободное
+    # время», когда времени в ответе не было вовсе
+    return {
+        "action": "days",
+        "days": result["data"],
+        "doctor_id": data.doctor_id,
+        "doctor_name": doctor.full_name if doctor else None,
+        "reply": translate(
+            "which_day", language, doctor=doctor.full_name if doctor else ""
+        ),
+    }
+
+
 async def show_slots(
     data: AskIn,
     current_patient,
@@ -864,7 +949,7 @@ async def show_slots(
 
         if nearest["ok"]:
             result = nearest
-            note = translate("no_slots_today", language, date=data.day) + " "
+            note = translate("no_slots_today", language, date=human_date(data.day, language)) + " "
 
     await log_call(
         current_patient,
@@ -889,7 +974,7 @@ async def show_slots(
         "slots_found",
         language,
         doctor=doctor.full_name if doctor else "",
-        date=slots[0]["date"],
+        date=human_date(date.fromisoformat(str(slots[0]["date"])), language),
     )
 
     return {
