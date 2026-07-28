@@ -58,7 +58,6 @@ async def book_appointment(
     if doctor is None:
         raise AppError(code="DOCTOR_NOT_FOUND", message="Врач не найден", status_code=404)
 
-    # уже сделанные записи не трогаем, а новые с даты увольнения не принимаем
     if crud_doctor.is_dismissed_on(doctor, data.date):
         raise AppError(
             code="DOCTOR_DISMISSED",
@@ -125,11 +124,8 @@ async def book_emergency_appointment(
     current_user=Depends(require_staff),
     db: AsyncSession = Depends(get_db),
 ):
-    # Отпуск врача здесь СОЗНАТЕЛЬНО не проверяется, это не забытая проверка:
-    # экстренная запись и существует ради случаев, когда сетка и отпуска не важны —
-    # регистратор сажает пациента к врачу, который сегодня вышел разово. Всё остальное
-    # (существование врача, отделение, прошедшее время, увольнение) проверяется как обычно,
-    # а сама запись помечается is_emergency и видна в отчётах отдельно.
+    # отпуск врача здесь не проверяется намеренно: экстренная запись и нужна для случаев,
+    # когда сетка и отпуска не важны. Остальное проверяется как обычно
     patient = await crud_patient.get_by_id(data.patient_id, db)
 
     if patient is None:
@@ -261,8 +257,6 @@ async def reschedule_appointment(
             status_code=409,
         )
 
-    # переносом можно было обойти обе проверки: и «две записи к одному врачу в день»,
-    # и «пациент занят в это время»
     if await crud_appointment.has_appointment_at(
         appointment.patient_id, data.date, data.time, db, exclude_id=appointment.id
     ):
@@ -321,7 +315,6 @@ async def cancel_appointment_by_doctor(
     doctor=Depends(get_current_doctor),
     db: AsyncSession = Depends(get_db),
 ):
-    # врач тоже должен уметь снять приём — хотя бы уходя на больничный
     appointment = await crud_appointment.get_by_id(appointment_id, db)
 
     if appointment is None or appointment.doctor_id != doctor.id:

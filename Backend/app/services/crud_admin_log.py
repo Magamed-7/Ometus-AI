@@ -7,7 +7,6 @@ from app.models.model_admin_log import AdminActionLog
 
 
 def jsonable(payload):
-    # в payload прилетают date/time из pydantic-схем — JSON-колонка их не умеет
     return json.loads(json.dumps(payload, default=str)) if payload is not None else None
 
 
