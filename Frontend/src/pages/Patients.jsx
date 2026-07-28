@@ -4,6 +4,11 @@ import Photo from "../components/Photo.jsx";
 import { useT } from "../lib/i18n.jsx";
 import { SCENE_WIDTHS } from "../lib/photos.js";
 
+const INSURERS = [
+  { name: "Bupa International", note: "patients.insuranceBupa" },
+  { name: "Allianz Care", note: "patients.insuranceAllianz" },
+];
+
 function Bullets({ items }) {
   return (
     <ul className="flex flex-col gap-xs">
@@ -139,9 +144,11 @@ export default function Patients() {
         </div>
 
         <div className="flex flex-col gap-md">
-          {/* В макете тут были логотипы Bupa, Allianz и Cigna. Это настоящие компании,
-              и заявлять партнёрство, которого нет, нельзя — блок оставлен нейтральным,
-              со ссылкой на регистратуру, где скажут актуальный список. */}
+          {/* Названия страховых набраны текстом, а не картинками из макета: у Stitch
+              логотипы перерисованы генератором и приложены к выдуманным скриншотам
+              личного кабинета с номером полиса и суммой выплаты. Такой скриншот —
+              подделка документа, его на сайт класть нельзя, а кривой логотип
+              настоящей компании хуже её же названия обычным шрифтом. */}
           <Card className="p-md">
             <h2 className="flex items-center gap-xs text-body-lg font-bold text-on-surface">
               <span aria-hidden="true" className="material-symbols-outlined text-primary">
@@ -152,9 +159,37 @@ export default function Patients() {
             <p className="mt-xs text-body-md text-on-surface-variant">
               {t("patients.insuranceText")}
             </p>
+
+            <ul className="mt-md flex flex-col gap-sm">
+              {INSURERS.map((insurer) => (
+                <li
+                  key={insurer.name}
+                  className="flex items-center gap-sm rounded-xl border border-outline-variant p-sm"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-secondary-container text-on-secondary-container"
+                  >
+                    <span className="material-symbols-outlined text-lg">verified</span>
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-body-md font-bold text-on-surface">
+                      {insurer.name}
+                    </span>
+                    <span className="block text-label-md text-on-surface-variant">
+                      {t(insurer.note)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <p className="mt-sm text-label-md text-on-surface-variant">
+              {t("patients.insuranceCheck")}
+            </p>
             <a
               href="tel:+992446000000"
-              className="mt-md inline-block rounded-xl border border-outline-variant px-md py-2 text-label-md font-semibold text-on-surface transition-all hover:bg-surface-container"
+              className="mt-sm inline-block rounded-xl border border-outline-variant px-md py-2 text-label-md font-semibold text-on-surface transition-all hover:bg-surface-container"
             >
               {t("patients.insuranceAsk")}
             </a>

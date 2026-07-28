@@ -540,8 +540,10 @@ export const en = {
     rightRefusalText:
       "You may refuse any procedure at any stage. The doctor must explain what refusing means for you.",
     insuranceTitle: "Insurance",
-    insuranceText:
-      "The clinic works with private medical insurance schemes. The list of insurers changes, so check the current one with the front desk — that way you will not arrive with a policy that is not accepted this week.",
+    insuranceText: "The clinic accepts private medical insurance policies from leading insurers.",
+    insuranceBupa: "Premium cover",
+    insuranceAllianz: "Global cover",
+    insuranceCheck: "The list changes — before your visit, check with the front desk whether your policy is accepted this week.",
     insuranceAsk: "Ask the front desk",
     helpTitle: "Still have questions?",
     helpText: "The front desk can advise on preparation, documents and insurance.",
